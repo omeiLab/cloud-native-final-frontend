@@ -37,13 +37,24 @@ cd frontend
 npm install
 ```
 
+### 本機環境檔
+
+建立 `.env.local`，開發時讓前端走 Vite proxy：
+
+```env
+VITE_API_BASE_URL=/api/v1
+VITE_DEFAULT_ROLE=EMPLOYEE
+```
+
+如果要改後端位置，請調整 `vite.config.js` 內 `server.proxy` 的 `target`。
+
 ### 開發模式
 
 ```bash
 npm run dev
 ```
 
-應用將在 `http://localhost:5173` 打開
+應用預設會在 `http://localhost:5173` 打開；如果 port 被占用，Vite 會自動換到下一個可用 port。
 
 ### 生產建置
 
@@ -90,7 +101,7 @@ frontend/
 
 ## 🔑 API 設定
 
-後端 API 基礎 URL：`https://cets.alanh.uk/api/v1`
+開發模式建議使用 Vite proxy：`VITE_API_BASE_URL=/api/v1`。目前 `vite.config.js` 會把 `/api` 代理到 `https://cets.alanh.uk`；若後端在本機，請把 proxy target 改成實際位址，例如 `http://localhost:8080`。
 
 ### 預簽開發 Token
 

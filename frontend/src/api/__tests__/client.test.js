@@ -5,6 +5,23 @@ const mocks = vi.hoisted(() => ({
   getMock: vi.fn().mockResolvedValue({ data: { items: [], unread_count: 0 } }),
   postMock: vi.fn().mockResolvedValue({ data: {} })
 }));
+
+const storageMock = vi.hoisted(() => {
+  let store = {};
+  return {
+    getItem: vi.fn((key) => store[key] ?? null),
+    setItem: vi.fn((key, value) => {
+      store[key] = String(value);
+    }),
+    removeItem: vi.fn((key) => {
+      delete store[key];
+    }),
+    clear: vi.fn(() => {
+      store = {};
+    })
+  };
+});
+
 vi.mock('axios', () => ({
   default: {
     create: () => ({
@@ -24,12 +41,18 @@ vi.mock('axios', () => ({
   })
 }));
 
-import { apiClient } from '../client';
-
 describe('apiClient basic http calls', () => {
+  let apiClient;
+
   beforeEach(() => {
+    vi.resetModules();
+    vi.stubGlobal('localStorage', storageMock);
+    storageMock.clear();
     mocks.getMock.mockClear();
     mocks.postMock.mockClear();
+    return import('../client').then((module) => {
+      apiClient = module.apiClient;
+    });
   });
 
   it('calls getNotifications and returns data', async () => {

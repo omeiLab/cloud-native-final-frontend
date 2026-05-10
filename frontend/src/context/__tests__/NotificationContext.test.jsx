@@ -98,9 +98,11 @@ describe('NotificationContext reconnect behavior', () => {
 
     expect(pendingTimers.some((timer) => timer.delay >= 1000)).toBe(true);
     const reconnectTimer = pendingTimers.find((timer) => timer.delay >= 1000);
-    reconnectTimer.fn();
-    await Promise.resolve();
-    await Promise.resolve();
+    await act(async () => {
+      reconnectTimer.fn();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
 
     expect(MockWebSocket.instances.length).toBe(2);
     const secondWs = MockWebSocket.instances[1];
