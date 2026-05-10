@@ -1,0 +1,35 @@
+{
+  "name": "cets-frontend",
+  "version": "1.0.0",
+  "description": "CETS Event Management Platform Frontend",
+  "private": true,
+  "dependencies": {
+    "@ant-design/icons": "^5.2.6",
+    "@zxing/browser": "^0.1.5",
+    "antd": "^5.11.0",
+    "axios": "^1.6.2",
+    "dayjs": "^1.11.10",
+    "qrcode": "^1.5.4",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.20.0",
+    "recharts": "^3.8.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0",
+    "@testing-library/jest-dom": "^6.0.0",
+    "@testing-library/react": "^14.0.0",
+    "@vitejs/plugin-react": "^4.0.0",
+    "jsdom": "^22.1.0",
+    "vite": "^5.0.0",
+    "vitest": "^0.34.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "dev:https": "vite --host",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest --config vitest.config.cjs",
+    "test:e2e": "playwright test"
+  }
+}

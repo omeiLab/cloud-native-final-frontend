@@ -1,0 +1,16 @@
+.login-page {
+  max-width: 760px;
+}
+
+.login-kicker {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #c6421f;
+  background: #ffe9e2;
+  border: 1px solid #ffd2c5;
+  margin-bottom: 10px;
+}

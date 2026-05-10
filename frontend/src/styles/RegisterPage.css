@@ -1,0 +1,147 @@
+.register-page {
+  min-height: auto;
+  background: transparent;
+  padding: 0;
+  display: block;
+}
+
+.register-kicker {
+  font-size: 12px;
+  color: #3568aa;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 16px;
+  font-weight: 600;
+}
+
+.hero-card {
+  border-radius: 18px;
+  box-shadow: 0 18px 34px rgba(16, 36, 58, 0.08);
+  border: 1px solid #dbe8f7;
+  overflow: hidden;
+  padding: 40px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(10px);
+}
+
+.hero-card .ant-card-body {
+  padding: 0;
+}
+
+.hero-card h2 {
+  color: #1a1a1a;
+  margin-bottom: 16px;
+  font-weight: 700;
+}
+
+.hero-card .ant-typography {
+  color: #666;
+  margin-bottom: 32px;
+  line-height: 1.6;
+}
+
+.hero-card .ant-form-item-label > label {
+  color: #333;
+  font-weight: 600;
+}
+
+.hero-card .ant-input-affix-wrapper,
+.hero-card .ant-input {
+  border-radius: 8px;
+  border: 1px solid #e1e5e9;
+  transition: all 0.3s ease;
+}
+
+.hero-card .ant-input-affix-wrapper:hover,
+.hero-card .ant-input:hover {
+  border-color: #3f8cff;
+}
+
+.hero-card .ant-input-affix-wrapper:focus,
+.hero-card .ant-input-affix-wrapper-focused,
+.hero-card .ant-input:focus {
+  border-color: #3f8cff;
+  box-shadow: 0 0 0 2px rgba(63, 140, 255, 0.2);
+}
+
+.hero-card .ant-btn-primary {
+  background: linear-gradient(135deg, #3f8cff 0%, #1f6fe5 100%);
+  border: none;
+  border-radius: 8px;
+  height: 48px;
+  font-weight: 600;
+  font-size: 16px;
+  transition: all 0.3s ease;
+}
+
+.hero-card .ant-btn-primary:hover {
+  background: linear-gradient(135deg, #2f7ce8 0%, #1758b7 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(31, 111, 229, 0.28);
+}
+
+.hero-card .ant-alert {
+  border-radius: 8px;
+  border: none;
+  background: rgba(63, 140, 255, 0.1);
+}
+
+.hero-card .ant-alert-info {
+  background: rgba(24, 144, 255, 0.1);
+}
+
+.hero-card .ant-alert-message {
+  color: #1890ff;
+  font-weight: 600;
+}
+
+.hero-card .ant-alert-description {
+  color: #666;
+}
+
+.hero-card a {
+  color: #1f6fe5;
+  font-weight: 600;
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+.hero-card a:hover {
+  color: #1758b7;
+  text-decoration: underline;
+}
+
+.fade-in-up {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 768px) {
+  .register-page {
+    padding: 0;
+  }
+  
+  .hero-card {
+    padding: 24px;
+    margin: 0;
+  }
+  
+  .hero-card h2 {
+    font-size: 20px;
+  }
+  
+  .hero-card .ant-btn {
+    height: 44px;
+    font-size: 14px;
+  }
+}

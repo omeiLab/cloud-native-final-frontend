@@ -1,0 +1,322 @@
+import React, { useEffect, useState } from 'react';
+import { Alert, Button, Card, Col, Empty, Input, Row, Skeleton, Space, Tag, Typography } from 'antd';
+import { CalendarOutlined, EnvironmentOutlined, TeamOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
+import dayjs from 'dayjs';
+import { apiClient } from '../api/client';
+import { useAuth } from '../context/AuthContext';
+import { pickEventImage } from '../assets/media';
+import '../styles/EventsList.css';
+
+const { Title, Paragraph } = Typography;
+
+const EventsList = () => {
+  const navigate = useNavigate();
+  const { user, loading: authLoading, loginAsRole } = useAuth();
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [demoLoadingRole, setDemoLoadingRole] = useState('');
+  const [keyword, setKeyword] = useState('');
+
+  useEffect(() => {
+    if (!user) return;
+    fetchEvents();
+  }, [user]);
+
+  const fetchEvents = async (params = {}) => {
+    try {
+      setLoading(true);
+      setError('');
+      const response = await apiClient.getEvents({ page: 1, page_size: 20, ...params });
+      const listItems = response.data.items || [];
+      const detailPairs = await Promise.all(
+        listItems.map(async (item) => {
+          try {
+            const detailRes = await apiClient.getEvent(item.id);
+            return [item.id, detailRes.data];
+          } catch {
+            return [item.id, null];
+          }
+        })
+      );
+      const detailMap = new Map(detailPairs);
+      const normalized = listItems.map((item) => {
+        const detail = detailMap.get(item.id);
+        const firstSession = detail?.sessions?.[0];
+        const derivedEndsAt = (detail?.sessions || [])
+          .map((s) => s?.ends_at)
+          .filter(Boolean)
+          .reduce((max, cur) => {
+            if (!max) return cur;
+            const a = dayjs(max);
+            const b = dayjs(cur);
+            if (!a.isValid()) return cur;
+            if (!b.isValid()) return max;
+            return b.isAfter(a) ? cur : max;
+          }, null);
+        const sessionQuota = (firstSession?.ticket_types || []).reduce((sum, tt) => sum + Number(tt?.quota || 0), 0);
+        const remainingQuotaRaw = item.remaining_quota;
+        const remainingQuota = remainingQuotaRaw === undefined || remainingQuotaRaw === null
+          ? sessionQuota
+          : Number(remainingQuotaRaw);
+        const registrationClosesAt = item.registration_closes_at || firstSession?.registration_closes_at || null;
+        const registrationOpensAt = firstSession?.registration_opens_at || null;
+        const nowAt = dayjs();
+        const derivedIsOpen = registrationOpensAt && registrationClosesAt
+          ? nowAt.isAfter(dayjs(registrationOpensAt)) && nowAt.isBefore(dayjs(registrationClosesAt))
+          : false;
+        const derivedIsEligible = detail?.sessions?.some((s) => s?.status === 'REGISTRATION_OPEN') ?? false;
+        const resolvedIsEligible = item.is_eligible === undefined || item.is_eligible === null
+          ? derivedIsEligible
+          : Boolean(item.is_eligible);
+        return {
+          ...item,
+          registration_closes_at: registrationClosesAt,
+          venue: item.venue || firstSession?.venue || '依場次公告',
+          ends_at: item.ends_at || derivedEndsAt || null,
+          remaining_quota: Number.isFinite(remainingQuota) ? remainingQuota : 0,
+          is_registration_open: item.is_registration_open ?? derivedIsOpen,
+          // is_eligible 以後端 /events 為準；僅在缺值時才用場次狀態推導做保守兜底
+          is_eligible: resolvedIsEligible
+        };
+      });
+      setEvents(normalized);
+    } catch (err) {
+      const msg =
+        err?.error?.message
+        || err?.message
+        || err?.detail
+        || '';
+      if (/401|unauth|not authenticated|token/i.test(msg)) {
+        setError('尚未登入或登入已過期，請點右上角「登入」後重試。');
+      } else {
+        setError(msg || '無法載入活動列表');
+      }
+      setEvents([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loginDemo = async (role, target) => {
+    setDemoLoadingRole(role);
+    try {
+      await loginAsRole(role);
+      navigate(target);
+    } finally {
+      setDemoLoadingRole('');
+    }
+  };
+
+  const getStatusColor = (status) => {
+    if (status === 'PUBLISHED') return 'processing';
+    if (status === 'CANCELLED') return 'red';
+    if (status === 'DRAFT') return 'default';
+    return 'green';
+  };
+
+  const getStatusLabel = (status) => {
+    if (status === 'PUBLISHED') return '已發布';
+    if (status === 'CANCELLED') return '已取消';
+    if (status === 'DRAFT') return '草稿';
+    return status;
+  };
+
+  const visibleEvents = events.filter((event) => {
+    const term = keyword.trim().toLowerCase();
+    if (!term) return true;
+    return `${event.title} ${event.venue || ''} ${(event.allowed_sites || []).join(' ')}`.toLowerCase().includes(term);
+  });
+
+  const canRegisterEvent = (event) => {
+    const roleCanRegister = user?.role === 'EMPLOYEE';
+    const isPublished = event.status === 'PUBLISHED';
+    const isRegistrationOpen = Boolean(event.is_registration_open);
+    return roleCanRegister && isPublished && isRegistrationOpen && Boolean(event.is_eligible);
+  };
+
+  const sortedVisibleEvents = [...visibleEvents].sort((a, b) => {
+    const aCanRegister = canRegisterEvent(a);
+    const bCanRegister = canRegisterEvent(b);
+    if (aCanRegister !== bCanRegister) {
+      return bCanRegister - aCanRegister;
+    }
+    const aCreated = dayjs(a.created_at || a.createdAt || 0).valueOf();
+    const bCreated = dayjs(b.created_at || b.createdAt || 0).valueOf();
+    if (aCreated !== bCreated) return bCreated - aCreated;
+    const aUpdated = dayjs(a.updated_at || a.updatedAt || 0).valueOf();
+    const bUpdated = dayjs(b.updated_at || b.updatedAt || 0).valueOf();
+    if (aUpdated !== bUpdated) return bUpdated - aUpdated;
+    return String(b.id || '').localeCompare(String(a.id || ''));
+  });
+
+  const eligibleCount = events.filter((event) => canRegisterEvent(event)).length;
+
+  const EventCard = ({ event }) => {
+    const startDate = dayjs(event.starts_at);
+    const roleCanRegister = user?.role === 'EMPLOYEE';
+    const isPublished = event.status === 'PUBLISHED';
+    const isRegistrationOpen = Boolean(event.is_registration_open);
+    const canRegister = canRegisterEvent(event);
+    const registrationStateLabel = !isPublished
+      ? '活動未發布'
+      : !roleCanRegister
+        ? '此身分不可報名'
+      : !isRegistrationOpen
+        ? '已截止/未開放'
+        : '報名開放中';
+
+    return (
+      <Card
+        hoverable
+        className="event-card"
+        onClick={() => navigate(`/events/${event.id}`)}
+        cover={(
+          <img
+            className="event-cover"
+            src={event.cover_image_url || pickEventImage(event.id || event.title)}
+            alt={event.title}
+            loading="lazy"
+            decoding="async"
+            onError={(e) => {
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = pickEventImage(event.id || event.title);
+            }}
+          />
+        )}
+      >
+        <div className="event-card-content">
+          <div className="event-header">
+            <h3>{event.title}</h3>
+            <Tag color={getStatusColor(event.status)}>{getStatusLabel(event.status)}</Tag>
+          </div>
+
+          <Paragraph className="event-description" ellipsis={{ rows: 2 }}>
+            開放廠區: {event.allowed_sites?.length ? event.allowed_sites.join(', ') : '全廠區'}
+          </Paragraph>
+
+          <div className="event-details">
+            <div className="detail-item">
+              <CalendarOutlined /> {startDate.format('YYYY-MM-DD HH:mm')}
+            </div>
+            <div className="detail-item">
+              🏁 活動結束：{event.ends_at ? dayjs(event.ends_at).format('YYYY-MM-DD HH:mm') : '未設定'}
+            </div>
+            <div className="detail-item">
+              ⏳ 報名截止：{event.registration_closes_at ? dayjs(event.registration_closes_at).format('YYYY-MM-DD HH:mm') : '未設定'}
+            </div>
+            <div className="detail-item">
+              <EnvironmentOutlined /> {event.venue || '依場次公告'}
+            </div>
+            <div className="detail-item">
+              <TeamOutlined /> 場次 {event.session_count}
+            </div>
+          </div>
+
+          <div className="event-footer">
+            <div>
+              {canRegister ? <Tag color="success">可報名</Tag> : <Tag color="default">不可報名</Tag>}
+              <Tag color={canRegister ? 'green' : 'red'}>
+                {registrationStateLabel}
+              </Tag>
+            </div>
+            <Button type="primary" onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/events/${event.id}`);
+            }}>
+              查看詳情
+            </Button>
+          </div>
+        </div>
+      </Card>
+    );
+  };
+
+  return (
+    <div className="events-list-container page-wrap">
+      {authLoading ? (
+        <Card className="hero-card">
+          <Skeleton active paragraph={{ rows: 2 }} />
+        </Card>
+      ) : !user ? (
+        <Card className="events-hero hero-card">
+          <Title level={2}>台積電晶彩活動通</Title>
+          <Paragraph>
+            請先點選右上角「登入」選擇身分後登入，即可瀏覽活動、報名、收即時通知與管理票券。
+          </Paragraph>
+          <Paragraph style={{ marginBottom: 8 }}>
+            可使用下方快速登入按鈕體驗員工、管理員、驗票員流程。
+          </Paragraph>
+          <Space wrap style={{ marginBottom: 12 }}>
+            <Button loading={demoLoadingRole === 'EMPLOYEE'} type="primary" onClick={() => loginDemo('EMPLOYEE', '/')}>
+              Demo 員工登入
+            </Button>
+            <Button loading={demoLoadingRole === 'ADMIN'} onClick={() => loginDemo('ADMIN', '/admin')}>
+              Demo 管理員登入
+            </Button>
+            <Button loading={demoLoadingRole === 'VERIFIER'} onClick={() => loginDemo('VERIFIER', '/verify')}>
+              Demo 驗票員登入
+            </Button>
+          </Space>
+        </Card>
+      ) : (
+      <Card className="events-hero hero-card">
+        <Title level={2}>探索精彩活動 ✨</Title>
+        <Paragraph>
+          公平抽籤、即時通知、行動裝置友善。現在就找到你想參加的場次，開啟你的活動旅程。
+        </Paragraph>
+        <div className="hero-stats">
+          <div><strong>{events.length}</strong><span>活動總數</span></div>
+          <div><strong>{eligibleCount}</strong><span>符合資格</span></div>
+        </div>
+      </Card>
+      )}
+
+      {!user ? null : (
+        <>
+          <div className="events-filters">
+            <Space>
+              <Input.Search
+                allowClear
+                placeholder="搜尋活動、地點、廠區"
+                style={{ width: 240 }}
+                value={keyword}
+                onChange={(e) => setKeyword(e.target.value)}
+              />
+              <Button onClick={() => fetchEvents()}>重新整理</Button>
+            </Space>
+          </div>
+
+          {error ? <Alert style={{ marginBottom: 16 }} type="error" message={error} showIcon /> : null}
+
+          {loading ? (
+            <div className="loading-container">
+              <Row gutter={[24, 24]} style={{ width: '100%' }}>
+                {[1, 2, 3, 4, 5, 6].map((idx) => (
+                  <Col key={idx} xs={24} sm={12} md={8}>
+                    <Card className="event-card">
+                      <Skeleton active avatar paragraph={{ rows: 4 }} />
+                    </Card>
+                  </Col>
+                ))}
+              </Row>
+            </div>
+          ) : !visibleEvents.length ? (
+            <Empty description="暫無活動" />
+          ) : (
+            <Row gutter={[24, 24]}>
+              {sortedVisibleEvents.map((event) => (
+                <Col key={event.id} xs={24} sm={12} md={8}>
+                  <EventCard event={event} />
+                </Col>
+              ))}
+            </Row>
+          )}
+        </>
+      )}
+    </div>
+  );
+};
+
+export default EventsList;
