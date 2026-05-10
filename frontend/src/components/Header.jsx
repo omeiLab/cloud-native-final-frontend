@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Avatar, Badge, Button, Drawer, Dropdown, Layout, Space, Tag, Tooltip } from 'antd';
-import { BellOutlined, FontSizeOutlined, LogoutOutlined, MenuOutlined, MoonOutlined, ScanOutlined, SettingOutlined, SunOutlined, UserOutlined } from '@ant-design/icons';
+import { BellOutlined, FontSizeOutlined, LogoutOutlined, MenuOutlined, MoonOutlined, SunOutlined, UserOutlined } from '@ant-design/icons';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
@@ -134,18 +134,6 @@ const AppHeader = () => {
             </Button>
           </Tooltip>
 
-          {user?.role === 'ADMIN' || user?.role === 'ADMIN_VIEWER' ? (
-            <Link to="/admin">
-              <Button icon={<SettingOutlined />}>管理端</Button>
-            </Link>
-          ) : null}
-
-          {user?.role === 'VERIFIER' ? (
-            <Link to="/verify">
-              <Button icon={<ScanOutlined />}>驗票端</Button>
-            </Link>
-          ) : null}
-
           {canAccessNotifications ? (
             <Link to="/notifications">
               <Badge count={unreadCount} size="small">
@@ -254,35 +242,6 @@ const AppHeader = () => {
             </Button>
           </Tooltip>
         </div>
-
-        {user?.role === 'ADMIN' || user?.role === 'ADMIN_VIEWER' || user?.role === 'VERIFIER' ? <div className="mobile-drawer-divider" /> : null}
-
-        {user?.role === 'ADMIN' || user?.role === 'ADMIN_VIEWER' ? (
-          <div className="mobile-drawer-group">
-            <div className="mobile-drawer-group-title">管理工具</div>
-            <Link to="/admin">
-              <Button block type="text" className="mobile-drawer-item">
-                <span className="mobile-drawer-item-main">
-                  <SettingOutlined className="mobile-drawer-item-icon" />
-                  管理端
-                </span>
-              </Button>
-            </Link>
-          </div>
-        ) : null}
-        {user?.role === 'VERIFIER' ? (
-          <div className="mobile-drawer-group">
-            <div className="mobile-drawer-group-title">管理工具</div>
-            <Link to="/verify">
-              <Button block type="text" className="mobile-drawer-item">
-                <span className="mobile-drawer-item-main">
-                  <ScanOutlined className="mobile-drawer-item-icon" />
-                  驗票端
-                </span>
-              </Button>
-            </Link>
-          </div>
-        ) : null}
 
         {user ? (
           <>

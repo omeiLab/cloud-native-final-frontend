@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Button, Card, Input, Select, Space, Tag, Typography } from 'antd';
+import { Alert, Button, Card, Collapse, Input, Select, Space, Tag, Typography } from 'antd';
 import { BrowserMultiFormatReader } from '@zxing/browser';
 import { apiClient } from '../api/client';
 import '../styles/Verifier.css';
@@ -284,9 +284,9 @@ const VerifierPage = () => {
           />
         ) : null}
 
-        <Space style={{ marginBottom: 16 }} wrap>
+        <div className="verifier-selectors">
           <Select
-            style={{ width: 320 }}
+            className="verifier-event-select"
             placeholder="選擇活動"
             value={selectedEventId || undefined}
             onChange={(v) => setSelectedEventId(v)}
@@ -297,7 +297,7 @@ const VerifierPage = () => {
             notFoundContent={eventsLoading ? '載入中…' : '尚無活動'}
           />
           <Select
-            style={{ width: 260 }}
+            className="verifier-session-select"
             placeholder="選擇場次（可選）"
             value={selectedSessionId || undefined}
             onChange={(v) => setSelectedSessionId(v)}
@@ -305,14 +305,13 @@ const VerifierPage = () => {
             disabled={!selectedEventId}
             allowClear
           />
-        </Space>
+        </div>
 
         <div className={`scan-state ${scanning ? 'scanning' : 'idle'}`}>
           {scanning ? '掃描中：請將 QR Code 對準框線中央' : '待命中：點擊啟動相機掃碼'}
         </div>
 
-        <Space style={{ marginBottom: 16 }} wrap>
-          <Input value={deviceId} onChange={(e) => setDeviceId(e.target.value)} addonBefore="裝置 ID" style={{ width: 260 }} />
+        <Space className="verifier-scan-actions" wrap>
           {!scanning ? (
             <Button type="primary" onClick={startScan} disabled={!isSelectionReady}>啟動相機掃碼</Button>
           ) : (
@@ -333,18 +332,31 @@ const VerifierPage = () => {
           description={lastDetectedText ? `最近辨識時間：${lastDetectedAt || '-'} ｜ 內容前 40 字：${lastDetectedText.slice(0, 40)}` : '尚未辨識到 QR 字串'}
         />
 
-        <Card style={{ marginTop: 16 }} type="inner" title="手動核銷備援">
-          <Space.Compact style={{ width: '100%' }}>
-            <Input
-              value={manualPayload}
-              onChange={(e) => setManualPayload(e.target.value)}
-              placeholder="貼上 qr_payload"
-            />
-            <Button type="primary" onClick={() => verifyPayload(manualPayload)} disabled={!isSelectionReady}>
-              核銷
-            </Button>
-          </Space.Compact>
-        </Card>
+        <Collapse
+          className="verifier-advanced"
+          ghost
+          items={[
+            {
+              key: 'advanced',
+              label: '進階 / 備援',
+              children: (
+                <Space direction="vertical" style={{ width: '100%' }} size={12}>
+                  <Input value={deviceId} onChange={(e) => setDeviceId(e.target.value)} addonBefore="裝置 ID" />
+                  <Space.Compact style={{ width: '100%' }}>
+                    <Input
+                      value={manualPayload}
+                      onChange={(e) => setManualPayload(e.target.value)}
+                      placeholder="貼上 qr_payload"
+                    />
+                    <Button type="primary" onClick={() => verifyPayload(manualPayload)} disabled={!isSelectionReady}>
+                      核銷
+                    </Button>
+                  </Space.Compact>
+                </Space>
+              )
+            }
+          ]}
+        />
 
         {result?.ok ? (
           <div className="result-panel success">

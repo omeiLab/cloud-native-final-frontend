@@ -31,7 +31,7 @@ import { useNotifications } from '../context/NotificationContext';
 import { EVENT_STATUS_LABELS, REGISTRATION_STATUS_LABELS, labelOr } from '../utils/labels';
 import '../styles/AdminConsole.css';
 
-const { Title, Paragraph } = Typography;
+const { Title, Paragraph, Text } = Typography;
 
 const SITES = ['HSINCHU', 'TAINAN', 'TAICHUNG', 'TAIPEI', 'OVERSEAS'];
 const SITE_LABELS = {
@@ -244,7 +244,6 @@ const AdminConsolePage = () => {
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
   const [publishing, setPublishing] = useState(false);
-  const [quickPublishOpen, setQuickPublishOpen] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [exportingSync, setExportingSync] = useState(false);
   const [siteCount, setSiteCount] = useState(null);
@@ -289,6 +288,17 @@ const AdminConsolePage = () => {
   const getSessionId = (sessionLike) => sessionLike?.data?.id || sessionLike?.data?.session_id || sessionLike?.id || sessionLike?.session_id || '';
 
   const selectedEvent = useMemo(() => events.find((e) => e.id === selectedEventId), [events, selectedEventId]);
+  const dashboardEventOptions = useMemo(() => {
+    return events.map((event) => {
+      const statusLabel = labelOr(EVENT_STATUS_LABELS, event.status, event.status);
+      const sitesLabel = event.allowed_sites?.length ? event.allowed_sites.join(', ') : '全廠區';
+      return {
+        label: `${event.title}（${statusLabel}）`,
+        value: event.id,
+        searchText: `${event.title || ''} ${event.status || ''} ${statusLabel} ${sitesLabel}`
+      };
+    });
+  }, [events]);
   const draftEvents = useMemo(() => events.filter((e) => e.status === 'DRAFT'), [events]);
   const isEditing = Boolean(editingEventId);
 
@@ -954,9 +964,14 @@ const AdminConsolePage = () => {
 
   return (
     <div className="page-wrap admin-console-page">
-      <Card loading={loading}>
-        <Title level={3}>管理後台主控台</Title>
-        <Paragraph>可在此建立活動、發布草稿、查看報名與抽籤、下載報表。</Paragraph>
+      <Card loading={loading} className="admin-console-hero">
+        <div className="admin-console-hero-main">
+          <div>
+            <Text className="admin-console-kicker">管理後台</Text>
+            <Title level={3}>主控台</Title>
+            <Paragraph>建立活動、查看報名、抽籤與報表集中在同一個工作區。</Paragraph>
+          </div>
+        </div>
         {isAdminViewer ? (
           <Alert
             type="warning"
@@ -967,67 +982,45 @@ const AdminConsolePage = () => {
         ) : null}
       </Card>
 
-      <Card style={{ marginTop: 16 }}>
-        <Title level={5} style={{ marginTop: 0 }}>草稿活動編輯與發布區</Title>
-        <Space direction="vertical" style={{ width: '100%' }} size={10}>
-          <Button onClick={() => setQuickPublishOpen((v) => !v)}>
-            {quickPublishOpen ? '收合草稿編輯區' : '進入草稿編輯區'}
-          </Button>
-          {quickPublishOpen ? (
-            draftEvents.length === 0 ? (
-              <Paragraph type="secondary" style={{ marginBottom: 0 }}>目前沒有草稿活動。</Paragraph>
-            ) : (
-              <Space wrap className="admin-draft-actions">
-                {draftEvents.map((d) => (
-                  <Button
-                    key={d.id}
-                    type="default"
-                    loading={editLoading && editingEventId === d.id}
-                    disabled={!isAdminFull}
-                    onClick={() => enterEditMode(d.id)}
-                  >
-                    編輯／發布：{d.title}
-                  </Button>
-                ))}
-              </Space>
-            )
-          ) : (
-            <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-              點擊上方按鈕後，可載入草稿現有資料進入完整表單，編輯所有欄位後儲存或直接發布。
-            </Paragraph>
-          )}
-        </Space>
-      </Card>
-
       <Tabs
         activeKey={activeTabKey}
         onChange={setActiveTabKey}
+        className="admin-console-tabs"
         style={{ marginTop: 16 }}
         items={[
           {
             key: 'event-create',
             label: isEditing ? '編輯活動' : '建立活動',
             children: (
-              <Card>
-                <Form form={createForm} layout="vertical" initialValues={defaultCreateValues}>
-                  <Form.Item name="title" label="活動標題" rules={[{ required: true }]}>
-                    <Input />
-                  </Form.Item>
-                  <Form.Item name="description" label="活動描述（選填）">
-                    <Input.TextArea rows={3} />
-                  </Form.Item>
-                  <Form.Item
-                    name="registration_mode"
-                    label="報名模式"
-                    rules={[{ required: true, message: '請選擇報名模式' }]}
-                  >
-                    <Select
-                      options={[
-                        { value: 'UNLIMITED', label: '無人數限制（前端自動帶入抽籤/候補時間）' },
-                        { value: 'LIMITED', label: '有人數限制（需設定名額、抽籤、候補）' }
-                      ]}
-                    />
-                  </Form.Item>
+              <Card className="admin-create-card">
+                <Form form={createForm} layout="vertical" initialValues={defaultCreateValues} className="admin-create-form">
+                  <Divider orientation="left" style={{ marginTop: 0 }}>基本資料</Divider>
+                  <Row gutter={16}>
+                    <Col xs={24} lg={14}>
+                      <Form.Item name="title" label="活動標題" rules={[{ required: true }]}>
+                        <Input />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} lg={10}>
+                      <Form.Item
+                        name="registration_mode"
+                        label="報名模式"
+                        rules={[{ required: true, message: '請選擇報名模式' }]}
+                      >
+                        <Select
+                          options={[
+                            { value: 'UNLIMITED', label: '無人數限制（前端自動帶入抽籤/候補時間）' },
+                            { value: 'LIMITED', label: '有人數限制（需設定名額、抽籤、候補）' }
+                          ]}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24}>
+                      <Form.Item name="description" label="活動描述（選填）">
+                        <Input.TextArea rows={3} />
+                      </Form.Item>
+                    </Col>
+                  </Row>
                   {createRegistrationMode === 'LIMITED' ? (
                     <>
                       <Divider style={{ marginTop: 6 }}>報名資格限制（顯示給員工確認）</Divider>
@@ -1158,6 +1151,7 @@ const AdminConsolePage = () => {
                       description="使用者報名後不受名額限制。因後端 API 目前仍要求抽籤/候補欄位，前端會自動填入系統時間參數，你不需要手動填寫。"
                     />
                   )}
+                  <Divider orientation="left">圖片與廠區</Divider>
                   <Form.Item
                     name="cover_image_url"
                     label="快速套用活動圖"
@@ -1192,58 +1186,63 @@ const AdminConsolePage = () => {
                   <Form.List name="sessions">
                     {(fields, { add, remove }) => (
                       <Space direction="vertical" style={{ width: '100%' }} size={12}>
-                        {fields.map((field, idx) => (
-                          <Card
-                            key={field.key}
-                            type="inner"
-                            title={`場次 ${idx + 1}`}
-                            extra={fields.length > 1 ? <Button danger onClick={() => remove(field.name)}>刪除</Button> : null}
-                          >
-                            <Row gutter={12}>
-                              <Col xs={24} md={8}>
-                                <Form.Item
-                                  {...field}
-                                  name={[field.name, 'title']}
-                                  label="場次名稱"
-                                  rules={[{ required: true, message: '請填寫場次名稱' }]}
-                                >
-                                  <Input placeholder={`例如：第 ${idx + 1} 場`} />
-                                </Form.Item>
-                              </Col>
-                              <Col xs={24} md={16}>
-                                <Form.Item
-                                  {...field}
-                                  name={[field.name, 'venue']}
-                                  label="場次地點"
-                                  rules={[{ required: true, message: '請填寫場次地點' }]}
-                                >
-                                  <Input placeholder="例如：新竹園區戶外廣場" />
-                                </Form.Item>
-                              </Col>
-                            </Row>
-                            {createRegistrationMode === 'LIMITED' ? (
+                        {fields.map((field, idx) => {
+                          const { key, ...fieldProps } = field;
+                          return (
+                            <Card
+                              key={key}
+                              type="inner"
+                              title={`場次 ${idx + 1}`}
+                              extra={fields.length > 1 ? <Button danger onClick={() => remove(field.name)}>刪除</Button> : null}
+                            >
                               <Row gutter={12}>
                                 <Col xs={24} md={8}>
                                   <Form.Item
-                                    {...field}
-                                    name={[field.name, 'adult_quota']}
-                                    label="成人票數量（本場次）"
-                                    rules={[{ required: true, message: '請輸入成人票數量' }]}
+                                    {...fieldProps}
+                                    name={[field.name, 'title']}
+                                    label="場次名稱"
+                                    rules={[{ required: true, message: '請填寫場次名稱' }]}
                                   >
-                                    <InputNumber min={0} max={999999} style={{ width: '100%' }} />
+                                    <Input placeholder={`例如：第 ${idx + 1} 場`} />
                                   </Form.Item>
                                 </Col>
-                                <Col xs={24} md={8}>
+                                <Col xs={24} md={16}>
                                   <Form.Item
-                                    {...field}
-                                    name={[field.name, 'require_child_ticket']}
-                                    label="是否需要兒童票（本場次）"
-                                    valuePropName="checked"
+                                    {...fieldProps}
+                                    name={[field.name, 'venue']}
+                                    label="場次地點"
+                                    rules={[{ required: true, message: '請填寫場次地點' }]}
                                   >
-                                    <Checkbox>需要兒童票</Checkbox>
+                                    <Input placeholder="例如：新竹園區戶外廣場" />
                                   </Form.Item>
                                 </Col>
-                                <Col xs={24} md={8}>
+                              </Row>
+                              {createRegistrationMode === 'LIMITED' ? (
+                                <>
+                                  <Row gutter={12}>
+                                    <Col xs={24} md={12}>
+                                      <Form.Item
+                                        {...fieldProps}
+                                        name={[field.name, 'adult_quota']}
+                                        label="成人票數量（本場次）"
+                                        rules={[{ required: true, message: '請輸入成人票數量' }]}
+                                      >
+                                        <InputNumber min={0} max={999999} style={{ width: '100%' }} />
+                                      </Form.Item>
+                                    </Col>
+                                  </Row>
+                                  <Row gutter={12}>
+                                    <Col xs={24} md={12}>
+                                      <Form.Item
+                                        {...fieldProps}
+                                        name={[field.name, 'require_child_ticket']}
+                                        label="是否需要兒童票（本場次）"
+                                        valuePropName="checked"
+                                      >
+                                        <Checkbox>需要兒童票</Checkbox>
+                                      </Form.Item>
+                                    </Col>
+                                  </Row>
                                   <Form.Item
                                     shouldUpdate={(prev, cur) =>
                                       prev?.sessions?.[field.name]?.require_child_ticket !== cur?.sessions?.[field.name]?.require_child_ticket
@@ -1252,58 +1251,62 @@ const AdminConsolePage = () => {
                                   >
                                     {({ getFieldValue }) =>
                                       getFieldValue(['sessions', field.name, 'require_child_ticket']) ? (
-                                        <Form.Item
-                                          {...field}
-                                          name={[field.name, 'child_quota']}
-                                          label="兒童票數量（本場次）"
-                                          rules={[{ required: true, message: '請輸入兒童票數量' }]}
-                                        >
-                                          <InputNumber min={0} max={999999} style={{ width: '100%' }} />
-                                        </Form.Item>
+                                        <Row gutter={12}>
+                                          <Col xs={24} md={12}>
+                                            <Form.Item
+                                              {...fieldProps}
+                                              name={[field.name, 'child_quota']}
+                                              label="兒童票數量（本場次）"
+                                              rules={[{ required: true, message: '請輸入兒童票數量' }]}
+                                            >
+                                              <InputNumber min={0} max={999999} style={{ width: '100%' }} />
+                                            </Form.Item>
+                                          </Col>
+                                        </Row>
                                       ) : null
                                     }
                                   </Form.Item>
+                                </>
+                              ) : null}
+                              <Row gutter={12}>
+                                <Col xs={24} md={12}>
+                                  <Form.Item
+                                    {...fieldProps}
+                                    name={[field.name, 'starts_at']}
+                                    label="開始時間"
+                                    rules={[{ required: true, message: '請選擇開始時間' }]}
+                                  >
+                                    <DatePicker showTime style={{ width: '100%' }} />
+                                  </Form.Item>
+                                </Col>
+                                <Col xs={24} md={12}>
+                                  <Form.Item
+                                    {...fieldProps}
+                                    name={[field.name, 'ends_at']}
+                                    label="結束時間"
+                                    dependencies={[['sessions', field.name, 'starts_at']]}
+                                    rules={[
+                                      { required: true, message: '請選擇結束時間' },
+                                      ({ getFieldValue }) => ({
+                                        validator(_, value) {
+                                          const start = getFieldValue(['sessions', field.name, 'starts_at']);
+                                          if (!start || !value) return Promise.resolve();
+                                          const a = dayjs(start);
+                                          const b = dayjs(value);
+                                          if (!a.isValid() || !b.isValid()) return Promise.resolve();
+                                          if (b.isAfter(a)) return Promise.resolve();
+                                          return Promise.reject(new Error('結束時間必須晚於開始時間'));
+                                        }
+                                      })
+                                    ]}
+                                  >
+                                    <DatePicker showTime style={{ width: '100%' }} />
+                                  </Form.Item>
                                 </Col>
                               </Row>
-                            ) : null}
-                            <Row gutter={12}>
-                              <Col xs={24} md={12}>
-                                <Form.Item
-                                  {...field}
-                                  name={[field.name, 'starts_at']}
-                                  label="開始時間"
-                                  rules={[{ required: true, message: '請選擇開始時間' }]}
-                                >
-                                  <DatePicker showTime style={{ width: '100%' }} />
-                                </Form.Item>
-                              </Col>
-                              <Col xs={24} md={12}>
-                                <Form.Item
-                                  {...field}
-                                  name={[field.name, 'ends_at']}
-                                  label="結束時間"
-                                  dependencies={[['sessions', field.name, 'starts_at']]}
-                                  rules={[
-                                    { required: true, message: '請選擇結束時間' },
-                                    ({ getFieldValue }) => ({
-                                      validator(_, value) {
-                                        const start = getFieldValue(['sessions', field.name, 'starts_at']);
-                                        if (!start || !value) return Promise.resolve();
-                                        const a = dayjs(start);
-                                        const b = dayjs(value);
-                                        if (!a.isValid() || !b.isValid()) return Promise.resolve();
-                                        if (b.isAfter(a)) return Promise.resolve();
-                                        return Promise.reject(new Error('結束時間必須晚於開始時間'));
-                                      }
-                                    })
-                                  ]}
-                                >
-                                  <DatePicker showTime style={{ width: '100%' }} />
-                                </Form.Item>
-                              </Col>
-                            </Row>
-                          </Card>
-                        ))}
+                            </Card>
+                          );
+                        })}
 
                         <Space wrap>
                           <Button
@@ -1360,30 +1363,27 @@ const AdminConsolePage = () => {
                     </Col>
                   </Row>
 
+                  <Divider orientation="left">報名時間</Divider>
                   <Row gutter={12}>
-                    <Col xs={24} md={12}>
-                      <Form.Item name="registration_closes_at" label="報名截止時間（所有場次共用）" rules={[{ required: true, message: '請選擇報名截止時間' }]}>
-                        <DatePicker showTime style={{ width: '100%' }} />
-                      </Form.Item>
-                    </Col>
-                  </Row>
-                  <Row gutter={12}>
-                    <Col xs={24} md={8}>
+                    <Col xs={24} md={createRegistrationMode === 'LIMITED' ? 8 : 12}>
                       <Form.Item name="registration_opens_at" label="報名開放時間（所有場次共用）" rules={[{ required: true, message: '請選擇報名開放時間' }]}>
                         <DatePicker showTime style={{ width: '100%' }} />
                       </Form.Item>
                     </Col>
+                    <Col xs={24} md={createRegistrationMode === 'LIMITED' ? 8 : 12}>
+                      <Form.Item name="registration_closes_at" label="報名截止時間（所有場次共用）" rules={[{ required: true, message: '請選擇報名截止時間' }]}>
+                        <DatePicker showTime style={{ width: '100%' }} />
+                      </Form.Item>
+                    </Col>
                     {createRegistrationMode === 'LIMITED' ? (
-                      <Col xs={24} md={16}>
-                        <Space direction="vertical" style={{ width: '100%' }}>
-                          <Form.Item
-                            name="waitlist_close_at"
-                            label="活動抽籤徹底截止時間（候補截止，所有場次共用）"
-                            rules={[{ required: true, message: '請選擇候補截止時間' }]}
-                          >
-                            <DatePicker showTime style={{ width: '100%' }} />
-                          </Form.Item>
-                        </Space>
+                      <Col xs={24} md={8}>
+                        <Form.Item
+                          name="waitlist_close_at"
+                          label="候補截止時間（所有場次共用）"
+                          rules={[{ required: true, message: '請選擇候補截止時間' }]}
+                        >
+                          <DatePicker showTime style={{ width: '100%' }} />
+                        </Form.Item>
                       </Col>
                     ) : null}
                   </Row>
@@ -1402,7 +1402,7 @@ const AdminConsolePage = () => {
                   ) : null}
 
                   <Divider />
-                  <Space>
+                  <Space wrap className="admin-create-actions">
                     {isEditing ? (
                       <>
                         <Button type="primary" onClick={() => updateEvent(false)} loading={creating} disabled={!isAdminFull}>
@@ -1433,42 +1433,126 @@ const AdminConsolePage = () => {
             )
           },
           {
+            key: 'drafts',
+            label: `草稿活動${draftEvents.length ? ` (${draftEvents.length})` : ''}`,
+            children: (
+              <Card className="admin-draft-card">
+                <div className="admin-draft-header">
+                  <div>
+                    <Text className="admin-dashboard-section-label">草稿活動</Text>
+                    <Title level={4}>未發布活動管理</Title>
+                    <Paragraph type="secondary">
+                      草稿活動會保留在這裡；載入後可回到表單修改欄位，再儲存或直接發布。
+                    </Paragraph>
+                  </div>
+                </div>
+                <Table
+                  rowKey="id"
+                  dataSource={draftEvents}
+                  pagination={false}
+                  locale={{ emptyText: '目前沒有草稿活動' }}
+                  columns={[
+                    {
+                      title: '活動名稱',
+                      dataIndex: 'title',
+                      key: 'title',
+                      render: (title, record) => (
+                        <Space direction="vertical" size={2}>
+                          <Text strong>{title}</Text>
+                          <Text type="secondary">
+                            {record.allowed_sites?.length ? record.allowed_sites.join(', ') : '全廠區'}
+                          </Text>
+                        </Space>
+                      )
+                    },
+                    {
+                      title: '狀態',
+                      dataIndex: 'status',
+                      key: 'status',
+                      render: (status) => <Tag>{labelOr(EVENT_STATUS_LABELS, status, status)}</Tag>
+                    },
+                    {
+                      title: '建立時間',
+                      dataIndex: 'created_at',
+                      key: 'created_at',
+                      render: (value) => (value ? dayjs(value).format('YYYY-MM-DD HH:mm') : '-')
+                    },
+                    {
+                      title: '操作',
+                      key: 'action',
+                      render: (_, record) => (
+                        <Button
+                          type="primary"
+                          loading={editLoading && editingEventId === record.id}
+                          disabled={!isAdminFull}
+                          onClick={() => enterEditMode(record.id)}
+                        >
+                          載入編輯
+                        </Button>
+                      )
+                    }
+                  ]}
+                />
+              </Card>
+            )
+          },
+          {
             key: 'dashboard',
             label: '儀表板',
             children: (
               <>
-                <Card>
-                  <Space wrap className="admin-dashboard-actions">
-                    <Select
-                      className="admin-event-select"
-                      style={{ width: 360 }}
-                      placeholder="選擇活動"
-                      value={selectedEventId || undefined}
-                      onChange={setSelectedEventId}
-                      options={events.map((e) => ({ label: `🎪 ${e.title}（${labelOr(EVENT_STATUS_LABELS, e.status, e.status)}）`, value: e.id }))}
-                    />
-                    <Button type="primary" onClick={handlePublish} loading={publishing} disabled={!isAdminFull || !selectedEvent || selectedEvent.status !== 'DRAFT'}>
-                      發布活動
-                    </Button>
-                    <Button onClick={() => enterEditMode(selectedEventId)} loading={editLoading} disabled={!selectedEvent}>
-                      編輯活動
-                    </Button>
-                    <Button danger onClick={handleCancel} loading={cancelling} disabled={!isAdminFull || !selectedEvent}>
-                      刪除活動
-                    </Button>
-                    <Button
-                      type="primary"
-                      onClick={runInstantLotteryForSelectedEvent}
-                      loading={autoLotteryRunning}
-                      disabled={!isAdminFull || !selectedEventId}
-                    >
-                      即時抽籤（中籤發通知）
-                    </Button>
-                  </Space>
-                  <Divider />
-                  <Paragraph style={{ marginBottom: 0 }} type="secondary">
-                    提醒：此頁面所有操作皆直接串接後端管理員 API（建立/發布/取消/儀表板/匯出）。
-                  </Paragraph>
+                <Card className="admin-dashboard-toolbar">
+                  <div className="admin-dashboard-toolbar-grid">
+                    <section className="admin-dashboard-picker">
+                      <Text className="admin-dashboard-section-label">儀表板活動</Text>
+                      <div className="admin-dashboard-select-row">
+                        <Select
+                          className="admin-event-select"
+                          placeholder="搜尋並選擇活動"
+                          value={selectedEventId || undefined}
+                          onChange={setSelectedEventId}
+                          options={dashboardEventOptions}
+                          showSearch
+                          filterOption={(input, option) =>
+                            String(option?.searchText || option?.label || '').toLowerCase().includes(input.toLowerCase())
+                          }
+                        />
+                      </div>
+                    </section>
+
+                    <section className="admin-dashboard-action-panel">
+                      <div className="admin-dashboard-action-block">
+                        <Text className="admin-dashboard-section-label">活動管理</Text>
+                        <Space wrap className="admin-dashboard-actions">
+                          <Button type="primary" onClick={handlePublish} loading={publishing} disabled={!isAdminFull || !selectedEvent || selectedEvent.status !== 'DRAFT'}>
+                            發布活動
+                          </Button>
+                          <Button onClick={() => enterEditMode(selectedEventId)} loading={editLoading} disabled={!selectedEvent}>
+                            編輯活動
+                          </Button>
+                          <Button danger onClick={handleCancel} loading={cancelling} disabled={!isAdminFull || !selectedEvent}>
+                            刪除活動
+                          </Button>
+                        </Space>
+                      </div>
+                      <div className="admin-dashboard-action-block">
+                        <Text className="admin-dashboard-section-label">抽籤與報表</Text>
+                        <Space wrap className="admin-dashboard-actions">
+                          <Button
+                            type="primary"
+                            onClick={runInstantLotteryForSelectedEvent}
+                            loading={autoLotteryRunning}
+                            disabled={!isAdminFull || !selectedEventId}
+                          >
+                            即時抽籤
+                          </Button>
+                          <Button onClick={handleExportSync} loading={exportingSync} disabled={!selectedEventId}>
+                            匯出 CSV
+                          </Button>
+                        </Space>
+                      </div>
+                    </section>
+                  </div>
                 </Card>
 
                 <Row gutter={16} style={{ marginTop: 16 }}>
@@ -1699,17 +1783,6 @@ const AdminConsolePage = () => {
                   />
                 </Card>
               </>
-            )
-          },
-          {
-            key: 'export',
-            label: '報表匯出',
-            children: (
-              <Card>
-                <Space wrap className="admin-export-actions">
-                  <Button type="primary" onClick={handleExportSync} loading={exportingSync} disabled={!selectedEventId}>同步匯出 CSV</Button>
-                </Space>
-              </Card>
             )
           }
         ]}

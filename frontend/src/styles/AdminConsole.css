@@ -3,7 +3,118 @@
 }
 
 .admin-console-page .admin-event-select {
-  min-width: 280px;
+  width: 100%;
+}
+
+.admin-console-page .admin-console-tabs .ant-tabs-tab {
+  font-weight: 700;
+}
+
+.admin-console-page .admin-create-card .ant-card-body {
+  padding-top: 18px;
+}
+
+.admin-console-page .admin-create-form .ant-divider-inner-text {
+  font-weight: 800;
+  color: #173756;
+}
+
+.admin-console-page .admin-create-actions {
+  width: 100%;
+}
+
+.admin-console-page .admin-console-hero .ant-card-body {
+  padding: 22px 24px;
+}
+
+.admin-console-page .admin-console-hero-main {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.admin-console-page .admin-console-kicker,
+.admin-console-page .admin-dashboard-section-label {
+  display: block;
+  margin-bottom: 6px;
+  color: #2b72d9;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.admin-console-page .admin-console-hero h3,
+.admin-console-page .admin-dashboard-picker h4 {
+  margin: 0 0 8px;
+}
+
+.admin-console-page .admin-console-hero p,
+.admin-console-page .admin-draft-header p {
+  margin-bottom: 0;
+}
+
+.admin-console-page .admin-draft-card .ant-card-body {
+  padding: 20px;
+}
+
+.admin-console-page .admin-draft-header {
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #edf2f7;
+}
+
+.admin-console-page .admin-draft-header h4 {
+  margin: 0 0 8px;
+}
+
+.admin-console-page .admin-dashboard-toolbar .ant-card-body {
+  padding: 14px 16px;
+}
+
+.admin-console-page .admin-dashboard-toolbar-grid {
+  display: grid;
+  grid-template-columns: minmax(320px, 1fr) auto;
+  gap: 18px;
+  align-items: end;
+}
+
+.admin-console-page .admin-dashboard-picker,
+.admin-console-page .admin-dashboard-action-panel {
+  min-width: 0;
+}
+
+.admin-console-page .admin-dashboard-select-row {
+  width: min(100%, 560px);
+}
+
+.admin-console-page .admin-dashboard-action-panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 18px;
+}
+
+.admin-console-page .admin-dashboard-action-block {
+  min-width: 0;
+}
+
+.admin-console-page .admin-dashboard-action-block .admin-dashboard-section-label {
+  margin-bottom: 8px;
+}
+
+.admin-console-page .admin-dashboard-actions {
+  gap: 8px !important;
+}
+
+:root.theme-dark .admin-console-page .admin-draft-header {
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+:root.theme-dark .admin-console-page .admin-dashboard-section-label,
+:root.theme-dark .admin-console-page .admin-console-kicker {
+  color: #8bbcff;
 }
 
 @media (min-width: 1025px) {
@@ -11,15 +122,12 @@
     border-radius: 18px;
   }
 
-  .admin-console-page .admin-draft-actions,
-  .admin-console-page .admin-dashboard-actions,
-  .admin-console-page .admin-export-actions {
+  .admin-console-page .admin-create-actions {
     gap: 10px !important;
   }
 
-  .admin-console-page .admin-draft-actions .ant-btn,
   .admin-console-page .admin-dashboard-actions .ant-btn,
-  .admin-console-page .admin-export-actions .ant-btn {
+  .admin-console-page .admin-create-actions .ant-btn {
     min-height: 40px;
     padding-inline: 14px;
   }
@@ -34,21 +142,32 @@
 }
 
 @media (max-width: 1024px) {
-  .admin-console-page .admin-draft-actions,
   .admin-console-page .admin-dashboard-actions,
-  .admin-console-page .admin-export-actions {
+  .admin-console-page .admin-create-actions {
     width: 100%;
     gap: 8px !important;
   }
 
-  .admin-console-page .admin-draft-actions .ant-btn,
   .admin-console-page .admin-dashboard-actions .ant-btn,
-  .admin-console-page .admin-export-actions .ant-btn {
+  .admin-console-page .admin-create-actions .ant-btn {
     min-height: 42px;
   }
 
   .admin-console-page .admin-event-select {
     width: 100% !important;
+  }
+
+  .admin-console-page .admin-dashboard-toolbar-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-console-page .admin-dashboard-select-row {
+    width: 100%;
+  }
+
+  .admin-console-page .admin-dashboard-action-panel {
+    justify-content: flex-start;
+    gap: 12px;
   }
 
   .admin-console-page .admin-dashboard-actions .ant-space-item {
@@ -62,15 +181,23 @@
 }
 
 @media (max-width: 768px) {
-  .admin-console-page .admin-draft-actions .ant-btn,
   .admin-console-page .admin-dashboard-actions .ant-btn,
-  .admin-console-page .admin-export-actions .ant-btn {
+  .admin-console-page .admin-create-actions .ant-btn {
     width: 100%;
     font-weight: 700;
   }
 
-  .admin-console-page .ant-tabs .ant-tabs-tab {
+  .admin-console-page .admin-console-hero-main {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .admin-console-page .admin-console-tabs .ant-tabs-tab {
     padding: 8px 6px;
+  }
+
+  .admin-console-page .admin-create-card .ant-card-body {
+    padding: 14px;
   }
 
   .admin-console-page .ant-card-head-title {

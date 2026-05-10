@@ -189,6 +189,15 @@ const EventDetail = () => {
 
   const getMaxTotalPeopleForSession = (session) => 1 + getMaxDependentsForSession(session);
 
+  const getEventPrimaryStatus = () => {
+    const hasOpenSession = (event?.sessions || []).some((session) => session.status === 'REGISTRATION_OPEN');
+    if (event?.status === 'CANCELLED') return { label: '已取消', color: 'red' };
+    if (event?.status !== 'PUBLISHED') return { label: '活動未發布', color: 'default' };
+    if (user && !REGISTRATION_ALLOWED_ROLES.has(user.role)) return { label: '此身分不可報名', color: 'warning' };
+    if (!hasOpenSession) return { label: '已截止/未開放', color: 'default' };
+    return { label: '可報名', color: 'success' };
+  };
+
   const getSessionActiveRegistrations = (sessionId) =>
     registrations.filter(
       (r) =>
@@ -444,6 +453,8 @@ const EventDetail = () => {
     );
   }
 
+  const primaryStatus = getEventPrimaryStatus();
+
   return (
     <div className="page-wrap event-detail-page">
       <Card className="event-head">
@@ -462,10 +473,15 @@ const EventDetail = () => {
             />
           </Col>
           <Col xs={24} md={14}>
-            <Title level={2}>🎉 {event.title}</Title>
+            <Space className="event-detail-title-row" align="start" wrap>
+              <Title level={2}>🎉 {event.title}</Title>
+              <Tag className="event-detail-status" color={primaryStatus.color}>
+                {primaryStatus.label}
+              </Tag>
+            </Space>
             <Paragraph>{stripEligibilityMarkerFromDescription(event.description)}</Paragraph>
             <Descriptions column={1} size="small">
-              <Descriptions.Item label="狀態">{event.status}</Descriptions.Item>
+              <Descriptions.Item label="狀態">{primaryStatus.label}</Descriptions.Item>
               <Descriptions.Item label="開放廠區">{event.allowed_sites?.length ? event.allowed_sites.join(', ') : '全廠區'}</Descriptions.Item>
               <Descriptions.Item label="建立時間">{dayjs(event.created_at).format('YYYY-MM-DD HH:mm')}</Descriptions.Item>
             </Descriptions>

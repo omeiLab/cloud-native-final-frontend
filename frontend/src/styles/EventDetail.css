@@ -16,6 +16,24 @@
   border-radius: 12px;
 }
 
+.event-detail-title-row {
+  width: 100%;
+  justify-content: space-between;
+  gap: 10px !important;
+}
+
+.event-detail-title-row .ant-typography {
+  margin-bottom: 0;
+}
+
+.event-detail-status {
+  margin-top: 6px;
+  margin-inline-end: 0;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-weight: 800;
+}
+
 .event-detail-page .ant-collapse {
   border-radius: 14px;
   overflow: hidden;

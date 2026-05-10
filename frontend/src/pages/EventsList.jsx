@@ -109,20 +109,6 @@ const EventsList = () => {
     }
   };
 
-  const getStatusColor = (status) => {
-    if (status === 'PUBLISHED') return 'processing';
-    if (status === 'CANCELLED') return 'red';
-    if (status === 'DRAFT') return 'default';
-    return 'green';
-  };
-
-  const getStatusLabel = (status) => {
-    if (status === 'PUBLISHED') return '已發布';
-    if (status === 'CANCELLED') return '已取消';
-    if (status === 'DRAFT') return '草稿';
-    return status;
-  };
-
   const visibleEvents = events.filter((event) => {
     const term = keyword.trim().toLowerCase();
     if (!term) return true;
@@ -134,6 +120,17 @@ const EventsList = () => {
     const isPublished = event.status === 'PUBLISHED';
     const isRegistrationOpen = Boolean(event.is_registration_open);
     return roleCanRegister && isPublished && isRegistrationOpen && Boolean(event.is_eligible);
+  };
+
+  const getPrimaryStatus = (event) => {
+    const isPublished = event.status === 'PUBLISHED';
+    const isRegistrationOpen = Boolean(event.is_registration_open);
+    if (event.status === 'CANCELLED') return { label: '已取消', color: 'red' };
+    if (!isPublished) return { label: '活動未發布', color: 'default' };
+    if (user?.role !== 'EMPLOYEE') return { label: '此身分不可報名', color: 'warning' };
+    if (!isRegistrationOpen) return { label: '已截止/未開放', color: 'default' };
+    if (!event.is_eligible) return { label: '不符合資格', color: 'default' };
+    return { label: '可報名', color: 'success' };
   };
 
   const sortedVisibleEvents = [...visibleEvents].sort((a, b) => {
@@ -155,17 +152,7 @@ const EventsList = () => {
 
   const EventCard = ({ event }) => {
     const startDate = dayjs(event.starts_at);
-    const roleCanRegister = user?.role === 'EMPLOYEE';
-    const isPublished = event.status === 'PUBLISHED';
-    const isRegistrationOpen = Boolean(event.is_registration_open);
-    const canRegister = canRegisterEvent(event);
-    const registrationStateLabel = !isPublished
-      ? '活動未發布'
-      : !roleCanRegister
-        ? '此身分不可報名'
-      : !isRegistrationOpen
-        ? '已截止/未開放'
-        : '報名開放中';
+    const primaryStatus = getPrimaryStatus(event);
 
     return (
       <Card
@@ -189,7 +176,9 @@ const EventsList = () => {
         <div className="event-card-content">
           <div className="event-header">
             <h3>{event.title}</h3>
-            <Tag color={getStatusColor(event.status)}>{getStatusLabel(event.status)}</Tag>
+            <Tag className="event-primary-status" color={primaryStatus.color}>
+              {primaryStatus.label}
+            </Tag>
           </div>
 
           <Paragraph className="event-description" ellipsis={{ rows: 2 }}>
@@ -215,12 +204,9 @@ const EventsList = () => {
           </div>
 
           <div className="event-footer">
-            <div>
-              {canRegister ? <Tag color="success">可報名</Tag> : <Tag color="default">不可報名</Tag>}
-              <Tag color={canRegister ? 'green' : 'red'}>
-                {registrationStateLabel}
-              </Tag>
-            </div>
+            <span className="event-footer-note">
+              報名截止：{event.registration_closes_at ? dayjs(event.registration_closes_at).format('MM/DD HH:mm') : '未設定'}
+            </span>
             <Button type="primary" onClick={(e) => {
               e.stopPropagation();
               navigate(`/events/${event.id}`);
