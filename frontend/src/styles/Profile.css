@@ -6,7 +6,8 @@
   border: 1px solid var(--ds-line);
   border-radius: var(--ds-radius-lg);
   background: var(--ds-surface);
-  box-shadow: var(--ds-shadow);
+  box-shadow: var(--ds-shadow), var(--ds-inner-highlight);
+  overflow: hidden;
 }
 
 .avatar {
@@ -40,7 +41,7 @@
 .tabs-content .ant-card:hover {
   transform: translateY(-3px);
   border-color: var(--ds-red);
-  box-shadow: var(--ds-shadow-soft);
+  box-shadow: var(--ds-shadow-hover), var(--ds-inner-highlight);
 }
 
 .tabs-content .ant-list-item-meta-title {

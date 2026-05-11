@@ -60,8 +60,9 @@
   min-width: 128px;
   padding: 12px 14px;
   border: 1px solid var(--ds-line);
-  border-radius: var(--ds-radius-lg);
+  border-radius: var(--ds-radius-md);
   background: var(--ds-surface-solid);
+  box-shadow: var(--ds-inner-highlight);
 }
 
 .hero-stats strong {
@@ -97,13 +98,14 @@
   border: 1px solid var(--ds-line);
   border-radius: var(--ds-radius-lg);
   background: var(--ds-surface);
+  box-shadow: var(--ds-shadow-soft), var(--ds-inner-highlight);
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 .event-card:hover {
   transform: translateY(-4px);
   border-color: var(--ds-red);
-  box-shadow: var(--ds-shadow);
+  box-shadow: var(--ds-shadow-hover), var(--ds-inner-highlight);
 }
 
 .event-cover {

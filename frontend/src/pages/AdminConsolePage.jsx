@@ -298,6 +298,9 @@ const AdminConsolePage = () => {
   };
   const getEventId = (eventLike) => eventLike?.data?.id || eventLike?.data?.event_id || eventLike?.id || eventLike?.event_id || '';
   const getSessionId = (sessionLike) => sessionLike?.data?.id || sessionLike?.data?.session_id || sessionLike?.id || sessionLike?.session_id || '';
+  const selectCreateCover = useCallback((img) => {
+    createForm.setFieldValue('cover_image_url', img);
+  }, [createForm]);
 
   const selectedEvent = useMemo(() => events.find((e) => e.id === selectedEventId), [events, selectedEventId]);
   const dashboardEventOptions = useMemo(() => {
@@ -1171,22 +1174,20 @@ const AdminConsolePage = () => {
                   >
                     <Space wrap>
                       {EVENT_IMAGES.map((img) => (
-                        <img
+                        <button
                           key={img}
-                          src={img}
-                          alt="cover candidate"
-                          style={{
-                            width: 82,
-                            height: 52,
-                            objectFit: 'cover',
-                            borderRadius: 10,
-                            cursor: 'pointer',
-                            border: selectedCreateCover === img ? '2px solid #1677ff' : '1px solid #d8e7f8'
-                          }}
-                          loading="lazy"
-                          decoding="async"
-                          onClick={() => createForm.setFieldValue('cover_image_url', img)}
-                        />
+                          type="button"
+                          className={`admin-cover-choice${selectedCreateCover === img ? ' selected' : ''}`}
+                          aria-pressed={selectedCreateCover === img}
+                          onClick={() => selectCreateCover(img)}
+                        >
+                          <img
+                            src={img}
+                            alt="cover candidate"
+                            loading="lazy"
+                            decoding="async"
+                          />
+                        </button>
                       ))}
                     </Space>
                   </Form.Item>

@@ -56,26 +56,31 @@ export const UiPreferencesProvider = ({ children }) => {
           colorBgLayout: isDark ? '#181818' : '#f4f4f4',
           colorBgContainer: isDark ? '#242424' : '#ffffff',
           colorBgElevated: isDark ? '#303030' : '#ffffff',
-          borderRadius: 4,
-          borderRadiusLG: 8,
+          borderRadius: 12,
+          borderRadiusSM: 8,
+          borderRadiusXS: 6,
+          borderRadiusLG: 24,
           fontSize: baseFontSize,
           fontFamily: "'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif",
-          boxShadowSecondary: isDark ? '0 16px 36px rgba(0, 0, 0, 0.38)' : '0 16px 36px rgba(24, 24, 24, 0.12)'
+          boxShadowSecondary: isDark ? '0 22px 58px rgba(0, 0, 0, 0.44)' : '0 20px 54px rgba(24, 24, 24, 0.14)'
         },
         components: {
           Card: {
-            borderRadiusLG: 8,
+            borderRadiusLG: 24,
             headerFontSize: baseFontSize + 1
           },
           Button: {
             controlHeight: textScale === 'xlarge' ? 52 : textScale === 'large' ? 44 : 40,
-            borderRadius: 4,
+            borderRadius: 999,
             fontWeight: 700
           },
-          Input: { borderRadius: 4 },
-          Select: { borderRadius: 4 },
-          Modal: { borderRadiusLG: 8 },
-          Table: { borderRadiusLG: 8 }
+          Input: { borderRadius: 12 },
+          InputNumber: { borderRadius: 12 },
+          Select: { borderRadius: 12 },
+          DatePicker: { borderRadius: 12 },
+          Modal: { borderRadiusLG: 24 },
+          Table: { borderRadiusLG: 18 },
+          Drawer: { borderRadiusLG: 24 }
         }
       }
     };

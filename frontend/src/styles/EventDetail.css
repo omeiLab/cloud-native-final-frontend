@@ -6,14 +6,15 @@
   border: 1px solid var(--ds-line);
   border-radius: var(--ds-radius-lg);
   background: var(--ds-surface);
-  box-shadow: var(--ds-shadow);
+  box-shadow: var(--ds-shadow), var(--ds-inner-highlight);
+  overflow: hidden;
 }
 
 .event-detail-cover {
   width: 100%;
   height: 300px;
   object-fit: cover;
-  border-radius: var(--ds-radius-md);
+  border-radius: var(--ds-radius-lg);
 }
 
 .event-detail-title-row {

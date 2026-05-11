@@ -45,7 +45,8 @@
   height: 48px;
   flex: 0 0 auto;
   object-fit: contain;
-  border-radius: var(--ds-radius-sm);
+  border-radius: var(--ds-radius-md);
+  box-shadow: var(--ds-inner-highlight);
 }
 
 .logo span {
@@ -117,7 +118,7 @@
 .user-button {
   color: var(--ds-header-text);
   border-color: var(--ds-line);
-  background: transparent;
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .ghost-btn {
@@ -138,7 +139,7 @@
   place-items: center;
   padding: 0;
   border: 1px solid var(--ds-line);
-  border-radius: var(--ds-radius-sm);
+  border-radius: var(--ds-radius-pill);
   color: var(--ds-header-text);
   background: transparent;
   cursor: pointer;
@@ -216,6 +217,64 @@
   height: 32px;
 }
 
+.profile-popover .ant-popover-inner {
+  min-width: 220px;
+  border: 1px solid var(--ds-line);
+  background: var(--ds-surface);
+  box-shadow: var(--ds-shadow), var(--ds-inner-highlight);
+  backdrop-filter: blur(18px) saturate(1.08);
+}
+
+.profile-popover .ant-popover-inner-content {
+  padding: 0;
+}
+
+.profile-popover-card {
+  width: 220px;
+  display: grid;
+  padding: 10px;
+}
+
+.profile-popover-actions {
+  display: grid;
+  gap: 4px;
+}
+
+.profile-popover-action,
+.profile-popover-logout {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  border-radius: var(--ds-radius-md);
+  color: var(--ds-text);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.profile-popover-action {
+  padding: 8px 10px;
+}
+
+.profile-popover-action:hover,
+.profile-popover-action:focus,
+.profile-popover-logout:hover,
+.profile-popover-logout:focus {
+  background: rgba(218, 41, 28, 0.08);
+  color: var(--ds-red);
+}
+
+.profile-popover-action .anticon,
+.profile-popover-logout .anticon {
+  color: var(--ds-red);
+}
+
+.profile-popover-logout {
+  width: 100%;
+  padding-inline: 10px !important;
+}
+
 @media (min-width: 1025px) {
   .app-header {
     padding-inline: var(--ds-space-md);
@@ -231,6 +290,7 @@
   .icon-btn:hover,
   .user-button:hover {
     transform: translateY(-1px);
+    box-shadow: var(--ds-shadow-soft);
   }
 }
 
@@ -328,6 +388,7 @@
     border: 1px solid var(--ds-line);
     border-radius: var(--ds-radius-lg);
     background: var(--ds-surface-muted);
+    box-shadow: var(--ds-inner-highlight);
   }
 
   .mobile-drawer-group-title {
@@ -341,6 +402,7 @@
     height: 46px;
     justify-content: space-between !important;
     padding-inline: 12px !important;
+    border-radius: var(--ds-radius-md) !important;
     color: var(--ds-text) !important;
   }
 

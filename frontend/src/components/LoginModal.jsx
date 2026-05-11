@@ -60,7 +60,7 @@ const LoginModal = ({ open, onClose, afterLoginNavigate }) => {
       >
         <Space direction="vertical" style={{ width: '100%' }}>
           {ROLE_OPTIONS.map((opt) => (
-            <Radio.Button key={opt.value} value={opt.value} style={{ width: '100%', textAlign: 'left', height: 'auto', padding: 12, borderRadius: 14 }}>
+            <Radio.Button key={opt.value} value={opt.value} className="login-role-option">
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <Text strong>{opt.title}</Text>
                 <Text type="secondary" style={{ fontSize: 12 }}>{opt.desc}</Text>
@@ -80,4 +80,3 @@ const LoginModal = ({ open, onClose, afterLoginNavigate }) => {
 };
 
 export default LoginModal;
-

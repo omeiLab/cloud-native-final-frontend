@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Avatar, Badge, Button, Drawer, Dropdown, Layout, Space, Tag, Tooltip } from 'antd';
+import React, { useState } from 'react';
+import { Avatar, Badge, Button, Drawer, Layout, Popover, Space, Tag, Tooltip } from 'antd';
 import { BellOutlined, FontSizeOutlined, IdcardOutlined, LogoutOutlined, MenuOutlined, UserOutlined } from '@ant-design/icons';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -33,51 +33,20 @@ const AppHeader = () => {
 
   const [loginOpen, setLoginOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [profilePopoverOpen, setProfilePopoverOpen] = useState(false);
   const canAccessTicketBox = user?.role === 'EMPLOYEE';
   const canAccessNotifications = user?.role === 'EMPLOYEE';
 
-  useEffect(() => {
-    setMobileMenuOpen(false);
-  }, [pathname]);
-
   const handleGoHome = (event) => {
     event.preventDefault();
+    setMobileMenuOpen(false);
+    setProfilePopoverOpen(false);
     if (pathname === '/') {
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
     navigate('/');
   };
-
-  const userMenuItems = [
-    ...(canAccessTicketBox
-      ? [{
-        key: 'me',
-        icon: <UserOutlined />,
-        label: <Link to="/me">我的票匣</Link>
-      }]
-      : []),
-    ...(canAccessNotifications
-      ? [{
-        key: 'notifications',
-        icon: <BellOutlined />,
-        label: <Link to="/notifications">通知中心</Link>
-      }]
-      : []),
-    {
-      key: 'divider',
-      type: 'divider'
-    },
-    {
-      key: 'logout',
-      icon: <LogoutOutlined />,
-      label: '登出',
-      onClick: async () => {
-        await logout();
-        navigate('/');
-      }
-    }
-  ];
 
   const afterLoginNavigate = (role) => {
     if (role === 'ADMIN') {
@@ -90,6 +59,41 @@ const AppHeader = () => {
     }
     navigate('/');
   };
+
+  const handleLogout = async () => {
+    await logout();
+    setProfilePopoverOpen(false);
+    navigate('/');
+  };
+
+  const profilePopoverContent = user ? (
+    <div className="profile-popover-card">
+      <div className="profile-popover-actions">
+        {canAccessTicketBox ? (
+          <Link to="/me" className="profile-popover-action" onClick={() => setProfilePopoverOpen(false)}>
+            <IdcardOutlined />
+            <span>我的票匣</span>
+          </Link>
+        ) : null}
+        {canAccessNotifications ? (
+          <Link to="/notifications" className="profile-popover-action" onClick={() => setProfilePopoverOpen(false)}>
+            <BellOutlined />
+            <span>通知中心</span>
+            <Badge count={unreadCount} size="small" />
+          </Link>
+        ) : null}
+        <Button
+          type="text"
+          danger
+          className="profile-popover-logout"
+          icon={<LogoutOutlined />}
+          onClick={handleLogout}
+        >
+          登出
+        </Button>
+      </div>
+    </div>
+  ) : null;
 
   return (
     <Header className="app-header">
@@ -138,15 +142,28 @@ const AppHeader = () => {
           ) : null}
 
           {user ? (
-            <Dropdown menu={{ items: userMenuItems }} trigger={['click']}>
-              <Button type="text" className="user-button">
+            <Popover
+              trigger="click"
+              placement="bottom"
+              open={profilePopoverOpen}
+              onOpenChange={setProfilePopoverOpen}
+              content={profilePopoverContent}
+              arrow={{ pointAtCenter: true }}
+              rootClassName="profile-popover"
+            >
+              <Button
+                type="text"
+                className="user-button"
+                aria-haspopup="dialog"
+                aria-expanded={profilePopoverOpen}
+              >
                 <Avatar size={32} icon={<UserOutlined />} />
                 <span className="user-name">{user.name}（{labelOr(ROLE_LABELS, user.role)}）</span>
                 <Tooltip title={connected ? '即時通知連線正常' : '即時通知離線中（將自動重連）'}>
                   <Tag color={connected ? 'green' : 'orange'}>{connected ? '即時連線' : '離線中'}</Tag>
                 </Tooltip>
               </Button>
-            </Dropdown>
+            </Popover>
           ) : (
             <Button type="primary" onClick={() => setLoginOpen(true)}>登入</Button>
           )}
@@ -231,13 +248,13 @@ const AppHeader = () => {
                 </div>
                 <div className="mobile-drawer-account-actions">
                   {canAccessTicketBox ? (
-                    <Link to="/me" className="mobile-drawer-account-link">
+                    <Link to="/me" className="mobile-drawer-account-link" onClick={() => setMobileMenuOpen(false)}>
                       <IdcardOutlined />
                       <span>我的票匣</span>
                     </Link>
                   ) : null}
                   {canAccessNotifications ? (
-                    <Link to="/notifications" className="mobile-drawer-account-link">
+                    <Link to="/notifications" className="mobile-drawer-account-link" onClick={() => setMobileMenuOpen(false)}>
                       <BellOutlined />
                       <span>通知中心</span>
                       <Badge count={unreadCount} size="small" />

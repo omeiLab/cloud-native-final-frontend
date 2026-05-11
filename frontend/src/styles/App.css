@@ -1,14 +1,17 @@
 .app-layout {
   min-height: 100vh;
-  background:
-    linear-gradient(180deg, var(--ds-bg-overlay), var(--ds-bg-overlay)),
-    url('/image/background-light.webp') center/cover no-repeat fixed;
+  background-color: var(--ds-bg);
+  background-image: url('/image/background-light.webp');
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  background-blend-mode: soft-light;
 }
 
 :root.theme-dark .app-layout {
-  background:
-    linear-gradient(180deg, var(--ds-bg-overlay), var(--ds-bg-overlay)),
-    url('/image/background-dark.webp') center/cover no-repeat fixed;
+  background-image: url('/image/background-dark.webp');
+  background-blend-mode: normal;
 }
 
 .main-content {
@@ -34,25 +37,25 @@
 
 .mobile-bottom-bar {
   position: fixed;
-  left: 12px;
-  right: 12px;
-  bottom: max(12px, env(safe-area-inset-bottom));
+  left: 14px;
+  right: 14px;
+  bottom: max(14px, env(safe-area-inset-bottom));
   z-index: 120;
   display: none;
   align-items: center;
   justify-content: space-around;
-  border-radius: var(--ds-radius-lg);
+  border-radius: var(--ds-radius-xl);
   padding: var(--ds-space-xxs);
   background: var(--ds-surface);
   border: 1px solid var(--ds-line);
-  box-shadow: var(--ds-shadow);
-  backdrop-filter: blur(14px);
+  box-shadow: var(--ds-shadow), var(--ds-inner-highlight);
+  backdrop-filter: blur(18px) saturate(1.08);
 }
 
 .mobile-bottom-item {
   flex: 1;
   min-width: 0;
-  border-radius: var(--ds-radius-md);
+  border-radius: var(--ds-radius-lg);
   padding: 6px;
   color: var(--ds-muted);
   display: inline-flex;
@@ -67,6 +70,7 @@
 .mobile-bottom-item.active {
   background: var(--ds-red);
   color: #ffffff;
+  box-shadow: 0 12px 28px rgba(218, 41, 28, 0.28);
 }
 
 .mobile-bottom-icon {
