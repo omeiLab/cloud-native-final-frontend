@@ -103,20 +103,9 @@ frontend/
 
 開發模式建議使用 Vite proxy：`VITE_API_BASE_URL=/api/v1`。目前 `vite.config.js` 會把 `/api` 代理到 `https://cets.alanh.uk`；若後端在本機，請把 proxy target 改成實際位址，例如 `http://localhost:8080`。
 
-### 預簽開發 Token
+### 登入
 
-系統包含三個預簽的開發 Token，可快速測試不同角色：
-
-```javascript
-// EMPLOYEE - 普通員工（推薦用於演示）
-const EMPLOYEE_TOKEN = 'eyJhbGciOiJIUzI1NiIsImtpZCI6InYxIiwidHlwIjoiSldUIn0...'
-
-// ADMIN - 管理員
-const ADMIN_TOKEN = 'eyJhbGciOiJIUzI1NiIsImtpZCI6InYxIiwidHlwIjoiSldUIn0...'
-
-// VERIFIER - 驗票員
-const VERIFIER_TOKEN = 'eyJhbGciOiJIUzI1NiIsImtpZCI6InYxIiwidHlwIjoiSldUIn0...'
-```
+前端提供員工、管理員、驗票員三個 OIDC / OAuth 登入按鈕。按鈕使用 `auth-pass.md` 的測試帳密顯示對應帳號,並以 `login_hint` 帶入 Auth0;密碼需在 Auth0 hosted login 頁輸入。
 
 ### API 端點
 

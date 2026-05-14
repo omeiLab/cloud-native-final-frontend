@@ -11,8 +11,6 @@ const ENDPOINT_GROUPS = [
     items: [
       'GET /auth/oidc/authorize-url',
       'POST /auth/oidc/callback',
-      'POST /auth/register',
-      'POST /auth/login',
       'POST /auth/refresh',
       'POST /auth/logout',
       'GET /auth/me'
@@ -327,4 +325,3 @@ const ApiExplorerPage = () => {
 };
 
 export default ApiExplorerPage;
-

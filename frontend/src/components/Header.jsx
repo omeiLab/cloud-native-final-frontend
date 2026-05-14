@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Avatar, Badge, Button, Drawer, Layout, Popover, Space, Tag, Tooltip } from 'antd';
-import { BellOutlined, FontSizeOutlined, IdcardOutlined, LogoutOutlined, MenuOutlined, UserOutlined } from '@ant-design/icons';
+import { Avatar, Badge, Button, Drawer, Layout, Popover, Space, Tag, Tooltip, message } from 'antd';
+import { AuditOutlined, BellOutlined, FontSizeOutlined, IdcardOutlined, LogoutOutlined, MenuOutlined, QrcodeOutlined, UserOutlined } from '@ant-design/icons';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
@@ -16,7 +16,7 @@ const { Header } = Layout;
 const AppHeader = () => {
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const { user, logout } = useAuth();
+  const { user, logout, startOIDCLogin } = useAuth();
   const { unreadCount, connected } = useNotifications();
   const { colorMode, textScale, setTextScale } = useUiPreferences();
   const cycleTextScale = () => {
@@ -32,10 +32,13 @@ const AppHeader = () => {
   };
 
   const [loginOpen, setLoginOpen] = useState(false);
+  const [loginLoadingRole, setLoginLoadingRole] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profilePopoverOpen, setProfilePopoverOpen] = useState(false);
   const canAccessTicketBox = user?.role === 'EMPLOYEE';
   const canAccessNotifications = user?.role === 'EMPLOYEE';
+  const canAccessAdmin = user?.role === 'ADMIN' || user?.role === 'ADMIN_VIEWER';
+  const canAccessVerifier = user?.role === 'VERIFIER';
 
   const handleGoHome = (event) => {
     event.preventDefault();
@@ -48,27 +51,46 @@ const AppHeader = () => {
     navigate('/');
   };
 
-  const afterLoginNavigate = (role) => {
-    if (role === 'ADMIN') {
-      navigate('/admin');
-      return;
-    }
-    if (role === 'VERIFIER') {
-      navigate('/verify');
-      return;
-    }
-    navigate('/');
-  };
-
   const handleLogout = async () => {
     await logout();
     setProfilePopoverOpen(false);
     navigate('/');
   };
 
+  const openLoginModal = () => {
+    setMobileMenuOpen(false);
+    setLoginOpen(true);
+  };
+
+  const handleRoleLogin = async (option) => {
+    setLoginLoadingRole(option.key);
+    setMobileMenuOpen(false);
+    try {
+      if (option.password && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(option.password).catch(() => {});
+      }
+      await startOIDCLogin({ targetPath: option.targetPath, loginHint: option.email });
+    } catch (error) {
+      message.error(error?.error?.message || '登入失敗，請確認後端服務是否正常');
+      setLoginLoadingRole(null);
+    }
+  };
+
   const profilePopoverContent = user ? (
     <div className="profile-popover-card">
       <div className="profile-popover-actions">
+        {canAccessAdmin ? (
+          <Link to="/admin" className="profile-popover-action" onClick={() => setProfilePopoverOpen(false)}>
+            <AuditOutlined />
+            <span>管理後台</span>
+          </Link>
+        ) : null}
+        {canAccessVerifier ? (
+          <Link to="/verify" className="profile-popover-action" onClick={() => setProfilePopoverOpen(false)}>
+            <QrcodeOutlined />
+            <span>驗票入口</span>
+          </Link>
+        ) : null}
         {canAccessTicketBox ? (
           <Link to="/me" className="profile-popover-action" onClick={() => setProfilePopoverOpen(false)}>
             <IdcardOutlined />
@@ -165,7 +187,7 @@ const AppHeader = () => {
               </Button>
             </Popover>
           ) : (
-            <Button type="primary" onClick={() => setLoginOpen(true)}>登入</Button>
+            <Button type="primary" onClick={openLoginModal}>登入</Button>
           )}
         </Space>
       </div>
@@ -181,7 +203,7 @@ const AppHeader = () => {
             <Avatar size={28} icon={<UserOutlined />} />
           </Button>
         ) : (
-          <Button type="primary" size="small" onClick={() => setLoginOpen(true)}>登入</Button>
+          <Button type="primary" size="small" onClick={openLoginModal}>登入</Button>
         )}
       </div>
 
@@ -195,35 +217,48 @@ const AppHeader = () => {
       >
         <div className="mobile-drawer-shell">
           <div className="mobile-drawer-main">
-            <div className="mobile-drawer-group">
-              <div className="mobile-drawer-group-title">顯示與探索</div>
-              <Tooltip title={colorMode === 'dark' ? '切換為明亮模式' : '切換為暗黑模式'}>
-                <AnimatedThemeToggler
-                  className="mobile-drawer-item theme-toggle-mobile"
-                  label={colorMode === 'dark' ? '切換為明亮模式' : '切換為暗黑模式'}
-                  variant="circle"
-                  duration={520}
-                />
-              </Tooltip>
-              <Tooltip title={textScale === 'normal' ? '切換為大字版' : textScale === 'large' ? '切換為超大字版' : '切換為標準字體'}>
-                <Button
-                  block
-                  type="text"
-                  className="mobile-drawer-item"
-                  onClick={cycleTextScale}
-                >
-                  <span className="mobile-drawer-item-main">
-                    <FontSizeOutlined className="mobile-drawer-item-icon" />
-                    字體大小：{textScale === 'normal' ? '標準字' : textScale === 'large' ? '大字版' : '超大字'}
-                  </span>
-                </Button>
-              </Tooltip>
-            </div>
+            <Tooltip title={colorMode === 'dark' ? '切換為明亮模式' : '切換為暗黑模式'}>
+              <AnimatedThemeToggler
+                className="mobile-drawer-item theme-toggle-mobile"
+                label={colorMode === 'dark' ? '切換為明亮模式' : '切換為暗黑模式'}
+                variant="circle"
+                duration={520}
+              />
+            </Tooltip>
+            <Tooltip title={textScale === 'normal' ? '切換為大字版' : textScale === 'large' ? '切換為超大字版' : '切換為標準字體'}>
+              <Button
+                block
+                type="text"
+                className="mobile-drawer-item"
+                onClick={cycleTextScale}
+              >
+                <span className="mobile-drawer-item-main">
+                  <FontSizeOutlined className="mobile-drawer-item-icon" />
+                  字體大小：{textScale === 'normal' ? '標準字' : textScale === 'large' ? '大字版' : '超大字'}
+                </span>
+              </Button>
+            </Tooltip>
           </div>
 
           <div className="mobile-drawer-account">
             {user ? (
               <>
+                {canAccessAdmin || canAccessVerifier ? (
+                  <div className="mobile-drawer-account-actions">
+                    {canAccessAdmin ? (
+                      <Link to="/admin" className="mobile-drawer-account-link" onClick={() => setMobileMenuOpen(false)}>
+                        <AuditOutlined />
+                        <span>管理後台</span>
+                      </Link>
+                    ) : null}
+                    {canAccessVerifier ? (
+                      <Link to="/verify" className="mobile-drawer-account-link" onClick={() => setMobileMenuOpen(false)}>
+                        <QrcodeOutlined />
+                        <span>驗票入口</span>
+                      </Link>
+                    ) : null}
+                  </div>
+                ) : null}
                 <div className="mobile-drawer-account-row">
                   <div className="mobile-drawer-user-card">
                     <Avatar size={38} icon={<UserOutlined />} />
@@ -263,7 +298,7 @@ const AppHeader = () => {
                 </div>
               </>
             ) : (
-              <Button type="primary" className="mobile-drawer-login" onClick={() => setLoginOpen(true)}>
+              <Button type="primary" className="mobile-drawer-login" onClick={openLoginModal}>
                 登入
               </Button>
             )}
@@ -271,7 +306,12 @@ const AppHeader = () => {
         </div>
       </Drawer>
 
-      <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} afterLoginNavigate={afterLoginNavigate} />
+      <LoginModal
+        open={loginOpen}
+        onClose={() => setLoginOpen(false)}
+        onSelectRole={handleRoleLogin}
+        loadingRole={loginLoadingRole}
+      />
     </Header>
   );
 };

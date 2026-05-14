@@ -16,8 +16,8 @@ const NotificationsPage = lazy(() => import('./pages/NotificationsPage'));
 const AdminConsolePage = lazy(() => import('./pages/AdminConsolePage'));
 const VerifierPage = lazy(() => import('./pages/VerifierPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
-const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const ApiExplorerPage = lazy(() => import('./pages/ApiExplorerPage'));
+const OIDCCallbackPage = lazy(() => import('./pages/OIDCCallbackPage'));
 
 const FullscreenLoader = () => (
   <div className="fullscreen-loader">
@@ -55,7 +55,10 @@ const AppShell = () => {
           <Routes>
             <Route path="/" element={<EventsList />} />
             <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/auth/callback" element={<OIDCCallbackPage />} />
+            <Route path="/auth/oidc/callback" element={<OIDCCallbackPage />} />
+            <Route path="/oidc/callback" element={<OIDCCallbackPage />} />
+            <Route path="/register" element={<Navigate to="/login" replace />} />
             <Route path="/events/:eventId" element={<EventDetail />} />
             <Route path="/api-explorer" element={<ApiExplorerPage />} />
             <Route

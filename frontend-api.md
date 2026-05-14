@@ -138,159 +138,21 @@ Authorization: Bearer <jwt>
 | role | str | no | `EMPLOYEE` / `ADMIN` / `ADMIN_VIEWER` / `VERIFIER` |
 | status | str | no | `ACTIVE` / `INACTIVE` |
 
-### 1.6 預簽永久 token(EMPLOYEE、ADMIN 與 VERIFIER)— 內部開發暫用
+### 1.6 OIDC 登入與 token 取得
 
-為了讓前端與驗票端開發不必跑完整 OIDC 流程,後端預先簽發三組永久 TTL 的
-access token(`exp = 2099-12-31`),分別對應一般員工、後台管理員、驗票員
-三種角色,直接以 `Authorization: Bearer <token>` 標頭呼叫 API 即可,
-不必經過 IdP 登入。
+前端不保存預簽 token、不設定固定 token 環境變數,也不在程式碼或文件中放入固定 access token。所有角色都走 OIDC 流程:
 
-#### 永久性
+1. `GET /api/v1/auth/oidc/authorize-url` 取得 Auth0 hosted login URL。
+2. 使用者在 Auth0 頁面輸入帳號密碼。
+3. Auth0 redirect 回 SPA `/auth/callback`。
+4. SPA 驗證 `state` 後呼叫 `POST /api/v1/auth/oidc/callback`。
+5. 後端完成 token exchange 並回傳 cets `access_token` 與 `refresh_token`。
 
-`cets` repo commit `15d692d` 已將下列三個固定 ULID 列入
-`PERMANENT_DEV_USER_IDS`,`decode_and_verify_token` 解碼後若 `sub` 命中此清單
-即直接回傳 claims,跳過 Redis denylist 檢查:
-
-- `01E2EADMINTSMCROLEXXXXXXXX`
-- `01E2EEMPLOYEETSMCROLEXXXXX`
-- `01E2EVERIFIERTSMCROLEXXXXX`
-
-亦即:即使前端誤觸 `POST /auth/logout`(會把 jti 寫入 denylist),這三組
-token 下一次驗證仍然有效。能讓 token 失效的途徑只剩三條,皆需後端維運人員
-主動操作:
-
-1. rotate `cets-jwt-signing-key` Secret(全部使用者皆需重新登入)
-2. 變更 `service_url`(影響 issuer 驗證)
-3. 變更 `jwt_kid`(目前固定為 `v1`)
-
-#### 預簽 token
-
-```env
-# EMPLOYEE — 用於 /events、/registrations、/me/*、/notifications 等員工端 endpoint
-EMPLOYEE_TOKEN=eyJhbGciOiJIUzI1NiIsImtpZCI6InYxIiwidHlwIjoiSldUIn0.eyJzdWIiOiIwMUUyRUVNUExPWUVFVFNNQ1JPTEVYWFhYWCIsInJvbGUiOiJFTVBMT1lFRSIsInNpdGUiOiJIU0lOQ0hVIiwiZW1wbG95ZWVfaWQiOiJFMkVFTVAwMSIsIm5hbWUiOiJlMmUtZW1wbG95ZWUiLCJpc3MiOiJodHRwczovL2NldHMuYWxhbmgudWsiLCJleHAiOjQxMDIzNTg0MDAsImlhdCI6MTc3NzkwMjE4NSwianRpIjoiZTJlLXBlcm0tZW1wbG95ZWUifQ.Bv-o08HsmkyPy8Q8wsL_lslylZmL4Rb7MQNvKLpxqMI
-
-# ADMIN — 用於 /admin/* 全部後台 endpoint(CRUD、dashboard、export 等)
-ADMIN_TOKEN=eyJhbGciOiJIUzI1NiIsImtpZCI6InYxIiwidHlwIjoiSldUIn0.eyJzdWIiOiIwMUUyRUFETUlOVFNNQ1JPTEVYWFhYWFhYWCIsInJvbGUiOiJBRE1JTiIsInNpdGUiOiJIU0lOQ0hVIiwiZW1wbG95ZWVfaWQiOiJFMkVBRE0wMSIsIm5hbWUiOiJlMmUtYWRtaW4iLCJpc3MiOiJodHRwczovL2NldHMuYWxhbmgudWsiLCJleHAiOjQxMDIzNTg0MDAsImlhdCI6MTc3NzkwMjE4NSwianRpIjoiZTJlLXBlcm0tYWRtaW4ifQ.JFXKaGEj-iiyPhzeTG9HgxgBGu9dbNdS5ob4V67CDew
-
-# VERIFIER — 用於票券掃描端,呼叫 POST /api/v1/verify/ticket(見 §4.4)
-VERIFIER_TOKEN=eyJhbGciOiJIUzI1NiIsImtpZCI6InYxIiwidHlwIjoiSldUIn0.eyJzdWIiOiIwMUUyRVZFUklGSUVSVFNNQ1JPTEVYWFhYWCIsInJvbGUiOiJWRVJJRklFUiIsInNpdGUiOiJIU0lOQ0hVIiwiZW1wbG95ZWVfaWQiOiJFMkVWRlIwMSIsIm5hbWUiOiJlMmUtdmVyaWZpZXIiLCJpc3MiOiJodHRwczovL2NldHMuYWxhbmgudWsiLCJleHAiOjQxMDIzNTg0MDAsImlhdCI6MTc3NzkwMjE4NSwianRpIjoiZTJlLXBlcm0tdmVyaWZpZXIifQ.a93u8oTBIGajL1Pm2pPk2qWkRWXD8dUW497n9o5NuhI
-```
-
-對應的 dev user 已預先寫入資料庫:
-
-| role | user_id | employee_id | name | site | jti |
-|---|---|---|---|---|---|
-| EMPLOYEE | `01E2EEMPLOYEETSMCROLEXXXXX` | `E2EEMP01` | `e2e-employee` | `HSINCHU` | `e2e-perm-employee` |
-| ADMIN | `01E2EADMINTSMCROLEXXXXXXXX` | `E2EADM01` | `e2e-admin` | `HSINCHU` | `e2e-perm-admin` |
-| VERIFIER | `01E2EVERIFIERTSMCROLEXXXXX` | `E2EVFR01` | `e2e-verifier` | `HSINCHU` | `e2e-perm-verifier` |
-
-#### 驗證紀錄
-
-三組 token 皆通過 `cets-platform/test/e2e/smoke.sh` 端對端腳本驗證:腳本啟動時的
-preflight 檢查會以三組 token 各呼叫一次 `GET /auth/me`,確認回傳的 `role`
-等於預期值,任一不符即中止。整體共涵蓋 28 個對外 endpoint(健康檢查、auth、
-events、registrations、tickets、notifications、admin CRUD、dashboard、同步與
-背景匯出),結果為 `PASS=29`、`FAIL=0`、`SKIP=6`(SKIP 為 confirm、forfeit、
-qr、verify、ws、logout 六項,需排程觸發或會撤銷本 token,腳本中以註解說明
-跳過原因)。
-
-`POST /api/v1/verify/ticket`(§4.4)需要實際 QR JWT 與場次入場時段才能成功
-核銷,smoke 中以 SKIP 標示;驗票端整合測試時可實際呼叫,token role 與裝置
-allowlist 等前置條件已備妥。
-
-#### 前端整合
-
-`.env.local`:
-
-```env
-VITE_API_BASE_URL=https://cets.alanh.uk
-VITE_EMPLOYEE_TOKEN=eyJhbGciOiJIUzI1NiIsImtpZCI6InYxIiwidHlwIjoiSldUIn0.eyJzdWIiOiIwMUUyRUVNUExPWUVFVFNNQ1JPTEVYWFhYWCIsInJvbGUiOiJFTVBMT1lFRSIsInNpdGUiOiJIU0lOQ0hVIiwiZW1wbG95ZWVfaWQiOiJFMkVFTVAwMSIsIm5hbWUiOiJlMmUtZW1wbG95ZWUiLCJpc3MiOiJodHRwczovL2NldHMuYWxhbmgudWsiLCJleHAiOjQxMDIzNTg0MDAsImlhdCI6MTc3NzkwMjE4NSwianRpIjoiZTJlLXBlcm0tZW1wbG95ZWUifQ.Bv-o08HsmkyPy8Q8wsL_lslylZmL4Rb7MQNvKLpxqMI
-VITE_ADMIN_TOKEN=eyJhbGciOiJIUzI1NiIsImtpZCI6InYxIiwidHlwIjoiSldUIn0.eyJzdWIiOiIwMUUyRUFETUlOVFNNQ1JPTEVYWFhYWFhYWCIsInJvbGUiOiJBRE1JTiIsInNpdGUiOiJIU0lOQ0hVIiwiZW1wbG95ZWVfaWQiOiJFMkVBRE0wMSIsIm5hbWUiOiJlMmUtYWRtaW4iLCJpc3MiOiJodHRwczovL2NldHMuYWxhbmgudWsiLCJleHAiOjQxMDIzNTg0MDAsImlhdCI6MTc3NzkwMjE4NSwianRpIjoiZTJlLXBlcm0tYWRtaW4ifQ.JFXKaGEj-iiyPhzeTG9HgxgBGu9dbNdS5ob4V67CDew
-VITE_VERIFIER_TOKEN=eyJhbGciOiJIUzI1NiIsImtpZCI6InYxIiwidHlwIjoiSldUIn0.eyJzdWIiOiIwMUUyRVZFUklGSUVSVFNNQ1JPTEVYWFhYWCIsInJvbGUiOiJWRVJJRklFUiIsInNpdGUiOiJIU0lOQ0hVIiwiZW1wbG95ZWVfaWQiOiJFMkVWRlIwMSIsIm5hbWUiOiJlMmUtdmVyaWZpZXIiLCJpc3MiOiJodHRwczovL2NldHMuYWxhbmgudWsiLCJleHAiOjQxMDIzNTg0MDAsImlhdCI6MTc3NzkwMjE4NSwianRpIjoiZTJlLXBlcm0tdmVyaWZpZXIifQ.a93u8oTBIGajL1Pm2pPk2qWkRWXD8dUW497n9o5NuhI
-```
-
-呼叫 API:
-
-```js
-// 員工流程
-fetch('/api/v1/events', {
-  headers: { Authorization: `Bearer ${import.meta.env.VITE_EMPLOYEE_TOKEN}` },
-});
-
-// 後台管理流程
-fetch('/api/v1/admin/events', {
-  headers: { Authorization: `Bearer ${import.meta.env.VITE_ADMIN_TOKEN}` },
-});
-
-// 驗票端核銷
-fetch('/api/v1/verify/ticket', {
-  method: 'POST',
-  headers: {
-    Authorization: `Bearer ${import.meta.env.VITE_VERIFIER_TOKEN}`,
-    'Content-Type': 'application/json',
-  },
-  body: JSON.stringify({
-    qr_payload: '<scanner 掃到的 QR JWT>',
-    device_id: 'scanner-A-01',
-  }),
-});
-```
-
-正式上線改走 OIDC 流程後,移除 `VITE_*_TOKEN`,改自 OIDC callback 取得的
-`access_token`(存於 `localStorage` 或記憶體中)。
+`access_token` 僅保存在前端記憶體中;`refresh_token` 由前端的 token lifecycle 管理並在 refresh 時輪替。
 
 #### Token claims 結構
 
-```json
-{
-  "sub": "01E2EADMINTSMCROLEXXXXXXXX",
-  "role": "ADMIN",
-  "site": "HSINCHU",
-  "employee_id": "E2EADM01",
-  "name": "e2e-admin",
-  "iss": "https://cets.alanh.uk",
-  "exp": 4102358400,
-  "iat": 1777902185,
-  "jti": "e2e-perm-admin"
-}
-```
-
-EMPLOYEE 與 VERIFIER 版本的 `sub` / `role` / `employee_id` / `name` / `jti`
-改為對應值,其餘欄位相同。
-
-#### 相關腳本
-
-| 路徑 | 用途 |
-|---|---|
-| `cets-platform/test/e2e/seed-e2e-tokens.sh` | 重新簽發三組永久 token(idempotent,user 不會重建) |
-| `cets-platform/test/e2e/smoke.sh` | 端對端驗證 28 個 endpoint,執行前需 `source` token 環境變數 |
-| `cets-platform/test/e2e/README.md` | 上述兩個腳本的執行說明與環境準備 |
-
-需重新產生 token 的時機:`jwt_signing_key` rotate 之後、或 `service_url` 與
-`jwt_kid` 變更之後。其他情況預先簽好的 token 持續有效。
-
-#### 撤銷方式
-
-| 範圍 | 操作 |
-|---|---|
-| 單一 token | 加入 Redis denylist 對 dev user 無效(server 端已 bypass);唯一辦法是 rotate signing key |
-| 全部 dev token | rotate `cets-jwt-signing-key` Secret 並 `kubectl rollout restart deploy/cets-main-api`(所有真實使用者亦需重新登入) |
-
-
-正式上線清理流程:
-
-1. 自 `cets` repo `app/core/security.py` 移除 `PERMANENT_DEV_USER_IDS` 常數與
-   對應 bypass 分支
-2. 自本文件移除本節
-3. 自資料庫刪除三筆 dev user
-   ```sql
-   DELETE FROM users WHERE id IN (
-     '01E2EADMINTSMCROLEXXXXXXXX',
-     '01E2EEMPLOYEETSMCROLEXXXXX',
-     '01E2EVERIFIERTSMCROLEXXXXX'
-   );
-   ```
-4. rotate `cets-jwt-signing-key` Secret,使 token 簽章驗證失敗
+實際 claims 由後端簽發並以 `GET /api/v1/auth/me` 回傳前端需要的使用者資料。文件不保留固定 token 或固定 claims 範例。
 
 ---
 
@@ -658,7 +520,7 @@ Content-Type: application/json
 }
 ```
 
-需 `VERIFIER` role(預簽 token 見 §1.6 `VERIFIER_TOKEN`)。`device_id` 為
+需 `VERIFIER` role。`device_id` 為
 驗票裝置識別碼,用於 audit log 與 rate limit 計算(見 §10)。
 
 **Response 200** — `VerificationResult`:

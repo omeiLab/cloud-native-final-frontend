@@ -1,5 +1,5 @@
 import React from 'react';
-import { HomeOutlined, BellOutlined, IdcardOutlined, QrcodeOutlined } from '@ant-design/icons';
+import { AuditOutlined, HomeOutlined, BellOutlined, IdcardOutlined, QrcodeOutlined } from '@ant-design/icons';
 import { Link, useLocation } from 'react-router-dom';
 import { Badge } from 'antd';
 import { useAuth } from '../context/AuthContext';
@@ -19,6 +19,10 @@ const MobileBottomBar = () => {
   if (user.role === 'EMPLOYEE') {
     entries.push({ to: '/notifications', label: '通知', icon: <Badge size="small" count={unreadCount}><BellOutlined /></Badge> });
     entries.push({ to: '/me', label: '票匣', icon: <IdcardOutlined /> });
+  }
+
+  if (user.role === 'ADMIN' || user.role === 'ADMIN_VIEWER') {
+    entries.push({ to: '/admin', label: '管理', icon: <AuditOutlined /> });
   }
 
   if (user.role === 'VERIFIER') {

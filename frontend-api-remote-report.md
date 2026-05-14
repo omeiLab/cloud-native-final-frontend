@@ -6,10 +6,9 @@
 - OpenAPI：`https://cets.alanh.uk/api/openapi.json`
 - WebSocket：`wss://cets.alanh.uk/ws`
 
-測試 token（文件提供）：
-- EMPLOYEE_TOKEN
-- ADMIN_TOKEN
-- VERIFIER_TOKEN
+測試方式：
+- 透過 OIDC 登入取得當次 access token
+- 文件不保存固定測試 token
 
 ---
 
@@ -18,7 +17,7 @@
 - 遠端 OpenAPI 路徑數：`37`
 - 主要功能（Auth / Events / Registrations / Tickets / Notifications / Admin / WS）皆可連線。
 - 有些端點雖可呼叫，但會因「狀態機限制」回 `409`（這是正確行為，不是 API 壞掉）。
-- 遠端部署與本機版存在差異：`/auth/login`、`/admin/system/time-offset`、`/admin/ops/run-nightly-lottery` 在遠端不可用（404）。
+- 遠端部署與本機版存在差異：`/admin/system/time-offset`、`/admin/ops/run-nightly-lottery` 在遠端不可用（404）。
 
 ---
 
@@ -35,9 +34,7 @@
 - `POST /auth/oidc/callback`：`條件可用`（需有效 code/state，未直接做互動式 IdP 測試）
 - `POST /auth/refresh`：`條件可用`（需 refresh token；遠端可行性取決於登入流程）
 - `POST /auth/logout`：`版本差異`（測到 400，與文件預期 200 不一致）
-- `GET /auth/me`：`可用`（EMPLOYEE/ADMIN/VERIFIER 均 200）
-- `POST /auth/register`：`未直接寫入測試`（前端可呼叫；遠端是否開放取決於部署策略）
-- `POST /auth/login`：`不可用/版本差異`（遠端回 404）
+- `GET /auth/me`：`條件可用`（需 OIDC flow 取得的 access token）
 
 ### 2.2 Events
 
@@ -93,13 +90,10 @@
 
 以下是「遠端部署版本」與 `frontend-api.md` 的差異：
 
-1. `POST /auth/login`
-   - 文件有描述
-   - 遠端實測為 `404`
-2. `POST /auth/logout`
+1. `POST /auth/logout`
    - 文件預期簡單 bearer 可 200
    - 遠端實測回 `400`（可能要求額外 body 或流程不同）
-3. `/admin/system/time-offset`、`/admin/ops/run-nightly-lottery`
+2. `/admin/system/time-offset`、`/admin/ops/run-nightly-lottery`
    - 本機程式有，但不在文件主要規格
    - 遠端實測 `404`（可視為未部署）
 
@@ -112,16 +106,14 @@
   - `VITE_WS_BASE_URL=wss://cets.alanh.uk/ws`
 - UI/流程上避免把 `409` 當成「壞掉」：
   - 這通常是狀態機保護（例如非 WON 不能 confirm）
-- 對於 `404` 的 API（如 `/auth/login`），前端要顯示「部署未開啟」而非一般錯誤。
+- Auth flow 只走 OIDC 五個 endpoint，不使用前端帳密登入或固定 token。
 
 ---
 
 ## 5) 驗收建議
 
-- 先用文件提供的角色 token 驗收全流程（最穩）。
-- 若要驗收帳密登入，需同學確認遠端是否真的有部署 `/auth/login`。
+- 透過 Auth0 hosted login 驗收登入;前端不保存帳號、密碼或固定 token。
 - 如需最終交付證據，建議同學提供：
   - 目前遠端 OpenAPI JSON 快照
   - 部署版本 commit SHA
   - 允許測試的固定測試資料集（event/session/registration/ticket）
-

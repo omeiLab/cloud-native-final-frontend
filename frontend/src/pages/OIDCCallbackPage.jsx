@@ -1,17 +1,24 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Card, Spin, Typography } from 'antd';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { POST_LOGIN_REDIRECT_KEY } from '../constant';
 
 const { Paragraph } = Typography;
+const isSafeInternalPath = (path) => typeof path === 'string' && path.startsWith('/') && !path.startsWith('//');
 
 const OIDCCallbackPage = () => {
   const [search] = useSearchParams();
   const navigate = useNavigate();
   const { finishOIDCLogin } = useAuth();
   const [error, setError] = useState('');
+  const callbackStartedRef = useRef(false);
 
   useEffect(() => {
+    if (callbackStartedRef.current) {
+      return;
+    }
+
     const code = search.get('code');
     const state = search.get('state');
 
@@ -20,10 +27,15 @@ const OIDCCallbackPage = () => {
       return;
     }
 
+    callbackStartedRef.current = true;
     finishOIDCLogin({ code, state })
-      .then(() => navigate('/', { replace: true }))
+      .then(() => {
+        const redirectPath = sessionStorage.getItem(POST_LOGIN_REDIRECT_KEY);
+        sessionStorage.removeItem(POST_LOGIN_REDIRECT_KEY);
+        navigate(isSafeInternalPath(redirectPath) ? redirectPath : '/', { replace: true });
+      })
       .catch((e) => {
-        setError(e?.error?.message || e?.message || 'OIDC 登入失敗');
+        setError(e?.error?.message || e?.message || 'OIDC 登入失敗，請重新登入');
       });
   }, [search, finishOIDCLogin, navigate]);
 

@@ -64,12 +64,28 @@ describe('apiClient basic http calls', () => {
     expect(res).toEqual({ data: { items: [], unread_count: 0 } });
   });
 
-  it('calls login with email and password', async () => {
-    mocks.postMock.mockResolvedValueOnce({
-      data: { access_token: 'a', refresh_token: 'r', expires_in: 3600, token_type: 'Bearer' }
+  it('calls OIDC authorize-url and callback endpoints', async () => {
+    mocks.getMock.mockResolvedValueOnce({
+      data: {
+        success: true,
+        data: { authorize_url: 'https://example.auth0.com/authorize', state: 'state-1' }
+      }
     });
-    const res = await apiClient.login({ email: 'u@test.com', password: 'Abc12345' });
-    expect(mocks.postMock).toHaveBeenCalledWith('/auth/login', { email: 'u@test.com', password: 'Abc12345' });
-    expect(res.data.access_token).toBe('a');
+    mocks.postMock.mockResolvedValueOnce({
+      data: {
+        success: true,
+        data: { access_token: 'a', refresh_token: 'r', expires_in: 3600, token_type: 'Bearer' }
+      }
+    });
+
+    const authorizeRes = await apiClient.getOIDCAuthorizeUrl({ redirectUri: 'http://localhost:5173/auth/callback' });
+    const callbackRes = await apiClient.oidcCallback({ code: 'code-1', state: 'state-1' });
+
+    expect(mocks.getMock).toHaveBeenCalledWith('/auth/oidc/authorize-url', {
+      params: { redirect_uri: 'http://localhost:5173/auth/callback' }
+    });
+    expect(mocks.postMock).toHaveBeenCalledWith('/auth/oidc/callback', { code: 'code-1', state: 'state-1' });
+    expect(authorizeRes.data.data.state).toBe('state-1');
+    expect(callbackRes.data.data.access_token).toBe('a');
   });
 });

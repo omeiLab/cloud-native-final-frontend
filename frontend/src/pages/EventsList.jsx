@@ -48,15 +48,11 @@ const EventCard = ({ event, primaryStatus, onOpen }) => {
         <div className="event-details">
           <div className="detail-item">
             <CalendarOutlined />
-            <span>{startDate.format('YYYY-MM-DD HH:mm')}</span>
+            <span>活動時間：{startDate.format('YYYY-MM-DD HH:mm')}</span>
           </div>
           <div className="detail-item">
             <ClockCircleOutlined />
             <span>活動結束：{event.ends_at ? dayjs(event.ends_at).format('YYYY-MM-DD HH:mm') : '未設定'}</span>
-          </div>
-          <div className="detail-item">
-            <ClockCircleOutlined />
-            <span>報名截止：{event.registration_closes_at ? dayjs(event.registration_closes_at).format('YYYY-MM-DD HH:mm') : '未設定'}</span>
           </div>
           <div className="detail-item">
             <EnvironmentOutlined />
@@ -86,11 +82,10 @@ const EventCard = ({ event, primaryStatus, onOpen }) => {
 
 const EventsList = () => {
   const navigate = useNavigate();
-  const { user, loading: authLoading, loginAsRole } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [demoLoadingRole, setDemoLoadingRole] = useState('');
   const [keyword, setKeyword] = useState('');
 
   useEffect(() => {
@@ -173,16 +168,6 @@ const EventsList = () => {
     }
   };
 
-  const loginDemo = async (role, target) => {
-    setDemoLoadingRole(role);
-    try {
-      await loginAsRole(role);
-      navigate(target);
-    } finally {
-      setDemoLoadingRole('');
-    }
-  };
-
   const canRegisterEvent = useCallback((event) => {
     const roleCanRegister = user?.role === 'EMPLOYEE';
     const isPublished = event.status === 'PUBLISHED';
@@ -244,23 +229,6 @@ const EventsList = () => {
       ) : !user ? (
         <Card className="events-hero hero-card guest-hero">
           <Title level={2}>台積電晶彩活動通</Title>
-          <Paragraph>
-            請先點選右上角「登入」選擇身分後登入，即可瀏覽活動、報名、收即時通知與管理票券。
-          </Paragraph>
-          <Paragraph style={{ marginBottom: 8 }}>
-            可使用下方快速登入按鈕體驗員工、管理員、驗票員流程。
-          </Paragraph>
-          <Space wrap style={{ marginBottom: 12 }}>
-            <Button loading={demoLoadingRole === 'EMPLOYEE'} type="primary" onClick={() => loginDemo('EMPLOYEE', '/')}>
-              Demo 員工登入
-            </Button>
-            <Button loading={demoLoadingRole === 'ADMIN'} onClick={() => loginDemo('ADMIN', '/admin')}>
-              Demo 管理員登入
-            </Button>
-            <Button loading={demoLoadingRole === 'VERIFIER'} onClick={() => loginDemo('VERIFIER', '/verify')}>
-              Demo 驗票員登入
-            </Button>
-          </Space>
         </Card>
       ) : (
         <Card className="events-hero hero-card">

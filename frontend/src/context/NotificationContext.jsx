@@ -144,10 +144,11 @@ export const NotificationProvider = ({ children }) => {
         }
         // 4001: token 過期/缺少/10 秒內未送 auth；嘗試 refresh 後重連
         if (event.code === 4001) {
-          const refreshToken = apiClient.getRefreshToken?.();
-          if (refreshToken) {
-            apiClient.refresh(refreshToken).finally(() => {
+          if (apiClient.getRefreshToken?.()) {
+            apiClient.refresh().then(() => {
               setTimeout(() => connect(), 800);
+            }).catch(() => {
+              apiClient.clearAuth();
             });
             return;
           }

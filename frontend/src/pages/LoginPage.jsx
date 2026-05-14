@@ -1,41 +1,32 @@
 import React, { useState } from 'react';
-import { Alert, Button, Card, Col, Divider, Form, Input, Row, Typography, message } from 'antd';
-import { LockOutlined, MailOutlined, SafetyOutlined, TeamOutlined } from '@ant-design/icons';
-import { useNavigate, Link } from 'react-router-dom';
+import { Alert, Button, Card, Col, Row, Space, Typography, message } from 'antd';
+import { AuditOutlined, IdcardOutlined, QrcodeOutlined, SafetyOutlined } from '@ant-design/icons';
 import { useAuth } from '../context/AuthContext';
+import { ROLE_LOGIN_OPTIONS } from '../constant';
 import '../styles/LoginPage.css';
 
 const { Title, Paragraph } = Typography;
 
+const ROLE_ICONS = {
+  EMPLOYEE: <IdcardOutlined />,
+  ADMIN: <AuditOutlined />,
+  VERIFIER: <QrcodeOutlined />
+};
+
 const LoginPage = () => {
-  const navigate = useNavigate();
-  const { loginWithPassword, loginAsRole } = useAuth();
-  const [form] = Form.useForm();
-  const [pwdLoading, setPwdLoading] = useState(false);
-  const [roleLoading, setRoleLoading] = useState(null);
+  const { startOIDCLogin } = useAuth();
+  const [loadingRole, setLoadingRole] = useState(null);
 
-  const onPasswordLogin = async (values) => {
-    setPwdLoading(true);
+  const handleOIDCLogin = async (option) => {
+    setLoadingRole(option.key);
     try {
-      await loginWithPassword({ email: values.email, password: values.password });
-      message.success('登入成功');
-      navigate('/');
+      if (option.password && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(option.password).catch(() => {});
+      }
+      await startOIDCLogin({ targetPath: option.targetPath, loginHint: option.email });
     } catch (error) {
-      message.error(error?.error?.message || '登入失敗，請檢查帳號密碼');
-    } finally {
-      setPwdLoading(false);
-    }
-  };
-
-  const handleRoleLogin = async (role, targetPath) => {
-    setRoleLoading(role);
-    try {
-      await loginAsRole(role);
-      navigate(targetPath);
-    } catch (error) {
-      message.error(error?.error?.message || '切換角色失敗');
-    } finally {
-      setRoleLoading(null);
+      message.error(error?.error?.message || '登入失敗，請確認後端服務是否正常');
+      setLoadingRole(null);
     }
   };
 
@@ -47,68 +38,37 @@ const LoginPage = () => {
             <div className="login-kicker">台積電晶彩活動通</div>
             <Title level={2}>台積電員工活動平台</Title>
             <Paragraph>
-              使用註冊時的電子郵件與密碼登入；註冊時已選定身分（員工 / 管理員 / 驗票員）。中籤後請於期限內確認領票，現場出示 QR 入場。
+              使用企業登入進入活動平台。中籤後請於期限內確認領票，現場出示 QR 入場。
             </Paragraph>
 
-            <Form form={form} layout="vertical" size="large" onFinish={onPasswordLogin}>
-              <Form.Item
-                name="email"
-                label="電子郵件"
-                rules={[
-                  { required: true, message: '請輸入電子郵件' },
-                  { type: 'email', message: '請輸入有效的電子郵件' }
-                ]}
-              >
-                <Input prefix={<MailOutlined />} placeholder="you@company.com" autoComplete="username" />
-              </Form.Item>
-              <Form.Item
-                name="password"
-                label="密碼"
-                rules={[{ required: true, message: '請輸入密碼' }]}
-              >
-                <Input.Password prefix={<LockOutlined />} placeholder="密碼" autoComplete="current-password" />
-              </Form.Item>
-              <Form.Item>
-                <Button type="primary" htmlType="submit" block loading={pwdLoading} size="large">
-                  電子郵件登入
+            <Space direction="vertical" style={{ width: '100%' }} size={12}>
+              {ROLE_LOGIN_OPTIONS.map((option) => (
+                <Button
+                  key={option.key}
+                  block
+                  size="large"
+                  icon={ROLE_ICONS[option.key]}
+                  loading={loadingRole === option.key}
+                  onClick={() => handleOIDCLogin(option)}
+                  style={{ height: 'auto', paddingBlock: 12, textAlign: 'left' }}
+                >
+                  <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
+                    <strong>{option.title}</strong>
+                    <small>{option.description}</small>
+                    <small>帳號：{option.email}</small>
+                    <small>密碼：{option.password}</small>
+                  </span>
                 </Button>
-              </Form.Item>
-            </Form>
-
-            <Divider>
-              <TeamOutlined /> 角色快速切換
-            </Divider>
-            <Row gutter={12}>
-              <Col span={8}>
-                <Button block loading={roleLoading === 'EMPLOYEE'} onClick={() => handleRoleLogin('EMPLOYEE', '/')}>
-                  員工
-                </Button>
-              </Col>
-              <Col span={8}>
-                <Button block loading={roleLoading === 'ADMIN'} onClick={() => handleRoleLogin('ADMIN', '/admin')}>
-                  管理員
-                </Button>
-              </Col>
-              <Col span={8}>
-                <Button block loading={roleLoading === 'VERIFIER'} onClick={() => handleRoleLogin('VERIFIER', '/verify')}>
-                  驗票員
-                </Button>
-              </Col>
-            </Row>
-
-            <div style={{ textAlign: 'center', marginTop: 16 }}>
-              <Paragraph>
-                還沒有帳戶？ <Link to="/register">立即註冊</Link>
-              </Paragraph>
-            </div>
+              ))}
+            </Space>
 
             <Alert
               style={{ marginTop: 20 }}
               type="info"
               showIcon
               icon={<SafetyOutlined />}
-              message="展示模式說明"
-              description="正式流程請使用註冊帳號登入；角色快速切換僅供課堂展示與測試。"
+              message="登入說明"
+              description="測試帳號請在企業登入頁輸入。"
             />
           </Card>
         </Col>

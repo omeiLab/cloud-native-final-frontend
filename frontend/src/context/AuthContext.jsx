@@ -1,71 +1,20 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { apiClient } from '../api/client';
+import {
+  OIDC_STATE_KEY,
+  POST_LOGIN_REDIRECT_KEY
+} from '../constant';
 
 const AuthContext = createContext(null);
 
-const decodeJwtPayload = (token) => {
-  try {
-    const [, payload] = token.split('.');
-    if (!payload) return null;
-    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
-    const json = atob(normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '='));
-    return JSON.parse(json);
-  } catch {
-    return null;
-  }
-};
-
-const buildUserFromToken = (token) => {
-  const claims = decodeJwtPayload(token);
-  if (!claims?.role) {
-    return null;
-  }
-
-  return {
-    id: claims.sub || claims.jti || claims.employee_id || claims.role,
-    employee_id: claims.employee_id || claims.sub || '',
-    name: claims.name || claims.employee_id || claims.role,
-    email: claims.email || '',
-    department: claims.department || '',
-    site: claims.site || 'HSINCHU',
-    role: claims.role,
-    status: 'ACTIVE'
-  };
-};
-
-const normalizeRole = (role) => {
-  if (role === 'FAMILY') {
-    return 'EMPLOYEE';
-  }
-  return role;
-};
+const isSafeInternalPath = (path) => typeof path === 'string' && path.startsWith('/') && !path.startsWith('//');
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const tokenFromQuery = params.get('access_token') || params.get('token') || params.get('id_token');
-    const roleFromQuery = normalizeRole(params.get('role') || '');
-
-    if (tokenFromQuery) {
-      apiClient.setIdpAccessToken(tokenFromQuery);
-      if (roleFromQuery) {
-        localStorage.setItem('cets_role_hint', roleFromQuery);
-      }
-      params.delete('access_token');
-      params.delete('token');
-      params.delete('id_token');
-      params.delete('role');
-      const next = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}${window.location.hash || ''}`;
-      window.history.replaceState({}, '', next);
-      return;
-    }
-  }, []);
-
   const fetchMe = useCallback(async () => {
-    if (!apiClient.getAccessToken()) {
+    if (!apiClient.getAccessToken() && !apiClient.getRefreshToken()) {
       setUser(null);
       setLoading(false);
       return;
@@ -73,14 +22,12 @@ export const AuthProvider = ({ children }) => {
 
     setLoading(true);
     try {
+      if (!apiClient.getAccessToken()) {
+        await apiClient.refresh();
+      }
       const res = await apiClient.getMe();
       setUser(res.data);
     } catch (error) {
-      const fallbackUser = buildUserFromToken(apiClient.getAccessToken());
-      if (fallbackUser) {
-        setUser(fallbackUser);
-        return;
-      }
       apiClient.clearAuth();
       setUser(null);
     } finally {
@@ -92,25 +39,46 @@ export const AuthProvider = ({ children }) => {
     fetchMe();
   }, [fetchMe]);
 
-  const startOIDCLogin = useCallback(async () => {
-    const res = await apiClient.getOIDCAuthorizeUrl();
-    window.location.href = res.data.authorize_url;
+  const startOIDCLogin = useCallback(async ({ targetPath, loginHint } = {}) => {
+    const redirectUri = `${window.location.origin}/auth/callback`;
+    const res = await apiClient.getOIDCAuthorizeUrl({ redirectUri });
+    const authorizeUrlRaw = res.data?.authorize_url;
+    const state = res.data?.state;
+    if (!authorizeUrlRaw || !state) {
+      throw new Error('OIDC authorize-url response missing authorize_url/state');
+    }
+    localStorage.setItem(OIDC_STATE_KEY, state);
+
+    if (isSafeInternalPath(targetPath)) {
+      sessionStorage.setItem(POST_LOGIN_REDIRECT_KEY, targetPath);
+    } else {
+      sessionStorage.removeItem(POST_LOGIN_REDIRECT_KEY);
+    }
+
+    let authorizeUrl = authorizeUrlRaw;
+    if (loginHint) {
+      try {
+        const url = new URL(authorizeUrlRaw);
+        url.searchParams.set('login_hint', loginHint);
+        url.searchParams.set('prompt', 'login');
+        url.searchParams.set('max_age', '0');
+        authorizeUrl = url.toString();
+      } catch {
+        authorizeUrl = authorizeUrlRaw;
+      }
+    }
+
+    window.location.href = authorizeUrl;
   }, []);
 
   const finishOIDCLogin = useCallback(async ({ code, state }) => {
-    const res = await apiClient.oidcCallback({ code, state });
-    apiClient.setAuthTokens(res.data);
-    await fetchMe();
-  }, [fetchMe]);
-
-  const loginAsRole = useCallback(async (role) => {
-    apiClient.switchDevRole(normalizeRole(role));
-    const fallbackUser = buildUserFromToken(apiClient.getAccessToken());
-    if (fallbackUser) {
-      setUser(fallbackUser);
-      setLoading(false);
-      return;
+    const expectedState = localStorage.getItem(OIDC_STATE_KEY);
+    if (!expectedState || expectedState !== state) {
+      throw new Error('OIDC state mismatch');
     }
+    const res = await apiClient.oidcCallback({ code, state });
+    localStorage.removeItem(OIDC_STATE_KEY);
+    apiClient.setAuthTokens(res.data);
     await fetchMe();
   }, [fetchMe]);
 
@@ -120,29 +88,10 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       apiClient.clearAuth();
     }
+    localStorage.removeItem(OIDC_STATE_KEY);
+    sessionStorage.removeItem(POST_LOGIN_REDIRECT_KEY);
     setUser(null);
   }, []);
-
-  const register = useCallback(async (userData) => {
-    try {
-      const res = await apiClient.register(userData);
-      apiClient.setAuthTokens(res.data);
-      await fetchMe();
-      return res;
-    } catch (error) {
-      throw error;
-    }
-  }, [fetchMe]);
-
-  const loginWithPassword = useCallback(
-    async ({ email, password }) => {
-      const res = await apiClient.login({ email, password });
-      apiClient.setAuthTokens(res.data);
-      await fetchMe();
-      return res;
-    },
-    [fetchMe]
-  );
 
   const value = useMemo(() => ({
     user,
@@ -151,11 +100,8 @@ export const AuthProvider = ({ children }) => {
     fetchMe,
     startOIDCLogin,
     finishOIDCLogin,
-    loginAsRole,
-    logout,
-    register,
-    loginWithPassword
-  }), [user, loading, fetchMe, startOIDCLogin, finishOIDCLogin, loginAsRole, logout, register, loginWithPassword]);
+    logout
+  }), [user, loading, fetchMe, startOIDCLogin, finishOIDCLogin, logout]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

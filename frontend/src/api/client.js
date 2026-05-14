@@ -80,22 +80,56 @@ const normalizeError = (error) => {
   };
 };
 
-const DEV_TOKENS = {
-  EMPLOYEE:
-    import.meta.env.VITE_EMPLOYEE_TOKEN ||
-    'eyJhbGciOiJIUzI1NiIsImtpZCI6InYxIiwidHlwIjoiSldUIn0.eyJzdWIiOiIwMUUyRUVNUExPWUVFVFNNQ1JPTEVYWFhYWCIsInJvbGUiOiJFTVBMT1lFRSIsInNpdGUiOiJIU0lOQ0hVIiwiZW1wbG95ZWVfaWQiOiJFMkVFTVAwMSIsIm5hbWUiOiJlMmUtZW1wbG95ZWUiLCJpc3MiOiJodHRwczovL2NldHMuYWxhbmgudWsiLCJleHAiOjQxMDIzNTg0MDAsImlhdCI6MTc3NzkwMjE4NSwianRpIjoiZTJlLXBlcm0tZW1wbG95ZWUifQ.Bv-o08HsmkyPy8Q8wsL_lslylZmL4Rb7MQNvKLpxqMI',
-  ADMIN:
-    import.meta.env.VITE_ADMIN_TOKEN ||
-    'eyJhbGciOiJIUzI1NiIsImtpZCI6InYxIiwidHlwIjoiSldUIn0.eyJzdWIiOiIwMUUyRUFETUlOVFNNQ1JPTEVYWFhYWFhYWCIsInJvbGUiOiJBRE1JTiIsInNpdGUiOiJIU0lOQ0hVIiwiZW1wbG95ZWVfaWQiOiJFMkVBRE0wMSIsIm5hbWUiOiJlMmUtYWRtaW4iLCJpc3MiOiJodHRwczovL2NldHMuYWxhbmgudWsiLCJleHAiOjQxMDIzNTg0MDAsImlhdCI6MTc3NzkwMjE4NSwianRpIjoiZTJlLXBlcm0tYWRtaW4ifQ.JFXKaGEj-iiyPhzeTG9HgxgBGu9dbNdS5ob4V67CDew',
-  VERIFIER:
-    import.meta.env.VITE_VERIFIER_TOKEN ||
-    'eyJhbGciOiJIUzI1NiIsImtpZCI6InYxIiwidHlwIjoiSldUIn0.eyJzdWIiOiIwMUUyRVZFUklGSUVSVFNNQ1JPTEVYWFhYWCIsInJvbGUiOiJWRVJJRklFUiIsInNpdGUiOiJIU0lOQ0hVIiwiZW1wbG95ZWVfaWQiOiJFMkVWRlIwMSIsIm5hbWUiOiJlMmUtdmVyaWZpZXIiLCJpc3MiOiJodHRwczovL2NldHMuYWxhbmgudWsiLCJleHAiOjQxMDIzNTg0MDAsImlhdCI6MTc3NzkwMjE4NSwianRpIjoiZTJlLXBlcm0tdmVyaWZpZXIifQ.a93u8oTBIGajL1Pm2pPk2qWkRWXD8dUW497n9o5NuhI'
-};
-
 const ACCESS_TOKEN_KEY = 'cets_access_token';
 const REFRESH_TOKEN_KEY = 'cets_refresh_token';
 const USER_ROLE_KEY = 'cets_role_hint';
 const AUTH_PROVIDER_KEY = 'cets_auth_provider';
+
+const getStorage = (name) => {
+  try {
+    if (typeof window !== 'undefined' && window[name]) {
+      return window[name];
+    }
+    if (typeof globalThis !== 'undefined' && globalThis[name]) {
+      return globalThis[name];
+    }
+  } catch {
+    return null;
+  }
+  return null;
+};
+
+const safeStorageGet = (storage, key) => {
+  try {
+    return storage?.getItem(key) ?? null;
+  } catch {
+    return null;
+  }
+};
+
+const safeStorageSet = (storage, key, value) => {
+  try {
+    storage?.setItem(key, value);
+  } catch {
+    // Ignore unavailable browser storage.
+  }
+};
+
+const safeStorageRemove = (storage, key) => {
+  try {
+    storage?.removeItem(key);
+  } catch {
+    // Ignore unavailable browser storage.
+  }
+};
+
+const getRefreshTokenStorage = () => getStorage('sessionStorage') || getStorage('localStorage');
+
+const shouldAttemptRefresh = (url = '') => (
+  !url.includes('/auth/refresh') &&
+  !url.includes('/auth/oidc/authorize-url') &&
+  !url.includes('/auth/oidc/callback')
+);
 
 class APIClient {
   constructor() {
@@ -106,13 +140,9 @@ class APIClient {
       }
     });
 
-    this.isRefreshing = false;
-    this.refreshWaitQueue = [];
-
-    const storedToken = localStorage.getItem(ACCESS_TOKEN_KEY);
-    if (storedToken) {
-      this.setAccessToken(storedToken);
-    }
+    this.accessToken = null;
+    this.refreshPromise = null;
+    safeStorageRemove(getStorage('localStorage'), ACCESS_TOKEN_KEY);
 
     this.client.interceptors.response.use(
       (response) => normalizeSuccessPayload(response),
@@ -126,33 +156,17 @@ class APIClient {
           throw normalizeError(error);
         }
 
-        if (error.response?.status === 401 && !original._retry && this.getRefreshToken()) {
+        if (error.response?.status === 401 && !original._retry && shouldAttemptRefresh(original.url) && this.getRefreshToken()) {
           original._retry = true;
-
-          if (this.isRefreshing) {
-            return new Promise((resolve, reject) => {
-              this.refreshWaitQueue.push({ resolve, reject });
-            }).then((token) => {
-              original.headers.Authorization = `Bearer ${token}`;
-              return this.client(original);
-            });
-          }
-
-          this.isRefreshing = true;
           try {
-            const refreshed = await this.refresh(this.getRefreshToken());
+            const refreshed = await this.refresh();
             const nextToken = refreshed.data.access_token;
-            this.refreshWaitQueue.forEach((entry) => entry.resolve(nextToken));
-            this.refreshWaitQueue = [];
+            original.headers = original.headers || {};
             original.headers.Authorization = `Bearer ${nextToken}`;
             return this.client(original);
           } catch (refreshError) {
-            this.refreshWaitQueue.forEach((entry) => entry.reject(refreshError));
-            this.refreshWaitQueue = [];
             this.clearAuth();
             throw refreshError;
-          } finally {
-            this.isRefreshing = false;
           }
         }
 
@@ -162,74 +176,97 @@ class APIClient {
   }
 
   getAccessToken() {
-    return localStorage.getItem(ACCESS_TOKEN_KEY);
+    return this.accessToken;
   }
 
   getRefreshToken() {
-    return localStorage.getItem(REFRESH_TOKEN_KEY);
+    return safeStorageGet(getRefreshTokenStorage(), REFRESH_TOKEN_KEY);
   }
 
   getRoleHint() {
-    return localStorage.getItem(USER_ROLE_KEY);
+    return safeStorageGet(getStorage('localStorage'), USER_ROLE_KEY);
   }
 
   setAccessToken(token) {
+    this.accessToken = token || null;
     if (!token) {
       delete this.client.defaults.headers.common.Authorization;
-      localStorage.removeItem(ACCESS_TOKEN_KEY);
+      safeStorageRemove(getStorage('localStorage'), ACCESS_TOKEN_KEY);
       return;
     }
     this.client.defaults.headers.common.Authorization = `Bearer ${token}`;
-    localStorage.setItem(ACCESS_TOKEN_KEY, token);
+    safeStorageRemove(getStorage('localStorage'), ACCESS_TOKEN_KEY);
+  }
+
+  setRefreshToken(token) {
+    const storage = getRefreshTokenStorage();
+    const localStorageRef = getStorage('localStorage');
+    if (!token) {
+      safeStorageRemove(storage, REFRESH_TOKEN_KEY);
+      safeStorageRemove(localStorageRef, REFRESH_TOKEN_KEY);
+      return;
+    }
+    safeStorageSet(storage, REFRESH_TOKEN_KEY, token);
+    if (storage !== localStorageRef) {
+      safeStorageRemove(localStorageRef, REFRESH_TOKEN_KEY);
+    }
   }
 
   setAuthTokens({ access_token, refresh_token }) {
     this.setAccessToken(access_token);
-    if (refresh_token) {
-      localStorage.setItem(REFRESH_TOKEN_KEY, refresh_token);
-    }
+    this.setRefreshToken(refresh_token);
+    safeStorageSet(getStorage('localStorage'), AUTH_PROVIDER_KEY, 'OIDC');
   }
 
   clearAuth() {
     this.setAccessToken(null);
-    localStorage.removeItem(REFRESH_TOKEN_KEY);
-    localStorage.removeItem(USER_ROLE_KEY);
-    localStorage.removeItem(AUTH_PROVIDER_KEY);
-  }
-
-  switchDevRole(role) {
-    const roleKey = role === 'FAMILY' ? 'EMPLOYEE' : role;
-    const token = DEV_TOKENS[roleKey];
-    if (!token) {
-      return;
-    }
-    this.setAccessToken(token);
-    localStorage.setItem(USER_ROLE_KEY, roleKey);
-    localStorage.setItem(AUTH_PROVIDER_KEY, 'IDP_DEV');
-    localStorage.removeItem(REFRESH_TOKEN_KEY);
-  }
-
-  setIdpAccessToken(token) {
-    this.setAccessToken(token);
-    localStorage.setItem(AUTH_PROVIDER_KEY, 'IDP');
+    this.setRefreshToken(null);
+    safeStorageRemove(getStorage('localStorage'), USER_ROLE_KEY);
+    safeStorageRemove(getStorage('localStorage'), AUTH_PROVIDER_KEY);
   }
 
   getAuthProvider() {
-    return localStorage.getItem(AUTH_PROVIDER_KEY) || 'JWT';
+    return safeStorageGet(getStorage('localStorage'), AUTH_PROVIDER_KEY) || 'JWT';
   }
 
-  async getOIDCAuthorizeUrl() {
-    return this.client.get('/auth/oidc/authorize-url');
+  async getOIDCAuthorizeUrl({ redirectUri } = {}) {
+    return this.client.get('/auth/oidc/authorize-url', {
+      params: redirectUri ? { redirect_uri: redirectUri } : undefined
+    });
   }
 
   async oidcCallback(payload) {
     return this.client.post('/auth/oidc/callback', payload);
   }
 
-  async refresh(refreshToken) {
-    const res = await this.client.post('/auth/refresh', { refresh_token: refreshToken });
-    this.setAuthTokens(res.data);
-    return res;
+  async refresh(refreshToken = this.getRefreshToken()) {
+    if (!refreshToken) {
+      throw {
+        httpStatus: 401,
+        error: {
+          code: 'REFRESH_TOKEN_INVALID',
+          message: 'Refresh token 無效或已撤銷',
+          details: {}
+        }
+      };
+    }
+
+    if (!this.refreshPromise) {
+      this.refreshPromise = this.client.post('/auth/refresh', { refresh_token: refreshToken })
+        .then((res) => {
+          this.setAuthTokens(res.data);
+          return res;
+        })
+        .catch((error) => {
+          this.clearAuth();
+          throw error;
+        })
+        .finally(() => {
+          this.refreshPromise = null;
+        });
+    }
+
+    return this.refreshPromise;
   }
 
   async getMe() {
@@ -241,17 +278,10 @@ class APIClient {
   }
 
   async logout() {
-    const res = await this.client.post('/auth/logout');
+    const refreshToken = this.getRefreshToken();
+    const res = await this.client.post('/auth/logout', refreshToken ? { refresh_token: refreshToken } : undefined);
     this.clearAuth();
     return res;
-  }
-
-  async register(payload) {
-    return this.client.post('/auth/register', payload);
-  }
-
-  async login(payload) {
-    return this.client.post('/auth/login', payload);
   }
 
   async getEvents(params = {}) {
@@ -458,4 +488,4 @@ class APIClient {
 }
 
 export const apiClient = new APIClient();
-export { DEV_TOKENS, API_BASE_URL, WS_BASE_URL };
+export { API_BASE_URL, WS_BASE_URL };
