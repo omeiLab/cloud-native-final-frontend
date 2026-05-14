@@ -9,9 +9,9 @@ import {
   Collapse,
   Descriptions,
   Empty,
+  InputNumber,
   Modal,
   Row,
-  Select,
   Space,
   Spin,
   Tag,
@@ -108,25 +108,16 @@ const buildEligibilityLines = (elig, category) => {
   return lines;
 };
 
-/** 同一場次報名所佔人數：本人 1 + 眷屬人數（後端若未回 dependent_ids 則保守計為 1） */
-const countPeopleInRegistration = (reg) => {
-  const deps = reg?.dependent_ids;
-  if (Array.isArray(deps)) return 1 + deps.length;
-  return 1;
-};
-
 const EventDetail = () => {
   const { eventId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const [event, setEvent] = useState(null);
   const [registrations, setRegistrations] = useState([]);
-  const [dependents, setDependents] = useState([]);
   const [registerModalOpen, setRegisterModalOpen] = useState(false);
   const [registering, setRegistering] = useState(false);
   const [pendingSession, setPendingSession] = useState(null);
   const [pendingTicketType, setPendingTicketType] = useState(null);
-  const [selectedDependentIds, setSelectedDependentIds] = useState([]);
   const [selectedPeopleCount, setSelectedPeopleCount] = useState(1);
   const [eligibilityConfirmed, setEligibilityConfirmed] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -145,14 +136,11 @@ const EventDetail = () => {
       const promises = [apiClient.getEvent(eventId)];
       if (apiClient.getAccessToken()) {
         promises.push(apiClient.getMyRegistrations({ page: 1, page_size: 100 }));
-        promises.push(apiClient.getMyDependents());
       }
 
-      const [eventRes, regRes, dependentRes] = await Promise.all(promises);
+      const [eventRes, regRes] = await Promise.all(promises);
       setEvent(eventRes.data);
       setRegistrations(regRes?.data?.items || []);
-      const depData = dependentRes?.data;
-      setDependents(Array.isArray(depData) ? depData : depData?.items || []);
     } catch (e) {
       setError(e?.error?.message || '活動資料載入失敗');
     } finally {
@@ -177,20 +165,6 @@ const EventDetail = () => {
     return () => globalThis.clearInterval(timer);
   }, [event?.sessions, registrations]);
 
-  const canUseDependentsForSession = (session) => {
-    const allowFromSession = session?.allow_dependents;
-    const allowFromEvent = event?.allow_dependents;
-    return Boolean(allowFromSession ?? allowFromEvent);
-  };
-
-  const getMaxDependentsForSession = (session) => {
-    const fromSession = session?.max_dependents_per_employee;
-    const fromEvent = event?.max_dependents_per_employee;
-    return Number(fromSession ?? fromEvent ?? 0);
-  };
-
-  const getMaxTotalPeopleForSession = (session) => 1 + getMaxDependentsForSession(session);
-
   const getEventPrimaryStatus = () => {
     const hasOpenSession = (event?.sessions || []).some((session) => session.status === 'REGISTRATION_OPEN');
     if (event?.status === 'CANCELLED') return { label: '已取消', color: 'red' };
@@ -200,16 +174,9 @@ const EventDetail = () => {
     return { label: '可報名', color: 'success' };
   };
 
-  const getSessionActiveRegistrations = (sessionId) =>
-    registrations.filter(
-      (r) =>
-        r.session_id === sessionId && !['CANCELLED', 'FORFEITED'].includes(r.status)
-    );
-
-  const tryReactivateRegistration = async (registrationId, ticketType, dependentIds) => {
+  const tryReactivateRegistration = async (registrationId, ticketType) => {
     const payload = {
-      ticket_type_id: ticketType.id,
-      dependent_ids: dependentIds
+      ticket_type_id: ticketType.id
     };
     const attempts = [
       () => apiClient.patchRegistration(registrationId, payload),
@@ -231,7 +198,7 @@ const EventDetail = () => {
     throw lastErr;
   };
 
-  const registerSession = async (session, ticketType, dependentIds = []) => {
+  const registerSession = async (session, ticketType, ticketCount = 1) => {
     if (!user) {
       message.info('請先點選右上角「登入」完成登入後再報名。');
       return;
@@ -243,21 +210,23 @@ const EventDetail = () => {
       });
       return;
     }
+    const count = Math.max(1, Math.floor(Number(ticketCount || 1)));
     const prior = registrations.find(
       (r) => r.session_id === session.id && RE_REGISTER_ELIGIBLE_STATUSES.has(r.status)
     );
     try {
-      await apiClient.createRegistration({
-        session_id: session.id,
-        ticket_type_id: ticketType.id,
-        dependent_ids: dependentIds
-      });
-      message.success('報名成功');
+      for (let i = 0; i < count; i += 1) {
+        await apiClient.createRegistration({
+          session_id: session.id,
+          ticket_type_id: ticketType.id
+        });
+      }
+      message.success(count > 1 ? `已送出 ${count} 張${ticketType.name}報名` : '報名成功');
       await loadPage();
     } catch (e) {
       if (prior && isAlreadyRegisteredError(e)) {
         try {
-          await tryReactivateRegistration(prior.id, ticketType, dependentIds);
+          await tryReactivateRegistration(prior.id, ticketType);
           message.success('已重新報名');
           await loadPage();
         } catch (e2) {
@@ -275,7 +244,6 @@ const EventDetail = () => {
   const openRegisterModal = (session, ticketType) => {
     setPendingSession(session);
     setPendingTicketType(ticketType);
-    setSelectedDependentIds([]);
     setSelectedPeopleCount(1);
     setEligibilityConfirmed(false);
     setRegisterModalOpen(true);
@@ -287,50 +255,15 @@ const EventDetail = () => {
       message.warning('請先確認您與同行者皆符合報名條件。');
       return;
     }
-    const cat = ticketCategory(pendingTicketType?.name);
-    const isChildTicket = cat === 'child';
-    const maxDependents = getMaxDependentsForSession(pendingSession);
-    const maxTotalPeople = getMaxTotalPeopleForSession(pendingSession);
-
-    if (isChildTicket) {
-      const childCount = Math.max(1, Number(selectedPeopleCount || 1));
-      if (selectedDependentIds.length !== childCount) {
-        message.error(`兒童票為眷屬票種，請選擇 ${childCount} 位眷屬（兒童）。`);
-        return;
-      }
-    } else if (selectedDependentIds.length > maxDependents) {
-      message.warning(`最多只能攜帶 ${maxDependents} 位眷屬`);
-      return;
-    }
-
-    const pendingPeople = isChildTicket
-      ? 1 + selectedDependentIds.length
-      : Math.max(1, Number(selectedPeopleCount || 1));
-    if (!isChildTicket && pendingPeople !== 1 + selectedDependentIds.length) {
-      message.error(`成人票選 ${pendingPeople} 張時，請選擇 ${pendingPeople - 1} 位眷屬。`);
-      return;
-    }
-    if (pendingPeople > maxTotalPeople) {
-      message.error(
-        `超過人數上限：此活動同一場次含本人最多 ${maxTotalPeople} 人（可攜眷屬 ${maxDependents} 人），無法報名。`
-      );
-      return;
-    }
-
-    const usedPeople = getSessionActiveRegistrations(pendingSession.id).reduce(
-      (sum, r) => sum + countPeopleInRegistration(r),
-      0
-    );
-    if (usedPeople + pendingPeople > maxTotalPeople) {
-      message.error(
-        `超過人數上限：此場次您與眷屬合計不可超過 ${maxTotalPeople} 人（可攜眷屬 ${maxDependents} 人），無法報名。`
-      );
+    const ticketCount = Math.max(1, Math.floor(Number(selectedPeopleCount || 1)));
+    if (!Number.isFinite(ticketCount)) {
+      message.error('請輸入有效張數');
       return;
     }
 
     setRegistering(true);
     try {
-      await registerSession(pendingSession, pendingTicketType, selectedDependentIds);
+      await registerSession(pendingSession, pendingTicketType, ticketCount);
       setRegisterModalOpen(false);
     } finally {
       setRegistering(false);
@@ -563,103 +496,26 @@ const EventDetail = () => {
               我已確認本人與同行者皆符合此票種報名條件
             </Checkbox>
             {(() => {
-              const isChild = ticketCategory(pendingTicketType?.name) === 'child';
-              const maxDeps = getMaxDependentsForSession(pendingSession);
-              const maxTotal = getMaxTotalPeopleForSession(pendingSession);
-              const activeDeps = dependents.filter((d) => (d?.status || 'ACTIVE') === 'ACTIVE');
-              const maxChildSelectable = Math.max(1, Math.min(maxDeps, activeDeps.length));
-              const maxAdultSelectable = Math.max(1, Math.min(maxTotal, 1 + Math.min(maxDeps, activeDeps.length)));
-              const maxSelectable = isChild ? maxChildSelectable : maxAdultSelectable;
-              const minSelectable = 1;
-              const value = Math.min(Math.max(1, selectedPeopleCount), maxSelectable);
-              const options = Array.from(
-                { length: Math.max(0, maxSelectable - minSelectable + 1) },
-                (_, i) => {
-                  const v = minSelectable + i;
-                  return {
-                    value: v,
-                    label: `${v} 張`
-                  };
-                }
-              );
+              const maxTickets = Math.max(1, Number(pendingTicketType?.quota || 1));
               return (
-                <>
+                <Space direction="vertical" size={4} style={{ width: '100%' }}>
                   <Paragraph style={{ marginBottom: 0 }}>
-                    {isChild ? '兒童票張數：最多 ' : '成人票張數：最多 '}
-                    {maxSelectable} 張
+                    {ticketCategory(pendingTicketType?.name) === 'child' ? '兒童票張數' : '成人票張數'}
                   </Paragraph>
-                  <Select
+                  <InputNumber
+                    min={1}
+                    max={maxTickets}
+                    precision={0}
                     style={{ width: '100%' }}
-                    value={value}
-                    disabled={maxSelectable <= minSelectable}
-                    options={options.length ? options : [{ value: minSelectable, label: `${minSelectable} 張（含本人）` }]}
-                    onChange={(v) => {
-                      const next = Number(v || 1);
-                      setSelectedPeopleCount(next);
-                      // 若縮小張數，順便裁切眷屬選擇
-                      const needDeps = isChild ? next : Math.max(0, next - 1);
-                      setSelectedDependentIds((prev) => (prev || []).slice(0, needDeps));
-                    }}
+                    value={selectedPeopleCount}
+                    onChange={(v) => setSelectedPeopleCount(Math.max(1, Math.floor(Number(v || 1))))}
                   />
-                </>
+                  <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+                    不需登記眷屬；請依實際同行人數分票種送出報名。
+                  </Paragraph>
+                </Space>
               );
             })()}
-            {ticketCategory(pendingTicketType?.name) === 'child' ? (
-              <>
-                <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                  兒童票為眷屬票種，請先選擇兒童票張數，並選取相同數量的眷屬（兒童）。名額計算仍會包含您本人與眷屬合計上限（含本人最多{' '}
-                  {getMaxTotalPeopleForSession(pendingSession)} 人，可攜眷屬上限{' '}
-                  {getMaxDependentsForSession(pendingSession)} 人）。
-                </Paragraph>
-                <Select
-                  mode="multiple"
-                  allowClear
-                  style={{ width: '100%' }}
-                  placeholder={dependents.length ? '請選擇眷屬（兒童）' : '目前沒有可用眷屬'}
-                  value={selectedDependentIds}
-                  onChange={(ids) => {
-                    const need = Math.max(1, Number(selectedPeopleCount || 1));
-                    setSelectedDependentIds((ids || []).slice(0, need));
-                  }}
-                  disabled={!dependents.length}
-                  maxTagCount="responsive"
-                  options={dependents
-                    .filter((d) => (d?.status || 'ACTIVE') === 'ACTIVE')
-                    .map((d) => ({
-                      value: d.id,
-                      label: `${d.name || d.id}${d.relationship ? `（${d.relationship}）` : ''}`
-                    }))}
-                />
-              </>
-            ) : (
-              <>
-                <Paragraph style={{ marginBottom: 0 }}>
-                  可攜眷屬：最多 {getMaxDependentsForSession(pendingSession)} 位（含本人最多{' '}
-                  {getMaxTotalPeopleForSession(pendingSession)} 人）
-                </Paragraph>
-                <Select
-                  mode="multiple"
-                  allowClear
-                  style={{ width: '100%' }}
-                  placeholder={dependents.length ? '可選擇要一同報名的眷屬' : '目前沒有可用眷屬'}
-                  value={selectedDependentIds}
-                  onChange={(ids) => {
-                    const maxDeps = getMaxDependentsForSession(pendingSession);
-                    const capped = (ids || []).slice(0, maxDeps);
-                    setSelectedDependentIds(capped);
-                    setSelectedPeopleCount(1 + capped.length);
-                  }}
-                  disabled={!dependents.length || getMaxDependentsForSession(pendingSession) <= 0}
-                  maxTagCount="responsive"
-                  options={dependents
-                    .filter((d) => (d?.status || 'ACTIVE') === 'ACTIVE')
-                    .map((d) => ({
-                      value: d.id,
-                      label: `${d.name || d.id}${d.relationship ? `（${d.relationship}）` : ''}`
-                    }))}
-                />
-              </>
-            )}
           </Space>
         ) : null}
       </Modal>
