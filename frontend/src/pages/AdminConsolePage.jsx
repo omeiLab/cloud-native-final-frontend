@@ -1678,11 +1678,11 @@ const AdminConsolePage = () => {
                     message="後端／瀏覽器除錯重點"
                     description={
                       <span>
-                        已用 <code>GET https://cets.alanh.uk/api/openapi.json</code> 比對：<strong>目前部署的規格書裡並未列出任何「執行抽籤」的 POST 路徑</strong>，
-                        <code>{'PATCH /admin/sessions/{id}'}</code> 也僅支援改時間／提早關閉報名，文件寫<strong>「狀態由 lottery-runner／排程」</strong>驅動。
-                        前端仍會呼叫 <code>/admin/events/…/sessions/…/lottery</code> 與 <code>/admin/sessions/…/lottery</code>，
-                        兩者在線上環境會回<strong>404（畫面上的 Not Found／抽籤失敗）</strong>。
-                        若同學已實作但路徑不同，請在 <code>.env</code> 設定 <code>VITE_ADMIN_LOTTERY_POST_URL</code>（見 <code>.env.example</code>）。
+                        已用 <code>GET https://cets.alanh.uk/api/openapi.json</code> 比對：目前部署規格書列出
+                        <strong><code>POST /admin/sessions/{'{session_id}'}/run-lottery</code></strong> 作為管理員手動抽籤路徑，
+                        與後端 <strong>lottery-runner／排程</strong> 使用同一套邏輯。前端會優先呼叫此路徑，若後端環境仍是舊版，
+                        才會依序 fallback 到舊的 <code>/admin/events/…/sessions/…/lottery</code> 與 <code>/admin/sessions/…/lottery</code>。
+                        若測試環境路徑不同，請在 <code>.env</code> 設定 <code>VITE_ADMIN_LOTTERY_POST_URL</code>。
                       </span>
                     }
                   />
@@ -1697,8 +1697,8 @@ const AdminConsolePage = () => {
                           下表場次若後端儀表板未回傳 <code>sessions_lottery</code>，會改由活動詳情（GET /events）的場次補上；「待抽籤人數」可能顯示為 —，仍可手動按「執行抽籤」。
                         </span>
                         <span>
-                          「立即檢查並執行／即時抽籤」按下後會呼叫<strong>同上抽籤 POST</strong>；若後端未提供該路由，會一律失敗，需要由{' '}
-                          <strong>後端 lottery-runner／排程</strong>在 <code>lottery_at</code> 到點時處理，或請後端公開手動抽籤 API。
+                          「立即檢查並執行／即時抽籤」按下後會呼叫<strong>同上抽籤 POST</strong>；若該測試環境尚未部署手動路徑，
+                          仍可由 <strong>後端 lottery-runner／排程</strong> 在 <code>lottery_at</code> 到點時處理。
                         </span>
                         <Space wrap>
                           <span>自動抽籤：</span>

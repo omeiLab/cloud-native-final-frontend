@@ -371,7 +371,7 @@ class APIClient {
   }
 
   /**
-   * OpenAPI（cets.alanh.uk）多半未公開手動抽籤路由，改由 lottery-runner／排程驅動。
+   * 手動抽籤主路徑與 lottery-runner 使用同一套後端邏輯。
    * 可選：VITE_ADMIN_LOTTERY_POST_URL=https://host/api/v1/path/{sessionId}?e={eventId}
    */
   async adminRunLottery(eventId, sessionId) {
@@ -385,6 +385,7 @@ class APIClient {
       : '';
     /** 相對路徑會接 baseURL；若為 https://… 開頭則視為絕對 URL */
     const relativeOrAbsolute = [...(fromEnv ? [fromEnv] : []),
+      `/admin/sessions/${sessionId}/run-lottery`,
       `/admin/events/${eventId}/sessions/${sessionId}/lottery`,
       `/admin/sessions/${sessionId}/lottery`
     ];
@@ -417,7 +418,7 @@ class APIClient {
       error: {
         code: 'LOTTERY_ENDPOINT_NOT_REGISTERED',
         message:
-          `抽籤失敗：伺服器不存在已嘗試的抽籤端點（皆 404），已試：${tried}。請在後端實作手動抽籤 POST，或由 lottery-runner／排程觸發；也可於 .env 設定 VITE_ADMIN_LOTTERY_POST_URL 指向正確網址。`
+          `抽籤失敗：伺服器不存在已嘗試的抽籤端點（皆 404），已試：${tried}。請確認後端是否部署 POST /admin/sessions/{session_id}/run-lottery，或於 .env 設定 VITE_ADMIN_LOTTERY_POST_URL 指向正確網址。`
       },
       detail: typeof lastErr?.detail === 'string' ? lastErr.detail : undefined
     };

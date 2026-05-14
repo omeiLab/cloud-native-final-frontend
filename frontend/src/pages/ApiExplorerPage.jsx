@@ -54,7 +54,7 @@ const ENDPOINT_GROUPS = [
       'POST /admin/events',
       'PATCH /admin/events/{id}',
       'POST /admin/events/{id}/publish',
-      'POST /admin/events/{id}/sessions/{session_id}/lottery',
+      'POST /admin/sessions/{session_id}/run-lottery',
       'POST /admin/events/{id}/cancel',
       'GET /admin/sites/employee-count',
       'GET /admin/events/{id}/registrations',
