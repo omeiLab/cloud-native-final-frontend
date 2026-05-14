@@ -367,45 +367,8 @@ class APIClient {
   }
 
   /** 手動抽籤主路徑與 lottery-runner 使用同一套後端邏輯。 */
-  async adminRunLottery(eventId, sessionId) {
-    const relativeOrAbsolute = [
-      `/admin/sessions/${sessionId}/run-lottery`,
-      `/admin/events/${eventId}/sessions/${sessionId}/lottery`,
-      `/admin/sessions/${sessionId}/lottery`
-    ];
-
-    let lastErr;
-    for (let i = 0; i < relativeOrAbsolute.length; i += 1) {
-      const target = relativeOrAbsolute[i];
-      try {
-        return await this.client.post(target);
-      } catch (e) {
-        lastErr = e;
-        const st = e?.httpStatus;
-        const detail = typeof e?.detail === 'string' ? e.detail : '';
-        const msg = e?.error?.message || '';
-        const isMissingRoute =
-          st === 404 ||
-          st === 405 ||
-          /not found/i.test(detail) ||
-          /not found/i.test(msg);
-        const shouldTryNext = i < relativeOrAbsolute.length - 1 && isMissingRoute;
-        if (shouldTryNext) {
-          continue;
-        }
-        throw e;
-      }
-    }
-    const tried = relativeOrAbsolute.join(', ');
-    throw {
-      httpStatus: 404,
-      error: {
-        code: 'LOTTERY_ENDPOINT_NOT_REGISTERED',
-        message:
-          `抽籤失敗：伺服器不存在已嘗試的抽籤端點（皆 404），已試：${tried}。請確認後端是否部署 POST /admin/sessions/{session_id}/run-lottery。`
-      },
-      detail: typeof lastErr?.detail === 'string' ? lastErr.detail : undefined
-    };
+  async adminRunLottery(sessionId) {
+    return this.client.post(`/admin/sessions/${sessionId}/run-lottery`);
   }
 
   async adminCancelEvent(eventId, reason) {
@@ -426,18 +389,6 @@ class APIClient {
 
   async adminGetDashboard(eventId) {
     return this.client.get(`/admin/events/${eventId}/dashboard`);
-  }
-
-  async adminGetTimeOffset() {
-    return this.client.get('/admin/system/time-offset');
-  }
-
-  async adminSetTimeOffset(minutes) {
-    return this.client.post('/admin/system/time-offset', { minutes });
-  }
-
-  async adminRunNightlyLottery() {
-    return this.client.post('/admin/ops/run-nightly-lottery');
   }
 
   async adminExportSync(eventId, params = {}) {

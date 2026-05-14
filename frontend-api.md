@@ -921,17 +921,11 @@ Authorization: Bearer <admin_jwt>
 ### 7.3.1 執行場次抽籤
 
 ```http
-POST /api/v1/admin/events/{event_id}/sessions/{session_id}/lottery
+POST /api/v1/admin/sessions/{session_id}/run-lottery
 Authorization: Bearer <admin_jwt>
 ```
 
-與 `POST /admin/sessions/{session_id}/ticket-types` 相同,部分後端實作將抽籤掛在**場次資源**上,路徑為:
-
-```http
-POST /api/v1/admin/sessions/{session_id}/lottery
-```
-
-前端會先呼叫**巢狀**路徑;若回 `404` / `405` 或訊息為 Not Found,會自動改打**扁平**路徑。
+管理員手動觸發抽籤；與 `lottery-runner` CronJob 使用同一套邏輯。此 endpoint 冪等：同一場次/票種已抽過時回既有結果。場次需已進入 `REGISTRATION_CLOSED` 或更後狀態。
 
 ### 7.4 儀表板
 

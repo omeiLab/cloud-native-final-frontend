@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Alert, Button, Card, Col, Descriptions, List, Modal, Row, Space, Tag, Typography } from 'antd';
+import { Alert, Button, Card, Col, Descriptions, List, Row, Space, Tag, Typography } from 'antd';
 import { apiClient, API_BASE_URL } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 
@@ -59,9 +59,6 @@ const ENDPOINT_GROUPS = [
       'GET /admin/sites/employee-count',
       'GET /admin/events/{id}/registrations',
       'GET /admin/events/{id}/dashboard',
-      'GET /admin/system/time-offset',
-      'POST /admin/system/time-offset',
-      'POST /admin/ops/run-nightly-lottery',
       'GET /admin/events/{id}/export',
       'POST /admin/events/{id}/export/async',
       'GET /admin/events/{id}/export/tasks/{task_id}',
@@ -187,13 +184,6 @@ const ApiExplorerPage = () => {
           next.adminDashboard = { ok: false, detail: e?.error?.message || '失敗' };
           next.adminRegistrations = { ok: false, detail: e?.error?.message || '失敗' };
         }
-
-        try {
-          const offset = await apiClient.adminGetTimeOffset();
-          next.timeOffset = { ok: true, detail: `minutes=${offset?.data?.minutes ?? 0}` };
-        } catch (e) {
-          next.timeOffset = { ok: false, detail: e?.error?.message || '端點未部署或無權限' };
-        }
       }
 
       if (isVerifier) {
@@ -215,23 +205,6 @@ const ApiExplorerPage = () => {
     }
   };
 
-  const runNightlyLotteryNow = () => {
-    Modal.confirm({
-      title: '執行 nightly lottery',
-      content: '此操作會實際觸發後端排程邏輯，僅在你確認測試需求時執行。',
-      okText: '執行',
-      cancelText: '取消',
-      onOk: async () => {
-        try {
-          await apiClient.adminRunNightlyLottery();
-          Modal.success({ title: '已觸發 nightly lottery' });
-        } catch (e) {
-          Modal.error({ title: '執行失敗', content: e?.error?.message || '端點未部署或無權限' });
-        }
-      }
-    });
-  };
-
   return (
     <div className="page-wrap">
       <Card className="hero-card">
@@ -245,9 +218,6 @@ const ApiExplorerPage = () => {
           </Button>
           <Button onClick={runAdvancedChecks} loading={advancedChecking} disabled={!user}>
             進階 API 檢查
-          </Button>
-          <Button danger onClick={runNightlyLotteryNow} disabled={user?.role !== 'ADMIN'}>
-            手動測試 nightly lottery
           </Button>
           <Tag color={user ? 'green' : 'orange'}>
             {user ? `目前角色：${user.role}` : '請先登入後再檢查'}

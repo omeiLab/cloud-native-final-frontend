@@ -101,7 +101,6 @@ const mergeDashboardSessionsLottery = (dash, eventDetail) => {
     registered_pending: undefined
   }));
 };
-const NIGHTLY_LOTTERY_TIME = '03:00';
 const defaultCreateValues = {
   title: '2026 春季家庭日',
   cover_image_url: EVENT_IMAGES[0],
@@ -254,10 +253,6 @@ const AdminConsolePage = () => {
   const [autoLotteryRunning, setAutoLotteryRunning] = useState(false);
   const [autoLotteryStatus, setAutoLotteryStatus] = useState('待命中');
   const [autoLotteryLastRunAt, setAutoLotteryLastRunAt] = useState('');
-  const [nightlyScheduleEnabled, setNightlyScheduleEnabled] = useState(() => localStorage.getItem('cets_nightly_enabled') === '1');
-  const [nightlyRunning, setNightlyRunning] = useState(false);
-  const [nightlyStatus, setNightlyStatus] = useState('未啟用');
-  const [nightlyLastRunDate, setNightlyLastRunDate] = useState(() => localStorage.getItem('cets_nightly_last_date') || '');
   const [createForm] = Form.useForm();
   const selectedCreateCover = Form.useWatch('cover_image_url', createForm);
   const createRegistrationMode = Form.useWatch('registration_mode', createForm) || 'LIMITED';
@@ -293,7 +288,7 @@ const AdminConsolePage = () => {
       if (joined) return joined;
     }
     if (error?.message) return error.message;
-    if (error?.httpStatus === 404) return '後端找不到此 API（HTTP 404），可能尚未實作排程抽籤端點';
+    if (error?.httpStatus === 404) return '後端找不到此 API（HTTP 404），可能尚未部署此端點';
     return fallback;
   };
   const getEventId = (eventLike) => eventLike?.data?.id || eventLike?.data?.event_id || eventLike?.id || eventLike?.event_id || '';
@@ -768,7 +763,7 @@ const AdminConsolePage = () => {
       cancelText: '取消',
       onOk: async () => {
         try {
-          const res = await apiClient.adminRunLottery(selectedEventId, sessionId);
+          const res = await apiClient.adminRunLottery(sessionId);
           message.success(`抽籤完成：中籤 ${res.data?.winners_count ?? 0} 人 / 報名 ${res.data?.total_candidates ?? 0} 人`);
           await loadDashboard(selectedEventId);
         } catch (error) {
@@ -802,7 +797,7 @@ const AdminConsolePage = () => {
         let successCount = 0;
         try {
           for (const row of pending) {
-            await apiClient.adminRunLottery(selectedEventId, row.session_id);
+            await apiClient.adminRunLottery(row.session_id);
             successCount += 1;
           }
           setAutoLotteryLastRunAt(dayjs().format('YYYY-MM-DD HH:mm:ss'));
@@ -842,7 +837,7 @@ const AdminConsolePage = () => {
     let successCount = 0;
     try {
       for (const row of dueSessions) {
-        await apiClient.adminRunLottery(selectedEventId, row.session_id);
+        await apiClient.adminRunLottery(row.session_id);
         successCount += 1;
       }
       setAutoLotteryLastRunAt(dayjs().format('YYYY-MM-DD HH:mm:ss'));
@@ -873,109 +868,6 @@ const AdminConsolePage = () => {
       globalThis.clearInterval(timerId);
     };
   }, [autoLotteryEnabled, isAdminFull, selectedEventId, runDueLotteries]);
-
-  useEffect(() => {
-    localStorage.setItem('cets_nightly_enabled', nightlyScheduleEnabled ? '1' : '0');
-  }, [nightlyScheduleEnabled]);
-
-  useEffect(() => {
-    if (nightlyLastRunDate) {
-      localStorage.setItem('cets_nightly_last_date', nightlyLastRunDate);
-    }
-  }, [nightlyLastRunDate]);
-
-  const runNightlyLotteryNow = useCallback(async ({ silent = true } = {}) => {
-    if (!isAdminFull) return;
-    setNightlyRunning(true);
-    setNightlyStatus('排程抽籤執行中...');
-    const runFallbackPendingForSelectedEvent = async () => {
-      const rows = dashboard?.sessions_lottery || [];
-      const pending = rows.filter((r) => r?.session_id && !r?.lottery_executed_at);
-      if (!pending.length) {
-        throw new Error('NO_PENDING');
-      }
-      let successCount = 0;
-      for (const row of pending) {
-        await apiClient.adminRunLottery(selectedEventId, row.session_id);
-        successCount += 1;
-      }
-      return successCount;
-    };
-    try {
-      const res = await apiClient.adminRunNightlyLottery();
-      const executed = res?.data?.executed_sessions ?? res?.data?.processed_sessions ?? '未知';
-      setNightlyStatus(`排程抽籤完成，執行場次：${executed}`);
-      setAutoLotteryLastRunAt(dayjs().format('YYYY-MM-DD HH:mm:ss'));
-      if (!silent) {
-        message.success(`排程抽籤完成，執行場次：${executed}`);
-      }
-      if (selectedEventId) {
-        await loadDashboard(selectedEventId);
-      }
-    } catch (error) {
-      const httpStatus = error?.httpStatus;
-      const detailStr = typeof error?.detail === 'string' ? error.detail : '';
-      const useClientFallback =
-        selectedEventId &&
-        (httpStatus === 404 ||
-          httpStatus === 405 ||
-          /not found/i.test(detailStr) ||
-          /無此路由|不存在/i.test(getErrorMessage(error, '')));
-
-      if (useClientFallback) {
-        try {
-          const n = await runFallbackPendingForSelectedEvent();
-          setNightlyStatus(`後端未提供全站排程抽籤 API，已改為對「目前選定活動」${n} 個未抽籤場次完成抽籤`);
-          setNightlyLastRunDate(dayjs().format('YYYY-MM-DD'));
-          setAutoLotteryLastRunAt(dayjs().format('YYYY-MM-DD HH:mm:ss'));
-          if (!silent) {
-            message.success(`已對本活動 ${n} 個場次執行抽籤（後備模式）`);
-          }
-          await loadDashboard(selectedEventId);
-        } catch (inner) {
-          if (inner?.message === 'NO_PENDING') {
-            setNightlyStatus(
-              `排程抽籤 API 不可用，且目前活動沒有「尚未抽籤」的場次（請確認已選活動，或改用上方「立即檢查並執行」）`
-            );
-            if (!silent) {
-              message.warning('沒有可抽籤的場次');
-            }
-          } else {
-            setNightlyStatus(`排程抽籤失敗：${getErrorMessage(error, '請稍後重試')}；後備抽籤亦失敗：${getErrorMessage(inner, '請稍後重試')}`);
-            if (!silent) {
-              message.error(getErrorMessage(inner, '抽籤失敗'));
-            }
-          }
-        }
-      } else {
-        setNightlyStatus(`排程抽籤失敗：${getErrorMessage(error, '請稍後重試')}`);
-        if (!silent) {
-          message.error(getErrorMessage(error, '排程抽籤失敗'));
-        }
-      }
-    } finally {
-      setNightlyRunning(false);
-    }
-  }, [isAdminFull, selectedEventId, dashboard?.sessions_lottery]);
-
-  useEffect(() => {
-    if (!nightlyScheduleEnabled || !isAdminFull) {
-      return undefined;
-    }
-    const schedulerId = globalThis.setInterval(() => {
-      if (nightlyRunning) return;
-      const nowAt = dayjs();
-      const currentTime = nowAt.format('HH:mm');
-      const today = nowAt.format('YYYY-MM-DD');
-      if (currentTime === NIGHTLY_LOTTERY_TIME && nightlyLastRunDate !== today) {
-        setNightlyLastRunDate(today);
-        runNightlyLotteryNow({ silent: true });
-      }
-    }, 30000);
-    return () => {
-      globalThis.clearInterval(schedulerId);
-    };
-  }, [nightlyScheduleEnabled, nightlyLastRunDate, nightlyRunning, isAdminFull, runNightlyLotteryNow]);
 
   return (
     <div className="page-wrap admin-console-page">
@@ -1680,8 +1572,7 @@ const AdminConsolePage = () => {
                       <span>
                         已用目前 API base 的 <code>openapi.json</code> 比對：目前部署規格書列出
                         <strong><code>POST /admin/sessions/{'{session_id}'}/run-lottery</code></strong> 作為管理員手動抽籤路徑，
-                        與後端 <strong>lottery-runner／排程</strong> 使用同一套邏輯。前端會優先呼叫此路徑，若後端環境仍是舊版，
-                        才會依序 fallback 到舊的 <code>/admin/events/…/sessions/…/lottery</code> 與 <code>/admin/sessions/…/lottery</code>。
+                        與後端 <strong>lottery-runner／排程</strong> 使用同一套邏輯。前端只呼叫此路徑，不再保留舊版抽籤 endpoint fallback。
                       </span>
                     }
                   />
@@ -1719,29 +1610,6 @@ const AdminConsolePage = () => {
                         </Space>
                         <span>自動抽籤狀態：{autoLotteryStatus}</span>
                         <span>最近執行時間：{autoLotteryLastRunAt || '尚未執行'}</span>
-                        <Divider style={{ margin: '8px 0' }} />
-                        <span>排程抽籤（每天固定時間跑一次，會掃描目前可抽籤場次）</span>
-                        <Space wrap>
-                          <span>每日排程：</span>
-                          <Switch
-                            checked={nightlyScheduleEnabled}
-                            onChange={setNightlyScheduleEnabled}
-                            disabled={!isAdminFull}
-                            checkedChildren="開啟"
-                            unCheckedChildren="關閉"
-                          />
-                          <Tag color="blue">{NIGHTLY_LOTTERY_TIME}</Tag>
-                          <Button
-                            size="small"
-                            onClick={() => runNightlyLotteryNow({ silent: false })}
-                            loading={nightlyRunning}
-                            disabled={!isAdminFull}
-                          >
-                            立即執行一次
-                          </Button>
-                        </Space>
-                        <span>排程狀態：{nightlyStatus}</span>
-                        <span>今日是否已跑：{nightlyLastRunDate === dayjs().format('YYYY-MM-DD') ? '是' : '否'}</span>
                       </Space>
                     )}
                   />
