@@ -29,6 +29,7 @@ const { Title, Paragraph } = Typography;
 const REGISTRATION_ALLOWED_ROLES = new Set(['EMPLOYEE']);
 /** 此狀態下不佔用報名額度，報名開放中可再次報名 */
 const RE_REGISTER_ELIGIBLE_STATUSES = new Set(['CANCELLED', 'FORFEITED']);
+const NON_OCCUPYING_REGISTRATION_STATUSES = new Set(['CANCELLED', 'FORFEITED']);
 
 const registrationErrMsg = (e) =>
   e?.error?.message || (typeof e?.detail === 'string' ? e.detail : '') || '';
@@ -123,9 +124,13 @@ const EventDetail = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const registrationMap = useMemo(() => {
+  const registrationsBySession = useMemo(() => {
     const map = new Map();
-    registrations.forEach((r) => map.set(r.session_id, r));
+    registrations.forEach((r) => {
+      const list = map.get(r.session_id) || [];
+      list.push(r);
+      map.set(r.session_id, list);
+    });
     return map;
   }, [registrations]);
 
@@ -211,9 +216,13 @@ const EventDetail = () => {
       return;
     }
     const count = Math.max(1, Math.floor(Number(ticketCount || 1)));
-    const prior = registrations.find(
-      (r) => r.session_id === session.id && RE_REGISTER_ELIGIBLE_STATUSES.has(r.status)
+    const sessionRegistrations = registrationsBySession.get(session.id) || [];
+    const activeRegistrations = sessionRegistrations.filter(
+      (r) => !NON_OCCUPYING_REGISTRATION_STATUSES.has(r.status)
     );
+    const prior = activeRegistrations.length
+      ? null
+      : sessionRegistrations.find((r) => RE_REGISTER_ELIGIBLE_STATUSES.has(r.status));
     try {
       for (let i = 0; i < count; i += 1) {
         await apiClient.createRegistration({
@@ -307,66 +316,76 @@ const EventDetail = () => {
   };
 
   const renderActions = (session) => {
-    const reg = registrationMap.get(session.id);
     const roleCanRegister = REGISTRATION_ALLOWED_ROLES.has(user?.role);
-    const mayRegisterAgain = !reg || RE_REGISTER_ELIGIBLE_STATUSES.has(reg.status);
+    const sessionRegistrations = registrationsBySession.get(session.id) || [];
+    const activeRegistrations = sessionRegistrations.filter(
+      (r) => !NON_OCCUPYING_REGISTRATION_STATUSES.has(r.status)
+    );
+    const inactiveRegistrations = sessionRegistrations.filter((r) => RE_REGISTER_ELIGIBLE_STATUSES.has(r.status));
+    const isRegistrationOpen = session.status === 'REGISTRATION_OPEN';
+    const getTicketLabel = (reg) =>
+      reg.ticket_type_name ||
+      (session.ticket_types || []).find((tt) => tt.id === reg.ticket_type_id)?.name ||
+      reg.ticket_type_id;
 
     if (user && !roleCanRegister) {
       return <Tag color="warning">驗票員 / 管理員不可報名</Tag>;
     }
 
-    if (mayRegisterAgain) {
-      if (session.status !== 'REGISTRATION_OPEN') {
-        return <Tag>目前不可報名</Tag>;
-      }
-      const signupButtons = (
-        <Space wrap>
-          {(session.ticket_types || []).map((tt) => (
-            <Button
-              key={tt.id}
-              type="primary"
-              onClick={() => {
-                openRegisterModal(session, tt);
-              }}
-            >
-              報名 {tt.name}（名額：{tt.quota}）
-            </Button>
-          ))}
-        </Space>
-      );
-      if (reg?.status === 'CANCELLED') {
-        return (
-          <Space direction="vertical" size="small" style={{ width: '100%' }}>
-            <Alert type="info" showIcon message="您先前已取消報名，於報名期間內可再次報名。" />
-            {signupButtons}
+    const signupButtons = isRegistrationOpen ? (
+      <Space wrap>
+        {(session.ticket_types || []).map((tt) => (
+          <Button
+            key={tt.id}
+            type="primary"
+            onClick={() => {
+              openRegisterModal(session, tt);
+            }}
+          >
+            報名 {tt.name}（名額：{tt.quota}）
+          </Button>
+        ))}
+      </Space>
+    ) : null;
+
+    const activeRegistrationRows = activeRegistrations.length ? (
+      <Space direction="vertical" size="small" style={{ width: '100%' }}>
+        {activeRegistrations.map((reg, idx) => (
+          <Space key={reg.id} wrap>
+            <Tag color="blue">
+              第 {idx + 1} 張：{getTicketLabel(reg)}
+            </Tag>
+            <Tag>{labelOr(REGISTRATION_STATUS_LABELS, reg.status, reg.status)}</Tag>
+            {reg.status === 'REGISTERED' ? (
+              <Button onClick={() => runCancel(reg.id)}>取消報名</Button>
+            ) : null}
+            {reg.status === 'WON' ? (
+              <>
+                <Button type="primary" onClick={() => runConfirm(reg.id)}>確認參加並領票</Button>
+                <Button danger onClick={() => runForfeit(reg.id)}>棄權</Button>
+              </>
+            ) : null}
           </Space>
-        );
-      }
-      if (reg?.status === 'FORFEITED') {
-        return (
-          <Space direction="vertical" size="small" style={{ width: '100%' }}>
-            <Alert type="info" showIcon message="您先前已棄權，若本場次仍開放報名可再次報名。" />
-            {signupButtons}
-          </Space>
-        );
-      }
-      return signupButtons;
+        ))}
+      </Space>
+    ) : null;
+
+    if (!isRegistrationOpen && !activeRegistrations.length) {
+      return <Tag>目前不可報名</Tag>;
     }
 
-    if (reg.status === 'REGISTERED') {
-      return <Button onClick={() => runCancel(reg.id)}>取消報名</Button>;
-    }
-
-    if (reg.status === 'WON') {
-      return (
-        <Space>
-          <Button type="primary" onClick={() => runConfirm(reg.id)}>確認參加並領票</Button>
-          <Button danger onClick={() => runForfeit(reg.id)}>棄權</Button>
-        </Space>
-      );
-    }
-
-    return <Tag color="blue">目前狀態：{labelOr(REGISTRATION_STATUS_LABELS, reg.status, reg.status)}</Tag>;
+    return (
+      <Space direction="vertical" size="small" style={{ width: '100%' }}>
+        {inactiveRegistrations.length && isRegistrationOpen ? (
+          <Alert type="info" showIcon message="您先前有取消或棄權紀錄，於報名期間內可再次報名。" />
+        ) : null}
+        {activeRegistrations.length && isRegistrationOpen ? (
+          <Alert type="info" showIcon message={`您目前已有 ${activeRegistrations.length} 張此場次報名，可於報名期間內追加票種。`} />
+        ) : null}
+        {activeRegistrationRows}
+        {signupButtons}
+      </Space>
+    );
   };
 
   if (loading) {
