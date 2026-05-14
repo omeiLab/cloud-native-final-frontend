@@ -241,9 +241,13 @@ const EventDetail = () => {
         } catch (e2) {
           message.error(
             registrationErrMsg(e2) ||
-              '無法再次報名：後端仍將「已取消」紀錄視為佔用場次。請請後端在 POST /registrations 排除 CANCELLED／FORFEITED，或實作 PATCH /registrations/{id}／POST .../resume。'
+              '暫時無法恢復先前取消的報名，請稍後再試或聯繫管理員。'
           );
         }
+        return;
+      }
+      if (isAlreadyRegisteredError(e)) {
+        message.error('目前系統尚未開放同場次追加報名，請稍後再試或聯繫管理員。');
         return;
       }
       message.error(registrationErrMsg(e) || '報名失敗');

@@ -296,7 +296,7 @@ class APIClient {
     return this.client.post('/registrations', payload);
   }
 
-  /** 後端若支援：將已取消／棄權之報名改回有效並更新票種／眷屬 */
+  /** 後端若支援：將已取消／棄權之報名改回有效並更新票種 */
   async patchRegistration(registrationId, payload) {
     return this.client.patch(`/registrations/${registrationId}`, payload);
   }
