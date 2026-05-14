@@ -4,6 +4,7 @@ import {
   Alert,
   Button,
   Card,
+  Checkbox,
   Col,
   Collapse,
   Descriptions,
@@ -127,6 +128,7 @@ const EventDetail = () => {
   const [pendingTicketType, setPendingTicketType] = useState(null);
   const [selectedDependentIds, setSelectedDependentIds] = useState([]);
   const [selectedPeopleCount, setSelectedPeopleCount] = useState(1);
+  const [eligibilityConfirmed, setEligibilityConfirmed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -275,11 +277,16 @@ const EventDetail = () => {
     setPendingTicketType(ticketType);
     setSelectedDependentIds([]);
     setSelectedPeopleCount(1);
+    setEligibilityConfirmed(false);
     setRegisterModalOpen(true);
   };
 
   const submitRegisterModal = async () => {
     if (!pendingSession || !pendingTicketType) return;
+    if (!eligibilityConfirmed) {
+      message.warning('請先確認您與同行者皆符合報名條件。');
+      return;
+    }
     const cat = ticketCategory(pendingTicketType?.name);
     const isChildTicket = cat === 'child';
     const maxDependents = getMaxDependentsForSession(pendingSession);
@@ -517,6 +524,7 @@ const EventDetail = () => {
         onOk={submitRegisterModal}
         onCancel={() => setRegisterModalOpen(false)}
         confirmLoading={registering}
+        okButtonProps={{ disabled: !eligibilityConfirmed }}
         okText="我已確認符合條件並報名"
         cancelText="取消"
       >
@@ -548,6 +556,12 @@ const EventDetail = () => {
             <Paragraph style={{ marginBottom: 0 }}>
               票種：{pendingTicketType?.name}
             </Paragraph>
+            <Checkbox
+              checked={eligibilityConfirmed}
+              onChange={(e) => setEligibilityConfirmed(e.target.checked)}
+            >
+              我已確認本人與同行者皆符合此票種報名條件
+            </Checkbox>
             {(() => {
               const isChild = ticketCategory(pendingTicketType?.name) === 'child';
               const maxDeps = getMaxDependentsForSession(pendingSession);
