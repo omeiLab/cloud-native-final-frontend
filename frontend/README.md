@@ -43,11 +43,11 @@ npm install
 
 ```env
 VITE_BASE_PATH=/
-VITE_API_BASE_URL=https://cets.alanh.uk/api/v1
-VITE_WS_BASE_URL=wss://cets.alanh.uk/ws
+VITE_API_BASE_URL=
+VITE_WS_BASE_URL=
 ```
 
-如果要改後端位置，請調整 `VITE_API_BASE_URL` 與 `VITE_WS_BASE_URL`。前端會照 `VITE_API_BASE_URL` 原樣使用，不會自動補 `/api/v1`。`VITE_BASE_PATH` 本機維持 `/`；若部署在 GitHub Pages 專案路徑，GitHub Actions 會預設改成 `/<repo>/`。
+請填入你的後端位置。前端會照 `VITE_API_BASE_URL` 原樣使用，不會自動補 `/api/v1`。`VITE_WS_BASE_URL` 可留空，前端會依 `VITE_API_BASE_URL` 推導 `/ws`。`VITE_BASE_PATH` 本機維持 `/`；若部署在 GitHub Pages 專案路徑，GitHub Actions 會預設改成 `/<repo>/`。
 
 ### 開發模式
 
@@ -102,7 +102,7 @@ frontend/
 
 ## 🔑 API 設定
 
-開發模式直接使用完整 API base URL，例如 `VITE_API_BASE_URL=https://cets.alanh.uk/api/v1`。前端不會自動補 `/api/v1`，後端需允許本機開發來源的 CORS。
+開發模式直接使用完整 API base URL。前端不會自動補 `/api/v1`，後端需允許本機開發來源的 CORS。
 
 ### 登入
 

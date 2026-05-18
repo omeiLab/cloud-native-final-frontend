@@ -1,7 +1,7 @@
 .app-layout {
   min-height: 100vh;
   background-color: var(--ds-bg);
-  background-image: url('/backgrounds/background-light.webp');
+  background-image: var(--app-bg-light);
   background-position: center;
   background-size: cover;
   background-repeat: no-repeat;
@@ -10,7 +10,7 @@
 }
 
 :root.theme-dark .app-layout {
-  background-image: url('/backgrounds/background-dark.webp');
+  background-image: var(--app-bg-dark);
   background-blend-mode: normal;
 }
 

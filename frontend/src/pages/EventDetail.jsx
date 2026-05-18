@@ -21,7 +21,7 @@ import {
 import dayjs from 'dayjs';
 import { apiClient } from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import { pickEventImage } from '../assets/media';
+import { pickEventImage, resolvePublicAssetUrl } from '../assets/media';
 import { REGISTRATION_STATUS_LABELS, SESSION_STATUS_LABELS, labelOr } from '../utils/labels';
 import '../styles/EventDetail.css';
 
@@ -549,7 +549,7 @@ const EventDetail = () => {
 
   const primaryStatus = getEventPrimaryStatus();
   const fallbackImage = pickEventImage(event.id || event.title);
-  const coverImage = event.cover_image_url || fallbackImage;
+  const coverImage = resolvePublicAssetUrl(event.cover_image_url) || fallbackImage;
 
   return (
     <div className="page-wrap event-detail-page">

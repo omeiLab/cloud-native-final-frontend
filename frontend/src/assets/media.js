@@ -1,9 +1,12 @@
-const EVENT_IMAGES = [1, 2, 3, 4, 5, 6].map((n) => `/image/event_${n}.webp`);
+import { publicAssetPath, publicRootPath, resolvePublicAssetUrl } from './publicPath';
+
+const EVENT_IMAGE_PATHS = [1, 2, 3, 4, 5, 6].map((n) => `/image/event_${n}.webp`);
+const EVENT_IMAGES = EVENT_IMAGE_PATHS.map(publicAssetPath);
 const AVATAR_IMAGES = {
-  male: '/image/male.webp',
-  female: '/image/female.webp'
+  male: publicAssetPath('/image/male.webp'),
+  female: publicAssetPath('/image/female.webp')
 };
-const LOGO_IMAGE = '/image/logo.png';
+const LOGO_IMAGE = publicAssetPath('/image/logo.png');
 
 const hashText = (text = '') => {
   let h = 0;
@@ -25,4 +28,12 @@ export const pickAvatarImage = (seed) => {
   return isFemale ? AVATAR_IMAGES.female : AVATAR_IMAGES.male;
 };
 
-export { EVENT_IMAGES, AVATAR_IMAGES, LOGO_IMAGE };
+export {
+  EVENT_IMAGE_PATHS,
+  EVENT_IMAGES,
+  AVATAR_IMAGES,
+  LOGO_IMAGE,
+  publicAssetPath,
+  publicRootPath,
+  resolvePublicAssetUrl
+};

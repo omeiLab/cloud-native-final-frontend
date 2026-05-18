@@ -27,7 +27,7 @@ import { useAuth } from '../context/AuthContext';
 import dayjs from 'dayjs';
 import { useNotifications } from '../context/NotificationContext';
 import { EVENT_STATUS_LABELS, REGISTRATION_STATUS_LABELS, labelOr } from '../utils/labels';
-import { EVENT_IMAGES } from '../assets/media';
+import { EVENT_IMAGES, resolvePublicAssetUrl, publicRootPath } from '../assets/media';
 import '../styles/AdminConsole.css';
 
 const { Title, Paragraph, Text } = Typography;
@@ -276,7 +276,7 @@ const adminStateReducer = (state, action) => {
 
 const normalizeCoverImageUrlForBackend = (value) => {
   const trimmed = String(value || '').trim();
-  return trimmed || null;
+  return trimmed ? publicRootPath(trimmed) : null;
 };
 
 const CETS_ELIGIBILITY_MARKER_PREFIX = '<!--CETS_ELIGIBILITY:';
@@ -652,7 +652,9 @@ const useAdminConsoleController = () => {
       ...defaultCreateValues,
       title: detail?.title || '',
       description: cleanDescription || '',
-      cover_image_url: EVENT_IMAGES.includes(detail?.cover_image_url) ? detail.cover_image_url : EVENT_IMAGES[0],
+      cover_image_url: EVENT_IMAGES.includes(resolvePublicAssetUrl(detail?.cover_image_url))
+        ? resolvePublicAssetUrl(detail?.cover_image_url)
+        : EVENT_IMAGES[0],
       registration_mode: isUnlimitedMode ? 'UNLIMITED' : 'LIMITED',
       adult_quota: Number(adultTicket?.quota || 0),
       require_child_ticket: Boolean(childTicket),

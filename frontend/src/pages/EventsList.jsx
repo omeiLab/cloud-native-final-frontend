@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import { apiClient } from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import { pickEventImage } from '../assets/media';
+import { pickEventImage, resolvePublicAssetUrl } from '../assets/media';
 import '../styles/EventsList.css';
 
 const { Title, Paragraph } = Typography;
@@ -22,7 +22,7 @@ const EventCard = ({ event, primaryStatus, onOpen }) => {
       cover={(
         <img
           className="event-cover"
-          src={event.cover_image_url || fallbackImage}
+          src={resolvePublicAssetUrl(event.cover_image_url) || fallbackImage}
           alt={event.title}
           loading="lazy"
           decoding="async"

@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Button, Tooltip } from 'antd';
 import { CustomerServiceOutlined, PauseCircleOutlined } from '@ant-design/icons';
+import { publicAssetPath } from '../assets/media';
 
-const MUSIC_URL = '/music/tsmcsong.mp3';
+const MUSIC_URL = publicAssetPath('/music/tsmcsong.mp3');
 
 const BackgroundMusic = () => {
   const audioRef = useRef(null);

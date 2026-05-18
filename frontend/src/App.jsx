@@ -6,6 +6,7 @@ import MobileBottomBar from './components/MobileBottomBar';
 import BackgroundMusic from './components/BackgroundMusic';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
+import { publicAssetPath } from './assets/media';
 import './styles/App.css';
 
 const { Content, Footer } = Layout;
@@ -21,6 +22,10 @@ const OIDCCallbackPage = lazy(() => import('./pages/OIDCCallbackPage'));
 const routerBasename = import.meta.env.BASE_URL === '/'
   ? undefined
   : import.meta.env.BASE_URL.replace(/\/$/, '');
+const appBackgroundStyle = {
+  '--app-bg-light': `url("${publicAssetPath('/backgrounds/background-light.webp')}")`,
+  '--app-bg-dark': `url("${publicAssetPath('/backgrounds/background-dark.webp')}")`
+};
 
 const FullscreenLoader = () => (
   <div className="fullscreen-loader">
@@ -51,7 +56,10 @@ const AppShell = () => {
   const { user } = useAuth();
   const hideBackgroundMusic = location.pathname === '/verify';
   return (
-    <Layout className={`app-layout ${user ? 'app-layout-authenticated' : 'app-layout-guest'}`}>
+    <Layout
+      className={`app-layout ${user ? 'app-layout-authenticated' : 'app-layout-guest'}`}
+      style={appBackgroundStyle}
+    >
       <Header />
       <Content className="main-content">
         <Suspense fallback={<FullscreenLoader />}>
