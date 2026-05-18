@@ -1,6 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Col, Empty, Input, Row, Skeleton, Tag, Typography } from 'antd';
-import { CalendarOutlined, ClockCircleOutlined, EnvironmentOutlined, SearchOutlined, TeamOutlined } from '@ant-design/icons';
+import { Alert, Button, Card, Col, Empty, Input, Row, Select, Skeleton, Tag, Typography } from 'antd';
+import {
+  CalendarOutlined,
+  ClockCircleOutlined,
+  EnvironmentOutlined,
+  ReloadOutlined,
+  SearchOutlined,
+  TeamOutlined
+} from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import { apiClient } from '../api/client';
@@ -9,6 +16,53 @@ import { pickEventImage, resolvePublicAssetUrl } from '../assets/media';
 import '../styles/EventsList.css';
 
 const { Title, Paragraph } = Typography;
+
+const ALL_FILTER_VALUE = 'all';
+
+const STATUS_FILTER_OPTIONS = [
+  { label: '全部活動', value: ALL_FILTER_VALUE },
+  { label: '可報名', value: 'open' },
+  { label: '未開放/已截止', value: 'closed' },
+  { label: '不符合資格', value: 'ineligible' },
+  { label: '已取消', value: 'cancelled' }
+];
+
+const DATE_FILTER_OPTIONS = [
+  { label: '所有日期', value: ALL_FILTER_VALUE },
+  { label: '一週內', value: 'week' },
+  { label: '一個月內', value: 'month' },
+  { label: '三個月內', value: 'quarter' }
+];
+
+const getEventSearchText = (event) => (
+  `${event.title || ''} ${event.venue || ''} ${(event.allowed_sites || []).join(' ')}`
+    .toLowerCase()
+);
+
+const isDateInRange = (date, rangeStart, rangeEnd) => (
+  (date.isAfter(rangeStart) || date.isSame(rangeStart))
+  && (date.isBefore(rangeEnd) || date.isSame(rangeEnd))
+);
+
+const resolveDateWindow = (dateWindow) => {
+  if (dateWindow === 'week') return [dayjs().startOf('day'), dayjs().add(7, 'day').endOf('day')];
+  if (dateWindow === 'month') return [dayjs().startOf('day'), dayjs().add(1, 'month').endOf('day')];
+  if (dateWindow === 'quarter') return [dayjs().startOf('day'), dayjs().add(3, 'month').endOf('day')];
+  return null;
+};
+
+const isEventWithinDateWindow = (event, dateWindow) => {
+  const range = resolveDateWindow(dateWindow);
+  if (!range) return true;
+  const [rangeStart, rangeEnd] = range;
+  const eventStart = dayjs(event.starts_at);
+  const eventEnd = event.ends_at ? dayjs(event.ends_at) : eventStart;
+  if (!eventStart.isValid()) return false;
+  const resolvedEnd = eventEnd.isValid() ? eventEnd : eventStart;
+  return isDateInRange(eventStart, rangeStart, rangeEnd)
+    || isDateInRange(resolvedEnd, rangeStart, rangeEnd)
+    || (eventStart.isBefore(rangeStart) && resolvedEnd.isAfter(rangeEnd));
+};
 
 const EventCard = ({ event, primaryStatus, onOpen }) => {
   const startDate = dayjs(event.starts_at);
@@ -87,18 +141,31 @@ const EventsList = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [keyword, setKeyword] = useState('');
+  const [dateWindow, setDateWindow] = useState(ALL_FILTER_VALUE);
+  const [statusFilter, setStatusFilter] = useState(ALL_FILTER_VALUE);
 
-  useEffect(() => {
-    if (!user) return;
-    fetchEvents();
-  }, [user]);
-
-  const fetchEvents = async (params = {}) => {
+  const fetchEvents = useCallback(async (params = {}) => {
     try {
       setLoading(true);
       setError('');
-      const response = await apiClient.getEvents({ page: 1, page_size: 20, ...params });
-      const listItems = response.data.items || [];
+      const restParams = { ...params };
+      delete restParams.page;
+      delete restParams.page_size;
+      const listItems = [];
+      let currentPage = 1;
+      let hasNext = true;
+      while (hasNext) {
+        const response = await apiClient.getEvents({
+          scope: 'all',
+          ...restParams,
+          page: currentPage,
+          page_size: 100
+        });
+        const pageData = response.data || {};
+        listItems.push(...(pageData.items || []));
+        hasNext = Boolean(pageData.has_next);
+        currentPage += 1;
+      }
       const detailPairs = await Promise.all(
         listItems.map(async (item) => {
           try {
@@ -166,7 +233,12 @@ const EventsList = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    fetchEvents();
+  }, [fetchEvents, user]);
 
   const canRegisterEvent = useCallback((event) => {
     const roleCanRegister = user?.role === 'EMPLOYEE';
@@ -186,15 +258,22 @@ const EventsList = () => {
     return { label: '可報名', color: 'success' };
   }, [user?.role]);
 
+  const getStatusFilterValue = useCallback((event) => {
+    if (event.status === 'CANCELLED') return 'cancelled';
+    if (!event.is_eligible) return 'ineligible';
+    if (canRegisterEvent(event)) return 'open';
+    return 'closed';
+  }, [canRegisterEvent]);
+
   const visibleEvents = useMemo(() => {
     const term = keyword.trim().toLowerCase();
-    if (!term) return events;
-    return events.filter((event) => (
-      `${event.title} ${event.venue || ''} ${(event.allowed_sites || []).join(' ')}`
-        .toLowerCase()
-        .includes(term)
-    ));
-  }, [events, keyword]);
+    return events.filter((event) => {
+      if (term && !getEventSearchText(event).includes(term)) return false;
+      if (!isEventWithinDateWindow(event, dateWindow)) return false;
+      if (statusFilter !== ALL_FILTER_VALUE && getStatusFilterValue(event) !== statusFilter) return false;
+      return true;
+    });
+  }, [dateWindow, events, getStatusFilterValue, keyword, statusFilter]);
 
   const sortedVisibleEvents = useMemo(() => [...visibleEvents].sort((a, b) => {
     const aCanRegister = canRegisterEvent(a);
@@ -215,6 +294,12 @@ const EventsList = () => {
     () => events.filter((event) => canRegisterEvent(event)).length,
     [canRegisterEvent, events]
   );
+
+  const hasActiveFilters = useMemo(() => (
+    Boolean(keyword.trim())
+    || dateWindow !== ALL_FILTER_VALUE
+    || statusFilter !== ALL_FILTER_VALUE
+  ), [dateWindow, keyword, statusFilter]);
 
   const openEvent = useCallback((eventId) => {
     navigate(`/events/${eventId}`);
@@ -246,16 +331,38 @@ const EventsList = () => {
       {!user ? null : (
         <>
           <div className="events-filters">
-            <div className="events-filter-actions">
+            <div className="events-filter-row">
               <Input
                 className="events-search"
+                aria-label="搜尋活動、地點、廠區"
                 allowClear
                 prefix={<SearchOutlined />}
                 placeholder="搜尋活動、地點、廠區"
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
               />
-              <Button className="events-refresh-button" onClick={() => fetchEvents()}>重新整理</Button>
+              <Select
+                className="events-date-filter"
+                aria-label="活動日期"
+                value={dateWindow}
+                options={DATE_FILTER_OPTIONS}
+                onChange={setDateWindow}
+              />
+              <Select
+                className="events-status-filter"
+                aria-label="報名狀態"
+                options={STATUS_FILTER_OPTIONS}
+                value={statusFilter}
+                onChange={setStatusFilter}
+              />
+              <Button
+                className="events-refresh-button"
+                icon={<ReloadOutlined />}
+                loading={loading}
+                onClick={() => fetchEvents()}
+              >
+                <span className="events-refresh-text">重新整理</span>
+              </Button>
             </div>
           </div>
 
@@ -273,8 +380,8 @@ const EventsList = () => {
                 ))}
               </Row>
             </div>
-          ) : !visibleEvents.length ? (
-            <Empty description="暫無活動" />
+          ) : !sortedVisibleEvents.length ? (
+            <Empty description={hasActiveFilters ? '沒有符合篩選條件的活動' : '暫無活動'} />
           ) : (
             <Row gutter={[24, 24]}>
               {sortedVisibleEvents.map((event) => (
