@@ -42,11 +42,12 @@ npm install
 建立 `.env.local`。本機開發直接呼叫遠端後端，不再透過 Vite proxy：
 
 ```env
+VITE_BASE_PATH=/
 VITE_API_BASE_URL=https://cets.alanh.uk/api/v1
-# VITE_WS_BASE_URL=
+VITE_WS_BASE_URL=wss://cets.alanh.uk/ws
 ```
 
-如果要改後端位置，請調整 `VITE_API_BASE_URL`。前端會照 `VITE_API_BASE_URL` 原樣使用，不會自動補 `/api/v1`。
+如果要改後端位置，請調整 `VITE_API_BASE_URL` 與 `VITE_WS_BASE_URL`。前端會照 `VITE_API_BASE_URL` 原樣使用，不會自動補 `/api/v1`。`VITE_BASE_PATH` 本機維持 `/`；若部署在 GitHub Pages 專案路徑，GitHub Actions 會預設改成 `/<repo>/`。
 
 ### 開發模式
 

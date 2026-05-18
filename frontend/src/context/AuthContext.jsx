@@ -6,6 +6,9 @@ import {
 } from '../constant';
 
 const AuthContext = createContext(null);
+const appBasePath = import.meta.env.BASE_URL === '/'
+  ? ''
+  : import.meta.env.BASE_URL.replace(/\/$/, '');
 
 const isSafeInternalPath = (path) => typeof path === 'string' && path.startsWith('/') && !path.startsWith('//');
 
@@ -68,7 +71,7 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
     clearOidcTransientState();
 
-    const redirectUri = `${window.location.origin}/auth/callback`;
+    const redirectUri = `${window.location.origin}${appBasePath}/auth/callback`;
     const res = await apiClient.getOIDCAuthorizeUrl({ redirectUri });
     const authorizeUrlRaw = res.data?.authorize_url;
     const state = res.data?.state;

@@ -29,4 +29,15 @@ These are generated artifacts and should not be committed.
 ## Notes
 
 - Current `.env.local` should use the full remote API base: `VITE_API_BASE_URL=https://cets.alanh.uk/api/v1`.
+- Current `.env.local` should set the realtime endpoint explicitly: `VITE_WS_BASE_URL=wss://cets.alanh.uk/ws`.
 - If teammate uses a different backend, update `VITE_API_BASE_URL` accordingly. The frontend no longer uses a Vite `/api` proxy.
+
+## Frontend CD
+
+- GitHub Actions workflow: `.github/workflows/frontend-deploy.yml`.
+- Deployment target: GitHub Pages.
+- Triggers: push to `main` or `master` when `frontend/**` changes, plus manual `workflow_dispatch`.
+- Repository variables:
+  - `VITE_BASE_PATH` defaults to `/<repo>/` for GitHub Pages project sites. Set it to `/` when using a custom domain or root Pages site.
+  - `VITE_API_BASE_URL` defaults to `https://cets.alanh.uk/api/v1` if unset.
+  - `VITE_WS_BASE_URL` is optional; set it to `wss://cets.alanh.uk/ws` to match `.env.local`.

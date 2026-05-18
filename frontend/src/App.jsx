@@ -18,6 +18,9 @@ const VerifierPage = lazy(() => import('./pages/VerifierPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const ApiExplorerPage = lazy(() => import('./pages/ApiExplorerPage'));
 const OIDCCallbackPage = lazy(() => import('./pages/OIDCCallbackPage'));
+const routerBasename = import.meta.env.BASE_URL === '/'
+  ? undefined
+  : import.meta.env.BASE_URL.replace(/\/$/, '');
 
 const FullscreenLoader = () => (
   <div className="fullscreen-loader">
@@ -108,7 +111,10 @@ const App = () => {
   return (
     <AuthProvider>
       <NotificationProvider>
-        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <BrowserRouter
+          basename={routerBasename}
+          future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+        >
           <AppShell />
         </BrowserRouter>
       </NotificationProvider>
