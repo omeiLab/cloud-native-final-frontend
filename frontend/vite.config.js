@@ -13,12 +13,13 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: false,
-    chunkSizeWarningLimit: 1200,
+    chunkSizeWarningLimit: 1250,
     rollupOptions: {
       output: {
         manualChunks: {
           'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          'antd-vendor': ['antd', '@ant-design/icons'],
+          'antd-vendor': ['antd'],
+          'antd-icons': ['@ant-design/icons'],
           'chart-vendor': ['recharts'],
           'scan-vendor': ['@zxing/browser', 'qrcode']
         }

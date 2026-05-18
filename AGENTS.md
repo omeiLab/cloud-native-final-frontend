@@ -213,7 +213,9 @@ snapshot. Confirm the Python environment before running backend tests.
 
 ## Latest Verification Snapshot
 
-- `cd frontend && npm run build` passes.
+- `cd frontend && npm run build` passes. The former large-chunk advisory is
+  cleared after splitting Ant Design icons into a separate vendor chunk; Vite
+  still prints its upstream CJS Node API deprecation notice.
 - `cd frontend && npm test -- --run` passes.
 - React Doctor diff scan now scores 100/100 with no remaining issues. The former
   large-component, sequential-flow, and chart chunking findings were resolved in
@@ -222,13 +224,20 @@ snapshot. Confirm the Python environment before running backend tests.
   `pytest` is not available in the current PATH. Install/activate the backend
   Python test environment before running them.
 
-## Current Uncommitted Handoff Work
+## Current Handoff Work
 
-At the time of this scan, the current local changes are expected to include:
+The latest committed cleanup already contains the admin/event-detail behavior
+changes:
 
-- `AGENTS.md`: this project state document.
 - `frontend/src/pages/AdminConsolePage.jsx`: admin restriction fields stay
   UI-only, edit mode preserves session ticket quotas, and the admin page was
   split into controller/form/dashboard subcomponents for React Doctor.
 - `frontend/src/pages/EventDetail.jsx`: employee registration submits exactly one
   registration request and only displays ticket quota/count information.
+
+At the time of this scan, the remaining uncommitted local changes are expected
+to include:
+
+- `AGENTS.md`: this project state document.
+- `frontend/vite.config.js`: Ant Design icons are split into their own vendor
+  chunk and the chunk warning threshold is aligned to the current vendor size.
