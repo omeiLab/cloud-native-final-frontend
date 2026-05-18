@@ -11,6 +11,7 @@ import {
   Empty,
   Modal,
   Row,
+  Radio,
   Space,
   Spin,
   Tag,
@@ -40,6 +41,20 @@ const isAlreadyRegisteredError = (e) =>
 const CETS_ELIGIBILITY_MARKER_PREFIX = '<!--CETS_ELIGIBILITY:';
 const CETS_ELIGIBILITY_MARKER_SUFFIX = '-->';
 
+const getTicketAudienceLabel = (ticketType) => {
+  const audience = String(ticketType?.audience || '').toUpperCase();
+  const name = String(ticketType?.name || '');
+  if (audience === 'DEPENDENT' || /兒童|孩童|小孩|child/i.test(name)) return '兒童';
+  if (audience === 'EMPLOYEE' || /成人|adult/i.test(name)) return '成人';
+  return '票種';
+};
+
+const getDefaultTicketType = (ticketTypes = []) => (
+  ticketTypes.find((tt) => getTicketAudienceLabel(tt) === '成人') ||
+  ticketTypes[0] ||
+  null
+);
+
 /** Strip legacy hidden eligibility marker so old event descriptions stay readable. */
 const stripEligibilityMarkerFromDescription = (rawDescription) => {
   const description = String(rawDescription || '');
@@ -57,20 +72,33 @@ const registrationDialogInitialState = {
   registering: false,
   session: null,
   ticketType: null,
+  ticketTypes: [],
   eligibilityConfirmed: false
 };
 
 const registrationDialogReducer = (state, action) => {
   switch (action.type) {
-    case 'open':
+    case 'open': {
+      const ticketTypes = Array.isArray(action.ticketTypes) ? action.ticketTypes : [];
       return {
         ...registrationDialogInitialState,
         open: true,
         session: action.session,
-        ticketType: action.ticketType
+        ticketType: action.ticketType || getDefaultTicketType(ticketTypes),
+        ticketTypes
       };
+    }
     case 'close':
       return registrationDialogInitialState;
+    case 'select_ticket_type': {
+      const nextTicketType = state.ticketTypes.find((tt) => tt.id === action.ticketTypeId) || state.ticketType;
+      return {
+        ...state,
+        ticketType: nextTicketType,
+        eligibilityConfirmed:
+          nextTicketType?.id === state.ticketType?.id ? state.eligibilityConfirmed : false
+      };
+    }
     case 'set_confirmed':
       return { ...state, eligibilityConfirmed: action.value };
     case 'set_registering':
@@ -105,29 +133,37 @@ const EventSessionActions = ({
   );
   const inactiveRegistrations = sessionRegistrations.filter((r) => RE_REGISTER_ELIGIBLE_STATUSES.has(r.status));
   const isRegistrationOpen = session.status === 'REGISTRATION_OPEN';
+  const ticketTypes = session.ticket_types || [];
   const getTicketLabel = (reg) =>
-    reg.ticket_type_name ||
-    (session.ticket_types || []).find((tt) => tt.id === reg.ticket_type_id)?.name ||
-    reg.ticket_type_id;
+    reg.ticket_type_name || ticketTypes.find((tt) => tt.id === reg.ticket_type_id)?.name || reg.ticket_type_id;
 
   if (user && !roleCanRegister) {
     return <Tag color="warning">驗票員 / 管理員不可報名</Tag>;
   }
 
-  const signupButtons = isRegistrationOpen && !activeRegistrations.length ? (
+  const ticketQuotaSummary = ticketTypes.length ? (
     <Space wrap>
-      {(session.ticket_types || []).map((tt) => (
-        <Button
-          key={tt.id}
-          type="primary"
-          onClick={() => {
-            onOpenRegister(session, tt);
-          }}
-        >
-          報名 {tt.name}（名額：{tt.quota}）
-        </Button>
+      {ticketTypes.map((tt) => (
+        <Tag key={tt.id} color={getTicketAudienceLabel(tt) === '兒童' ? 'cyan' : 'geekblue'}>
+          {tt.name}：名額 {tt.quota ?? '-'}
+        </Tag>
       ))}
     </Space>
+  ) : null;
+
+  const signupButton = isRegistrationOpen && !activeRegistrations.length ? (
+    ticketTypes.length ? (
+      <Button
+        type="primary"
+        onClick={() => {
+          onOpenRegister(session, ticketTypes);
+        }}
+      >
+        報名此場次
+      </Button>
+    ) : (
+      <Tag>此場次尚無可報名票種</Tag>
+    )
   ) : null;
 
   const activeRegistrationRows = activeRegistrations.length ? (
@@ -164,8 +200,9 @@ const EventSessionActions = ({
       {activeRegistrations.length && isRegistrationOpen ? (
         <Alert type="info" showIcon message="您已完成此場次報名；每位員工每場次只需一筆報名。若需更換票種，請先取消後重新報名。" />
       ) : null}
+      {ticketQuotaSummary}
       {activeRegistrationRows}
-      {signupButtons}
+      {signupButton}
     </Space>
   );
 };
@@ -216,6 +253,7 @@ const EventSessionsCard = ({
   <Card style={{ marginTop: 16 }}>
     <Title level={4}>場次與票種</Title>
     <Collapse
+      defaultActiveKey={(event.sessions || []).map((session) => session.id)}
       items={(event.sessions || []).map((session) => ({
         key: session.id,
         label: `${session.title} | ${dayjs(session.starts_at).format('MM/DD HH:mm')} - ${dayjs(session.ends_at).format('HH:mm')} | ${labelOr(SESSION_STATUS_LABELS, session.status, session.status)}`,
@@ -244,14 +282,20 @@ const EventSessionsCard = ({
   </Card>
 );
 
-const RegistrationModal = ({ dialog, onSubmit, onClose, onConfirmChange }) => (
+const RegistrationModal = ({
+  dialog,
+  onSubmit,
+  onClose,
+  onConfirmChange,
+  onTicketTypeChange
+}) => (
   <Modal
-    title={dialog.ticketType ? `報名 ${dialog.ticketType.name}` : '報名活動'}
+    title={dialog.session ? `報名 ${dialog.session.title}` : '報名活動'}
     open={dialog.open}
     onOk={onSubmit}
     onCancel={onClose}
     confirmLoading={dialog.registering}
-    okButtonProps={{ disabled: !dialog.eligibilityConfirmed }}
+    okButtonProps={{ disabled: !dialog.eligibilityConfirmed || !dialog.ticketType }}
     okText="我已確認符合條件並報名"
     cancelText="取消"
   >
@@ -260,9 +304,24 @@ const RegistrationModal = ({ dialog, onSubmit, onClose, onConfirmChange }) => (
         <Paragraph style={{ marginBottom: 0 }}>
           場次：{dialog.session.title}
         </Paragraph>
-        <Paragraph style={{ marginBottom: 0 }}>
-          票種：{dialog.ticketType?.name}
-        </Paragraph>
+        <Radio.Group
+          className="registration-ticket-options"
+          value={dialog.ticketType?.id}
+          onChange={(e) => onTicketTypeChange(e.target.value)}
+        >
+          <Space direction="vertical" style={{ width: '100%' }}>
+            {(dialog.ticketTypes || []).map((tt) => (
+              <Radio key={tt.id} value={tt.id} className="registration-ticket-option">
+                <span className="registration-ticket-copy">
+                  <span className="registration-ticket-name">{tt.name}</span>
+                  <span className="registration-ticket-meta">
+                    {getTicketAudienceLabel(tt)}｜名額 {tt.quota ?? '-'}
+                  </span>
+                </span>
+              </Radio>
+            ))}
+          </Space>
+        </Radio.Group>
         <Checkbox
           checked={dialog.eligibilityConfirmed}
           onChange={(e) => onConfirmChange(e.target.checked)}
@@ -271,6 +330,7 @@ const RegistrationModal = ({ dialog, onSubmit, onClose, onConfirmChange }) => (
         </Checkbox>
         <Descriptions size="small" column={1}>
           <Descriptions.Item label="送出份數">1 份報名</Descriptions.Item>
+          <Descriptions.Item label="選擇票種">{dialog.ticketType?.name || '-'}</Descriptions.Item>
           <Descriptions.Item label="票種名額">{dialog.ticketType?.quota ?? '-'}</Descriptions.Item>
         </Descriptions>
         <Paragraph type="secondary" style={{ marginBottom: 0 }}>
@@ -414,8 +474,8 @@ const EventDetail = () => {
     }
   };
 
-  const openRegisterModal = (session, ticketType) => {
-    dispatchRegistrationDialog({ type: 'open', session, ticketType });
+  const openRegisterModal = (session, ticketTypes) => {
+    dispatchRegistrationDialog({ type: 'open', session, ticketTypes });
   };
 
   const submitRegisterModal = async () => {
@@ -520,6 +580,7 @@ const EventDetail = () => {
         onSubmit={submitRegisterModal}
         onClose={() => dispatchRegistrationDialog({ type: 'close' })}
         onConfirmChange={(value) => dispatchRegistrationDialog({ type: 'set_confirmed', value })}
+        onTicketTypeChange={(ticketTypeId) => dispatchRegistrationDialog({ type: 'select_ticket_type', ticketTypeId })}
       />
     </div>
   );
