@@ -4,8 +4,8 @@
 
 ## Theme
 
-- Light mode 使用 `background-light.webp` 作為頁面底層背景。
-- Dark mode 使用 `background-dark.webp` 作為頁面底層背景。
+- Light mode 使用 `public/backgrounds/background-light.webp` 作為頁面底層背景。
+- Dark mode 使用 `public/backgrounds/background-dark.webp` 作為頁面底層背景。
 - 背景圖只允許出現在頁面底層，不放入卡片、表單、列表或 Modal。
 - 所有介面容器使用純色/半透明 surface、hairline border、柔和陰影和較大的圓角。
 - 避免裝飾性漸層；現代感主要靠圓角、間距、透明度、hairline border 和陰影建立。

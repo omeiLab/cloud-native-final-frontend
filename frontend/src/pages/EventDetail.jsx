@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import React, { useEffect, useMemo, useReducer } from 'react';
+import { useParams } from 'react-router-dom';
 import {
   Alert,
   Button,
@@ -9,7 +9,6 @@ import {
   Collapse,
   Descriptions,
   Empty,
-  InputNumber,
   Modal,
   Row,
   Space,
@@ -37,25 +36,11 @@ const registrationErrMsg = (e) =>
 const isAlreadyRegisteredError = (e) =>
   e?.error?.code === 'ALREADY_REGISTERED' ||
   /已報名此場次|already registered|ALREADY_REGISTERED/i.test(registrationErrMsg(e));
+
 const CETS_ELIGIBILITY_MARKER_PREFIX = '<!--CETS_ELIGIBILITY:';
 const CETS_ELIGIBILITY_MARKER_SUFFIX = '-->';
 
-const parseEligibilityFromDescription = (rawDescription) => {
-  const description = String(rawDescription || '');
-  const start = description.indexOf(CETS_ELIGIBILITY_MARKER_PREFIX);
-  if (start < 0) return null;
-  const end = description.indexOf(CETS_ELIGIBILITY_MARKER_SUFFIX, start);
-  if (end < 0) return null;
-  const encoded = description.slice(start + CETS_ELIGIBILITY_MARKER_PREFIX.length, end).trim();
-  if (!encoded) return null;
-  try {
-    return JSON.parse(decodeURIComponent(encoded));
-  } catch {
-    return null;
-  }
-};
-
-/** 畫面上不顯示內嵌的資格設定註解（避免出現整段 URL 編碼 JSON） */
+/** Strip legacy hidden eligibility marker so old event descriptions stay readable. */
 const stripEligibilityMarkerFromDescription = (rawDescription) => {
   const description = String(rawDescription || '');
   const start = description.indexOf(CETS_ELIGIBILITY_MARKER_PREFIX);
@@ -64,65 +49,247 @@ const stripEligibilityMarkerFromDescription = (rawDescription) => {
   if (end < 0) return description.trim();
   const before = description.slice(0, start).trimEnd();
   const after = description.slice(end + CETS_ELIGIBILITY_MARKER_SUFFIX.length).trimStart();
-  return [before, after].filter(Boolean).join('\n').trim();
+  return before && after ? `${before}\n${after}` : (before || after).trim();
 };
 
-const ticketCategory = (ticketTypeName) => (/兒童|儿童/i.test(String(ticketTypeName || '')) ? 'child' : 'adult');
-
-const buildEligibilityLines = (elig, category) => {
-  const cfg = elig?.[category];
-  if (!cfg) return [];
-  const lines = [];
-  const appendOtherRestrictions = () => {
-    const raw = String(cfg.other_restrictions || '').trim();
-    if (!raw) return;
-    raw.split('\n').forEach((line) => {
-      const t = line.trim();
-      if (t) lines.push(t);
-    });
-  };
-
-  if (cfg.unlimited) {
-    appendOtherRestrictions();
-    return lines;
-  }
-
-  if (category === 'adult') {
-    if (cfg.gender === 'M') lines.push('性別：限男性');
-    if (cfg.gender === 'F') lines.push('性別：限女性');
-    if (typeof cfg.height_min_cm === 'number') lines.push(`身高：≥ ${cfg.height_min_cm} cm`);
-    if (typeof cfg.height_max_cm === 'number') lines.push(`身高：≤ ${cfg.height_max_cm} cm`);
-    if (typeof cfg.age_min === 'number') lines.push(`年齡：≥ ${cfg.age_min}`);
-    if (typeof cfg.age_max === 'number') lines.push(`年齡：≤ ${cfg.age_max}`);
-  } else {
-    if (typeof cfg.age_min === 'number') lines.push(`年齡：≥ ${cfg.age_min}`);
-    if (typeof cfg.age_max === 'number') lines.push(`年齡：≤ ${cfg.age_max}`);
-  }
-  const health = cfg.health;
-  if (health && !health.unlimited) {
-    const items = Array.isArray(health.no_diseases) ? health.no_diseases : [];
-    if (items.length) {
-      lines.push(`健康狀態：需符合「無以下疾病」：${items.join('、')}`);
-    }
-  }
-  appendOtherRestrictions();
-  return lines;
+const registrationDialogInitialState = {
+  open: false,
+  registering: false,
+  session: null,
+  ticketType: null,
+  eligibilityConfirmed: false
 };
+
+const registrationDialogReducer = (state, action) => {
+  switch (action.type) {
+    case 'open':
+      return {
+        ...registrationDialogInitialState,
+        open: true,
+        session: action.session,
+        ticketType: action.ticketType
+      };
+    case 'close':
+      return registrationDialogInitialState;
+    case 'set_confirmed':
+      return { ...state, eligibilityConfirmed: action.value };
+    case 'set_registering':
+      return { ...state, registering: action.value };
+    default:
+      return state;
+  }
+};
+
+const eventDetailPageInitialState = {
+  event: null,
+  registrations: [],
+  loading: false,
+  error: ''
+};
+
+const eventDetailPageReducer = (state, patch) => ({ ...state, ...patch });
+
+const EventSessionActions = ({
+  session,
+  user,
+  registrationsBySession,
+  onOpenRegister,
+  onCancelRegistration,
+  onConfirmRegistration,
+  onForfeitRegistration
+}) => {
+  const roleCanRegister = REGISTRATION_ALLOWED_ROLES.has(user?.role);
+  const sessionRegistrations = registrationsBySession.get(session.id) || [];
+  const activeRegistrations = sessionRegistrations.filter(
+    (r) => !NON_OCCUPYING_REGISTRATION_STATUSES.has(r.status)
+  );
+  const inactiveRegistrations = sessionRegistrations.filter((r) => RE_REGISTER_ELIGIBLE_STATUSES.has(r.status));
+  const isRegistrationOpen = session.status === 'REGISTRATION_OPEN';
+  const getTicketLabel = (reg) =>
+    reg.ticket_type_name ||
+    (session.ticket_types || []).find((tt) => tt.id === reg.ticket_type_id)?.name ||
+    reg.ticket_type_id;
+
+  if (user && !roleCanRegister) {
+    return <Tag color="warning">驗票員 / 管理員不可報名</Tag>;
+  }
+
+  const signupButtons = isRegistrationOpen && !activeRegistrations.length ? (
+    <Space wrap>
+      {(session.ticket_types || []).map((tt) => (
+        <Button
+          key={tt.id}
+          type="primary"
+          onClick={() => {
+            onOpenRegister(session, tt);
+          }}
+        >
+          報名 {tt.name}（名額：{tt.quota}）
+        </Button>
+      ))}
+    </Space>
+  ) : null;
+
+  const activeRegistrationRows = activeRegistrations.length ? (
+    <Space direction="vertical" size="small" style={{ width: '100%' }}>
+      {activeRegistrations.map((reg) => (
+        <Space key={reg.id} wrap>
+          <Tag color="blue">
+            報名票種：{getTicketLabel(reg)}
+          </Tag>
+          <Tag>{labelOr(REGISTRATION_STATUS_LABELS, reg.status, reg.status)}</Tag>
+          {reg.status === 'REGISTERED' ? (
+            <Button onClick={() => onCancelRegistration(reg.id)}>取消報名</Button>
+          ) : null}
+          {reg.status === 'WON' ? (
+            <>
+              <Button type="primary" onClick={() => onConfirmRegistration(reg.id)}>確認參加並領票</Button>
+              <Button danger onClick={() => onForfeitRegistration(reg.id)}>棄權</Button>
+            </>
+          ) : null}
+        </Space>
+      ))}
+    </Space>
+  ) : null;
+
+  if (!isRegistrationOpen && !activeRegistrations.length) {
+    return <Tag>目前不可報名</Tag>;
+  }
+
+  return (
+    <Space direction="vertical" size="small" style={{ width: '100%' }}>
+      {inactiveRegistrations.length && isRegistrationOpen ? (
+        <Alert type="info" showIcon message="您先前有取消或棄權紀錄，於報名期間內可再次報名。" />
+      ) : null}
+      {activeRegistrations.length && isRegistrationOpen ? (
+        <Alert type="info" showIcon message="您已完成此場次報名；每位員工每場次只需一筆報名。若需更換票種，請先取消後重新報名。" />
+      ) : null}
+      {activeRegistrationRows}
+      {signupButtons}
+    </Space>
+  );
+};
+
+const EventHeader = ({ event, primaryStatus, coverImage, fallbackImage }) => (
+  <Card className="event-head">
+    <Row gutter={[24, 24]}>
+      <Col xs={24} md={10}>
+        <img
+          className="event-detail-cover"
+          src={coverImage}
+          alt={event.title}
+          loading="lazy"
+          decoding="async"
+          onError={(e) => {
+            e.currentTarget.onerror = null;
+            e.currentTarget.src = fallbackImage;
+          }}
+        />
+      </Col>
+      <Col xs={24} md={14}>
+        <Space className="event-detail-title-row" align="start" wrap>
+          <Title level={2}>{event.title}</Title>
+          <Tag className="event-detail-status" color={primaryStatus.color}>
+            {primaryStatus.label}
+          </Tag>
+        </Space>
+        <Paragraph>{stripEligibilityMarkerFromDescription(event.description)}</Paragraph>
+        <Descriptions column={1} size="small">
+          <Descriptions.Item label="狀態">{primaryStatus.label}</Descriptions.Item>
+          <Descriptions.Item label="開放廠區">{event.allowed_sites?.length ? event.allowed_sites.join(', ') : '全廠區'}</Descriptions.Item>
+          <Descriptions.Item label="建立時間">{dayjs(event.created_at).format('YYYY-MM-DD HH:mm')}</Descriptions.Item>
+        </Descriptions>
+      </Col>
+    </Row>
+  </Card>
+);
+
+const EventSessionsCard = ({
+  event,
+  user,
+  registrationsBySession,
+  onOpenRegister,
+  onCancelRegistration,
+  onConfirmRegistration,
+  onForfeitRegistration
+}) => (
+  <Card style={{ marginTop: 16 }}>
+    <Title level={4}>場次與票種</Title>
+    <Collapse
+      items={(event.sessions || []).map((session) => ({
+        key: session.id,
+        label: `${session.title} | ${dayjs(session.starts_at).format('MM/DD HH:mm')} - ${dayjs(session.ends_at).format('HH:mm')} | ${labelOr(SESSION_STATUS_LABELS, session.status, session.status)}`,
+        children: (
+          <Space direction="vertical" style={{ width: '100%' }}>
+            <Descriptions size="small" column={1}>
+              <Descriptions.Item label="場地">{session.venue}</Descriptions.Item>
+              <Descriptions.Item label="報名期間">
+                {dayjs(session.registration_opens_at).format('YYYY-MM-DD HH:mm')} - {dayjs(session.registration_closes_at).format('YYYY-MM-DD HH:mm')}
+              </Descriptions.Item>
+              <Descriptions.Item label="確認期限">{session.confirmation_deadline_hours} 小時</Descriptions.Item>
+            </Descriptions>
+            <EventSessionActions
+              session={session}
+              user={user}
+              registrationsBySession={registrationsBySession}
+              onOpenRegister={onOpenRegister}
+              onCancelRegistration={onCancelRegistration}
+              onConfirmRegistration={onConfirmRegistration}
+              onForfeitRegistration={onForfeitRegistration}
+            />
+          </Space>
+        )
+      }))}
+    />
+  </Card>
+);
+
+const RegistrationModal = ({ dialog, onSubmit, onClose, onConfirmChange }) => (
+  <Modal
+    title={dialog.ticketType ? `報名 ${dialog.ticketType.name}` : '報名活動'}
+    open={dialog.open}
+    onOk={onSubmit}
+    onCancel={onClose}
+    confirmLoading={dialog.registering}
+    okButtonProps={{ disabled: !dialog.eligibilityConfirmed }}
+    okText="我已確認符合條件並報名"
+    cancelText="取消"
+  >
+    {dialog.session ? (
+      <Space direction="vertical" style={{ width: '100%' }}>
+        <Paragraph style={{ marginBottom: 0 }}>
+          場次：{dialog.session.title}
+        </Paragraph>
+        <Paragraph style={{ marginBottom: 0 }}>
+          票種：{dialog.ticketType?.name}
+        </Paragraph>
+        <Checkbox
+          checked={dialog.eligibilityConfirmed}
+          onChange={(e) => onConfirmChange(e.target.checked)}
+        >
+          我已確認本人已符合此票種報名條件
+        </Checkbox>
+        <Descriptions size="small" column={1}>
+          <Descriptions.Item label="送出份數">1 份報名</Descriptions.Item>
+          <Descriptions.Item label="票種名額">{dialog.ticketType?.quota ?? '-'}</Descriptions.Item>
+        </Descriptions>
+        <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+          每位員工送出 1 份報名；票種名額僅供參考。
+        </Paragraph>
+      </Space>
+    ) : null}
+  </Modal>
+);
 
 const EventDetail = () => {
   const { eventId } = useParams();
-  const navigate = useNavigate();
   const { user } = useAuth();
-  const [event, setEvent] = useState(null);
-  const [registrations, setRegistrations] = useState([]);
-  const [registerModalOpen, setRegisterModalOpen] = useState(false);
-  const [registering, setRegistering] = useState(false);
-  const [pendingSession, setPendingSession] = useState(null);
-  const [pendingTicketType, setPendingTicketType] = useState(null);
-  const [selectedPeopleCount, setSelectedPeopleCount] = useState(1);
-  const [eligibilityConfirmed, setEligibilityConfirmed] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [pageState, setPageState] = useReducer(eventDetailPageReducer, eventDetailPageInitialState);
+  const [registrationDialog, dispatchRegistrationDialog] = useReducer(
+    registrationDialogReducer,
+    registrationDialogInitialState
+  );
+  const { event, registrations, loading, error } = pageState;
 
   const registrationsBySession = useMemo(() => {
     const map = new Map();
@@ -135,8 +302,7 @@ const EventDetail = () => {
   }, [registrations]);
 
   const loadPage = async () => {
-    setLoading(true);
-    setError('');
+    setPageState({ loading: true, error: '' });
     try {
       const promises = [apiClient.getEvent(eventId)];
       if (apiClient.getAccessToken()) {
@@ -144,12 +310,17 @@ const EventDetail = () => {
       }
 
       const [eventRes, regRes] = await Promise.all(promises);
-      setEvent(eventRes.data);
-      setRegistrations(regRes?.data?.items || []);
+      setPageState({
+        event: eventRes.data,
+        registrations: regRes?.data?.items || [],
+        loading: false,
+        error: ''
+      });
     } catch (e) {
-      setError(e?.error?.message || '活動資料載入失敗');
-    } finally {
-      setLoading(false);
+      setPageState({
+        loading: false,
+        error: e?.error?.message || '活動資料載入失敗'
+      });
     }
   };
 
@@ -183,27 +354,19 @@ const EventDetail = () => {
     const payload = {
       ticket_type_id: ticketType.id
     };
-    const attempts = [
-      () => apiClient.patchRegistration(registrationId, payload),
-      () => apiClient.resumeRegistration(registrationId, payload)
-    ];
-    let lastErr;
-    for (const run of attempts) {
-      try {
-        await run();
-        return;
-      } catch (e) {
-        lastErr = e;
-        const st = e?.httpStatus;
-        if (st !== 404 && st !== 405) {
-          throw e;
-        }
+    try {
+      await apiClient.patchRegistration(registrationId, payload);
+      return;
+    } catch (firstError) {
+      const st = firstError?.httpStatus;
+      if (st !== 404 && st !== 405) {
+        throw firstError;
       }
+      await apiClient.resumeRegistration(registrationId, payload);
     }
-    throw lastErr;
   };
 
-  const registerSession = async (session, ticketType, ticketCount = 1) => {
+  const registerSession = async (session, ticketType) => {
     if (!user) {
       message.info('請先點選右上角「登入」完成登入後再報名。');
       return;
@@ -215,7 +378,6 @@ const EventDetail = () => {
       });
       return;
     }
-    const count = Math.max(1, Math.floor(Number(ticketCount || 1)));
     const sessionRegistrations = registrationsBySession.get(session.id) || [];
     const activeRegistrations = sessionRegistrations.filter(
       (r) => !NON_OCCUPYING_REGISTRATION_STATUSES.has(r.status)
@@ -224,13 +386,11 @@ const EventDetail = () => {
       ? null
       : sessionRegistrations.find((r) => RE_REGISTER_ELIGIBLE_STATUSES.has(r.status));
     try {
-      for (let i = 0; i < count; i += 1) {
-        await apiClient.createRegistration({
-          session_id: session.id,
-          ticket_type_id: ticketType.id
-        });
-      }
-      message.success(count > 1 ? `已送出 ${count} 張${ticketType.name}報名` : '報名成功');
+      await apiClient.createRegistration({
+        session_id: session.id,
+        ticket_type_id: ticketType.id
+      });
+      message.success('報名成功');
       await loadPage();
     } catch (e) {
       if (prior && isAlreadyRegisteredError(e)) {
@@ -247,7 +407,7 @@ const EventDetail = () => {
         return;
       }
       if (isAlreadyRegisteredError(e)) {
-        message.error('目前系統尚未開放同場次追加報名，請稍後再試或聯繫管理員。');
+        message.error('每位員工每場次只需一筆報名；若要更換票種，請先取消後重新報名。');
         return;
       }
       message.error(registrationErrMsg(e) || '報名失敗');
@@ -255,31 +415,22 @@ const EventDetail = () => {
   };
 
   const openRegisterModal = (session, ticketType) => {
-    setPendingSession(session);
-    setPendingTicketType(ticketType);
-    setSelectedPeopleCount(1);
-    setEligibilityConfirmed(false);
-    setRegisterModalOpen(true);
+    dispatchRegistrationDialog({ type: 'open', session, ticketType });
   };
 
   const submitRegisterModal = async () => {
-    if (!pendingSession || !pendingTicketType) return;
-    if (!eligibilityConfirmed) {
-      message.warning('請先確認您與同行者皆符合報名條件。');
-      return;
-    }
-    const ticketCount = Math.max(1, Math.floor(Number(selectedPeopleCount || 1)));
-    if (!Number.isFinite(ticketCount)) {
-      message.error('請輸入有效張數');
+    if (!registrationDialog.session || !registrationDialog.ticketType) return;
+    if (!registrationDialog.eligibilityConfirmed) {
+      message.warning('請先確認您已符合報名條件。');
       return;
     }
 
-    setRegistering(true);
+    dispatchRegistrationDialog({ type: 'set_registering', value: true });
     try {
-      await registerSession(pendingSession, pendingTicketType, ticketCount);
-      setRegisterModalOpen(false);
+      await registerSession(registrationDialog.session, registrationDialog.ticketType);
+      dispatchRegistrationDialog({ type: 'close' });
     } finally {
-      setRegistering(false);
+      dispatchRegistrationDialog({ type: 'set_registering', value: false });
     }
   };
 
@@ -319,79 +470,6 @@ const EventDetail = () => {
     }
   };
 
-  const renderActions = (session) => {
-    const roleCanRegister = REGISTRATION_ALLOWED_ROLES.has(user?.role);
-    const sessionRegistrations = registrationsBySession.get(session.id) || [];
-    const activeRegistrations = sessionRegistrations.filter(
-      (r) => !NON_OCCUPYING_REGISTRATION_STATUSES.has(r.status)
-    );
-    const inactiveRegistrations = sessionRegistrations.filter((r) => RE_REGISTER_ELIGIBLE_STATUSES.has(r.status));
-    const isRegistrationOpen = session.status === 'REGISTRATION_OPEN';
-    const getTicketLabel = (reg) =>
-      reg.ticket_type_name ||
-      (session.ticket_types || []).find((tt) => tt.id === reg.ticket_type_id)?.name ||
-      reg.ticket_type_id;
-
-    if (user && !roleCanRegister) {
-      return <Tag color="warning">驗票員 / 管理員不可報名</Tag>;
-    }
-
-    const signupButtons = isRegistrationOpen ? (
-      <Space wrap>
-        {(session.ticket_types || []).map((tt) => (
-          <Button
-            key={tt.id}
-            type="primary"
-            onClick={() => {
-              openRegisterModal(session, tt);
-            }}
-          >
-            報名 {tt.name}（名額：{tt.quota}）
-          </Button>
-        ))}
-      </Space>
-    ) : null;
-
-    const activeRegistrationRows = activeRegistrations.length ? (
-      <Space direction="vertical" size="small" style={{ width: '100%' }}>
-        {activeRegistrations.map((reg, idx) => (
-          <Space key={reg.id} wrap>
-            <Tag color="blue">
-              第 {idx + 1} 張：{getTicketLabel(reg)}
-            </Tag>
-            <Tag>{labelOr(REGISTRATION_STATUS_LABELS, reg.status, reg.status)}</Tag>
-            {reg.status === 'REGISTERED' ? (
-              <Button onClick={() => runCancel(reg.id)}>取消報名</Button>
-            ) : null}
-            {reg.status === 'WON' ? (
-              <>
-                <Button type="primary" onClick={() => runConfirm(reg.id)}>確認參加並領票</Button>
-                <Button danger onClick={() => runForfeit(reg.id)}>棄權</Button>
-              </>
-            ) : null}
-          </Space>
-        ))}
-      </Space>
-    ) : null;
-
-    if (!isRegistrationOpen && !activeRegistrations.length) {
-      return <Tag>目前不可報名</Tag>;
-    }
-
-    return (
-      <Space direction="vertical" size="small" style={{ width: '100%' }}>
-        {inactiveRegistrations.length && isRegistrationOpen ? (
-          <Alert type="info" showIcon message="您先前有取消或棄權紀錄，於報名期間內可再次報名。" />
-        ) : null}
-        {activeRegistrations.length && isRegistrationOpen ? (
-          <Alert type="info" showIcon message={`您目前已有 ${activeRegistrations.length} 張此場次報名，可於報名期間內追加票種。`} />
-        ) : null}
-        {activeRegistrationRows}
-        {signupButtons}
-      </Space>
-    );
-  };
-
   if (loading) {
     return (
       <div className="page-wrap centered-page">
@@ -422,128 +500,27 @@ const EventDetail = () => {
 
   return (
     <div className="page-wrap event-detail-page">
-      <Card className="event-head">
-        <Row gutter={[24, 24]}>
-          <Col xs={24} md={10}>
-            <img
-              className="event-detail-cover"
-              src={coverImage}
-              alt={event.title}
-              loading="lazy"
-              decoding="async"
-              onError={(e) => {
-                e.currentTarget.onerror = null;
-                e.currentTarget.src = fallbackImage;
-              }}
-            />
-          </Col>
-          <Col xs={24} md={14}>
-            <Space className="event-detail-title-row" align="start" wrap>
-              <Title level={2}>{event.title}</Title>
-              <Tag className="event-detail-status" color={primaryStatus.color}>
-                {primaryStatus.label}
-              </Tag>
-            </Space>
-            <Paragraph>{stripEligibilityMarkerFromDescription(event.description)}</Paragraph>
-            <Descriptions column={1} size="small">
-              <Descriptions.Item label="狀態">{primaryStatus.label}</Descriptions.Item>
-              <Descriptions.Item label="開放廠區">{event.allowed_sites?.length ? event.allowed_sites.join(', ') : '全廠區'}</Descriptions.Item>
-              <Descriptions.Item label="建立時間">{dayjs(event.created_at).format('YYYY-MM-DD HH:mm')}</Descriptions.Item>
-            </Descriptions>
-          </Col>
-        </Row>
-      </Card>
-
-      <Card style={{ marginTop: 16 }}>
-        <Title level={4}>場次與票種</Title>
-        <Collapse
-          items={(event.sessions || []).map((session) => ({
-            key: session.id,
-            label: `${session.title} | ${dayjs(session.starts_at).format('MM/DD HH:mm')} - ${dayjs(session.ends_at).format('HH:mm')} | ${labelOr(SESSION_STATUS_LABELS, session.status, session.status)}`,
-            children: (
-              <Space direction="vertical" style={{ width: '100%' }}>
-                <Descriptions size="small" column={1}>
-                  <Descriptions.Item label="場地">{session.venue}</Descriptions.Item>
-                  <Descriptions.Item label="報名期間">
-                    {dayjs(session.registration_opens_at).format('YYYY-MM-DD HH:mm')} - {dayjs(session.registration_closes_at).format('YYYY-MM-DD HH:mm')}
-                  </Descriptions.Item>
-                  <Descriptions.Item label="確認期限">{session.confirmation_deadline_hours} 小時</Descriptions.Item>
-                </Descriptions>
-                {renderActions(session)}
-              </Space>
-            )
-          }))}
-        />
-      </Card>
-
-      <Modal
-        title={pendingTicketType ? `報名 ${pendingTicketType.name}` : '報名活動'}
-        open={registerModalOpen}
-        onOk={submitRegisterModal}
-        onCancel={() => setRegisterModalOpen(false)}
-        confirmLoading={registering}
-        okButtonProps={{ disabled: !eligibilityConfirmed }}
-        okText="我已確認符合條件並報名"
-        cancelText="取消"
-      >
-        {pendingSession ? (
-          <Space direction="vertical" style={{ width: '100%' }}>
-            {(() => {
-              const elig = parseEligibilityFromDescription(event?.description);
-              const cat = ticketCategory(pendingTicketType?.name);
-              const lines = buildEligibilityLines(elig, cat);
-              if (!lines.length) return null;
-              return (
-                <Alert
-                  type="warning"
-                  showIcon
-                  message={cat === 'child' ? '兒童票報名限制' : '成人票報名限制'}
-                  description={(
-                    <div>
-                      {lines.map((line) => (
-                        <div key={line}>- {line}</div>
-                      ))}
-                    </div>
-                  )}
-                />
-              );
-            })()}
-            <Paragraph style={{ marginBottom: 0 }}>
-              場次：{pendingSession.title}
-            </Paragraph>
-            <Paragraph style={{ marginBottom: 0 }}>
-              票種：{pendingTicketType?.name}
-            </Paragraph>
-            <Checkbox
-              checked={eligibilityConfirmed}
-              onChange={(e) => setEligibilityConfirmed(e.target.checked)}
-            >
-              我已確認本人與同行者皆符合此票種報名條件
-            </Checkbox>
-            {(() => {
-              const maxTickets = Math.max(1, Number(pendingTicketType?.quota || 1));
-              return (
-                <Space direction="vertical" size={4} style={{ width: '100%' }}>
-                  <Paragraph style={{ marginBottom: 0 }}>
-                    {ticketCategory(pendingTicketType?.name) === 'child' ? '兒童票張數' : '成人票張數'}
-                  </Paragraph>
-                  <InputNumber
-                    min={1}
-                    max={maxTickets}
-                    precision={0}
-                    style={{ width: '100%' }}
-                    value={selectedPeopleCount}
-                    onChange={(v) => setSelectedPeopleCount(Math.max(1, Math.floor(Number(v || 1))))}
-                  />
-                  <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                    不需登記眷屬；請依實際同行人數分票種送出報名。
-                  </Paragraph>
-                </Space>
-              );
-            })()}
-          </Space>
-        ) : null}
-      </Modal>
+      <EventHeader
+        event={event}
+        primaryStatus={primaryStatus}
+        coverImage={coverImage}
+        fallbackImage={fallbackImage}
+      />
+      <EventSessionsCard
+        event={event}
+        user={user}
+        registrationsBySession={registrationsBySession}
+        onOpenRegister={openRegisterModal}
+        onCancelRegistration={runCancel}
+        onConfirmRegistration={runConfirm}
+        onForfeitRegistration={runForfeit}
+      />
+      <RegistrationModal
+        dialog={registrationDialog}
+        onSubmit={submitRegisterModal}
+        onClose={() => dispatchRegistrationDialog({ type: 'close' })}
+        onConfirmChange={(value) => dispatchRegistrationDialog({ type: 'set_confirmed', value })}
+      />
     </div>
   );
 };

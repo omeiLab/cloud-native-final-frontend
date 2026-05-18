@@ -266,10 +266,6 @@ class APIClient {
     return this.client.get('/auth/me');
   }
 
-  async getMyDependents() {
-    return this.client.get('/me/dependents');
-  }
-
   async logout() {
     const refreshToken = this.getRefreshToken();
     try {
