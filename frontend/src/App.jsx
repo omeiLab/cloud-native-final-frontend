@@ -108,7 +108,7 @@ const App = () => {
   return (
     <AuthProvider>
       <NotificationProvider>
-        <BrowserRouter>
+        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <AppShell />
         </BrowserRouter>
       </NotificationProvider>

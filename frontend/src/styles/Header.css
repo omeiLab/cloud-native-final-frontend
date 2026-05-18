@@ -204,17 +204,23 @@
   white-space: nowrap;
 }
 
-.user-button .ant-tag {
-  height: 28px;
-  display: inline-flex;
-  align-items: center;
-  margin-inline-end: 0;
-  line-height: 1;
+.connection-dot {
+  width: 10px;
+  height: 10px;
+  flex: 0 0 auto;
+  display: inline-block;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 18%, transparent);
 }
 
-:root.text-large .user-button .ant-tag,
-:root.text-xlarge .user-button .ant-tag {
-  height: 32px;
+.connection-dot.connected {
+  color: #22c55e;
+  background: #22c55e;
+}
+
+.connection-dot.offline {
+  color: #f59e0b;
+  background: #f59e0b;
 }
 
 .profile-popover .ant-popover-inner {

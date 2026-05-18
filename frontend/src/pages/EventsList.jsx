@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Col, Empty, Input, Row, Skeleton, Space, Tag, Typography } from 'antd';
-import { CalendarOutlined, ClockCircleOutlined, EnvironmentOutlined, TeamOutlined } from '@ant-design/icons';
+import { Alert, Button, Card, Col, Empty, Input, Row, Skeleton, Tag, Typography } from 'antd';
+import { CalendarOutlined, ClockCircleOutlined, EnvironmentOutlined, SearchOutlined, TeamOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import { apiClient } from '../api/client';
@@ -246,16 +246,17 @@ const EventsList = () => {
       {!user ? null : (
         <>
           <div className="events-filters">
-            <Space>
-              <Input.Search
+            <div className="events-filter-actions">
+              <Input
+                className="events-search"
                 allowClear
+                prefix={<SearchOutlined />}
                 placeholder="搜尋活動、地點、廠區"
-                style={{ width: 240 }}
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
               />
-              <Button onClick={() => fetchEvents()}>重新整理</Button>
-            </Space>
+              <Button className="events-refresh-button" onClick={() => fetchEvents()}>重新整理</Button>
+            </div>
           </div>
 
           {error ? <Alert style={{ marginBottom: 16 }} type="error" message={error} showIcon /> : null}

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Col, Descriptions, Empty, List, Modal, Row, Space, Spin, Tabs, Tag, Typography, message } from 'antd';
+import { Button, Card, Col, Descriptions, Empty, List, Modal, Row, Space, Spin, Tabs, Tag, Typography, message } from 'antd';
 import { CheckCircleOutlined, FullscreenExitOutlined, FullscreenOutlined, QrcodeOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import QRCode from 'qrcode';
@@ -9,7 +9,7 @@ import { pickAvatarImage } from '../assets/media';
 import { REGISTRATION_STATUS_LABELS, TICKET_STATUS_LABELS, labelOr } from '../utils/labels';
 import '../styles/Profile.css';
 
-const { Title, Paragraph } = Typography;
+const { Title, Paragraph, Text } = Typography;
 
 const normalizeTicketTypeLabel = (name, fallbackId = '') => {
   const text = String(name || '');
@@ -481,8 +481,8 @@ const UserProfile = () => {
           setTicketFullscreen(false);
         }}
         footer={null}
-        width={ticketFullscreen ? '100vw' : 420}
-        className={ticketFullscreen ? 'ticket-fullscreen-modal' : ''}
+        width={ticketFullscreen ? '100vw' : 456}
+        className={`ticket-modal${ticketFullscreen ? ' ticket-fullscreen-modal' : ''}`}
       >
         {selectedTicketId ? (
           <div className={`ticket-detail-modal${ticketFullscreen ? ' fullscreen' : ''}`}>
@@ -503,17 +503,21 @@ const UserProfile = () => {
                     loading={copyingPayload}
                     onClick={copyQrPayload}
                   >
-                    複製 QR payload（測試驗票）
+                    複製 QR payload
                   </Button>
                 </div>
-                <Alert
-                  type="info"
-                  showIcon
-                  message={`票券 ${qrData.ticket.id}`}
-                  description={`QR 約 60 秒更新一次（到期: ${dayjs(qrData.qr_expires_at).format('HH:mm:ss')}）`}
-                />
-                <div style={{ textAlign: 'center', marginTop: 16 }} className="ticket-qr-frame">
-                  {qrImageUrl ? <img src={qrImageUrl} alt="ticket qr" style={{ width: ticketFullscreen ? 360 : 280, maxWidth: '100%' }} /> : null}
+                <div className="ticket-summary-panel">
+                  <QrcodeOutlined className="ticket-summary-icon" />
+                  <div className="ticket-summary-copy">
+                    <Text className="ticket-summary-label">票券</Text>
+                    <Text strong className="ticket-summary-id">{qrData.ticket.id}</Text>
+                    <Text className="ticket-summary-expiry">
+                      QR 約 60 秒更新一次（到期: {dayjs(qrData.qr_expires_at).format('HH:mm:ss')}）
+                    </Text>
+                  </div>
+                </div>
+                <div className="ticket-qr-frame">
+                  {qrImageUrl ? <img src={qrImageUrl} alt="ticket qr" /> : null}
                 </div>
               </>
             ) : null}

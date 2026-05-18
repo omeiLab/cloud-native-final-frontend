@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Avatar, Badge, Button, Drawer, Layout, Popover, Space, Tag, Tooltip, message } from 'antd';
+import { Avatar, Badge, Button, Drawer, Layout, Popover, Space, Tooltip, message } from 'antd';
 import { AuditOutlined, BellOutlined, FontSizeOutlined, IdcardOutlined, LogoutOutlined, MenuOutlined, QrcodeOutlined, UserOutlined } from '@ant-design/icons';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -179,7 +179,11 @@ const AppHeader = () => {
                 <Avatar size={32} icon={<UserOutlined />} />
                 <span className="user-name">{user.name}（{labelOr(ROLE_LABELS, user.role)}）</span>
                 <Tooltip title={connected ? '即時通知連線正常' : '即時通知離線中（將自動重連）'}>
-                  <Tag color={connected ? 'green' : 'orange'}>{connected ? '即時連線' : '離線中'}</Tag>
+                  <span
+                    className={`connection-dot ${connected ? 'connected' : 'offline'}`}
+                    role="status"
+                    aria-label={connected ? '即時通知連線正常' : '即時通知離線中'}
+                  />
                 </Tooltip>
               </Button>
             </Popover>

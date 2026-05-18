@@ -83,13 +83,42 @@
 
 .events-filters {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: var(--ds-space-xs);
   margin-bottom: var(--ds-space-sm);
 }
 
-.events-filters .ant-input-search {
-  width: min(360px, 100%) !important;
+.events-filter-actions {
+  width: min(100%, 420px);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.events-search.ant-input-affix-wrapper {
+  width: 100% !important;
+  min-width: 0;
+  height: 40px;
+  display: flex;
+  align-items: center;
+}
+
+.events-search .ant-input {
+  min-width: 0;
+}
+
+.events-refresh-button {
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.events-refresh-button {
+  min-width: 94px;
+  padding-inline: 16px;
+  font-weight: 700;
 }
 
 .event-card {
@@ -209,19 +238,14 @@
     width: 100%;
   }
 
-  .events-filters .ant-space {
-    width: 100%;
-    gap: 8px !important;
+  .events-filter-actions {
+    width: min(100%, 420px);
+    gap: 8px;
   }
 
-  .events-filters .ant-space-item {
-    width: 100%;
-  }
-
-  .events-filters .ant-input-search,
-  .events-filters .ant-select,
-  .events-filters .ant-btn {
-    width: 100% !important;
+  .events-refresh-button {
+    min-width: 88px;
+    padding-inline: 12px;
   }
 
   .event-card .ant-card-body {

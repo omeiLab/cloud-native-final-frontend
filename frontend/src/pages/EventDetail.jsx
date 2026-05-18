@@ -131,7 +131,6 @@ const EventSessionActions = ({
   const activeRegistrations = sessionRegistrations.filter(
     (r) => !NON_OCCUPYING_REGISTRATION_STATUSES.has(r.status)
   );
-  const inactiveRegistrations = sessionRegistrations.filter((r) => RE_REGISTER_ELIGIBLE_STATUSES.has(r.status));
   const isRegistrationOpen = session.status === 'REGISTRATION_OPEN';
   const ticketTypes = session.ticket_types || [];
   const getTicketLabel = (reg) =>
@@ -194,12 +193,6 @@ const EventSessionActions = ({
 
   return (
     <Space direction="vertical" size="small" style={{ width: '100%' }}>
-      {inactiveRegistrations.length && isRegistrationOpen ? (
-        <Alert type="info" showIcon message="您先前有取消或棄權紀錄，於報名期間內可再次報名。" />
-      ) : null}
-      {activeRegistrations.length && isRegistrationOpen ? (
-        <Alert type="info" showIcon message="您已完成此場次報名；每位員工每場次只需一筆報名。若需更換票種，請先取消後重新報名。" />
-      ) : null}
       {ticketQuotaSummary}
       {activeRegistrationRows}
       {signupButton}

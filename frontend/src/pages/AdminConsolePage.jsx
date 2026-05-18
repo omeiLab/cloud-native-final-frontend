@@ -32,21 +32,114 @@ import '../styles/AdminConsole.css';
 
 const { Title, Paragraph, Text } = Typography;
 
+const EMPTY_ARRAY = [];
 const loadRecharts = () => import('recharts');
-const lazyRechart = (name) => lazy(() => loadRecharts().then((mod) => ({ default: mod[name] })));
-const Bar = lazyRechart('Bar');
-const BarChart = lazyRechart('BarChart');
-const CartesianGrid = lazyRechart('CartesianGrid');
-const Cell = lazyRechart('Cell');
-const Legend = lazyRechart('Legend');
-const Line = lazyRechart('Line');
-const LineChart = lazyRechart('LineChart');
-const Pie = lazyRechart('Pie');
-const PieChart = lazyRechart('PieChart');
-const ResponsiveContainer = lazyRechart('ResponsiveContainer');
-const Tooltip = lazyRechart('Tooltip');
-const XAxis = lazyRechart('XAxis');
-const YAxis = lazyRechart('YAxis');
+const DashboardCharts = lazy(() => loadRecharts().then(({
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis
+}) => ({
+  default: function DashboardCharts({
+    registrationTimeline,
+    siteDistribution,
+    ticketTypeProgress
+  }) {
+    const siteChartData = siteDistribution.map((siteItem) => ({
+      name: SITE_LABELS[siteItem.site] || siteItem.site,
+      value: siteItem.count,
+      site: siteItem.site
+    }));
+
+    return (
+      <>
+        <Row gutter={16} style={{ marginTop: 16 }}>
+          <Col xs={24} lg={12}>
+            <Card title="報名趨勢">
+              <ResponsiveContainer width="100%" height={260}>
+                <LineChart data={registrationTimeline}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" />
+                  <YAxis allowDecimals={false} />
+                  <Tooltip />
+                  <Legend />
+                  <Line
+                    type="monotone"
+                    dataKey="count"
+                    name="累積報名"
+                    stroke="#2b72d9"
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                    isAnimationActive={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </Card>
+          </Col>
+          <Col xs={24} lg={12}>
+            <Card title="開放廠區分布（含名稱）">
+              <ResponsiveContainer width="100%" height={260}>
+                <PieChart>
+                  <Pie
+                    data={siteChartData}
+                    dataKey="value"
+                    nameKey="name"
+                    outerRadius={90}
+                    label
+                    isAnimationActive={false}
+                  >
+                    {siteChartData.map((entry, idx) => (
+                      <Cell key={entry.site} fill={PIE_COLORS[idx % PIE_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </Card>
+          </Col>
+        </Row>
+
+        <Card style={{ marginTop: 16 }} title="票種進度">
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={ticketTypeProgress}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis allowDecimals={false} />
+              <Tooltip />
+              <Legend />
+              <Bar dataKey="quota" name="名額" fill="#2b72d9" isAnimationActive={false} />
+              <Bar dataKey="registered" name="已報名" fill="#f4a261" isAnimationActive={false} />
+              <Bar dataKey="confirmed" name="已確認" fill="#2a9d8f" isAnimationActive={false} />
+            </BarChart>
+          </ResponsiveContainer>
+          <Table
+            pagination={false}
+            rowKey="ticket_type_id"
+            dataSource={ticketTypeProgress}
+            scroll={{ x: 640 }}
+            columns={[
+              { title: '票種', dataIndex: 'name' },
+              { title: '名額', dataIndex: 'quota' },
+              { title: '已報名', dataIndex: 'registered' },
+              { title: '中籤', dataIndex: 'won' },
+              { title: '已確認', dataIndex: 'confirmed' }
+            ]}
+          />
+        </Card>
+      </>
+    );
+  }
+})));
 
 const SITES = ['HSINCHU', 'TAINAN', 'TAICHUNG', 'TAIPEI', 'OVERSEAS'];
 const SITE_LABELS = {
@@ -934,6 +1027,7 @@ const AdminConsoleTabs = ({ controller }) => {
       onChange={controller.setActiveTabKey}
       className="admin-console-tabs"
       style={{ marginTop: 16 }}
+      animated={false}
       items={[
         {
           key: 'event-create',
@@ -1528,6 +1622,13 @@ const DashboardTab = ({ controller }) => {
     runDueLotteries,
     handleRunLottery
   } = controller;
+  const registrationTimeline = dashboard?.registration_timeline || EMPTY_ARRAY;
+  const siteDistribution = dashboard?.site_distribution || EMPTY_ARRAY;
+  const ticketTypeProgress = dashboard?.ticket_type_progress || EMPTY_ARRAY;
+  const registeredTotal = useMemo(
+    () => ticketTypeProgress.reduce((sum, item) => sum + Number(item.registered || 0), 0),
+    [ticketTypeProgress]
+  );
 
   return (
     <>
@@ -1588,7 +1689,7 @@ const DashboardTab = ({ controller }) => {
       <Row gutter={16} style={{ marginTop: 16 }}>
         <Col xs={24} md={8}>
           <Card>
-            <Statistic title="已報名" value={dashboard?.ticket_type_progress?.reduce((sum, x) => sum + x.registered, 0) || 0} />
+            <Statistic title="已報名" value={registeredTotal} />
           </Card>
         </Col>
         <Col xs={24} md={8}>
@@ -1604,65 +1705,11 @@ const DashboardTab = ({ controller }) => {
       </Row>
 
       <Suspense fallback={<div style={{ minHeight: 292, marginTop: 16 }} />}>
-        <Row gutter={16} style={{ marginTop: 16 }}>
-          <Col xs={24} lg={12}>
-            <Card title="報名趨勢">
-              <ResponsiveContainer width="100%" height={260}>
-                <LineChart data={dashboard?.registration_timeline || []}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis allowDecimals={false} />
-                  <Tooltip />
-                  <Legend />
-                  <Line type="monotone" dataKey="count" name="累積報名" stroke="#2b72d9" strokeWidth={2} dot={{ r: 3 }} />
-                </LineChart>
-              </ResponsiveContainer>
-            </Card>
-          </Col>
-          <Col xs={24} lg={12}>
-            <Card title="開放廠區分布（含名稱）">
-              <ResponsiveContainer width="100%" height={260}>
-                <PieChart>
-                  <Pie data={(dashboard?.site_distribution || []).map((s) => ({ name: SITE_LABELS[s.site] || s.site, value: s.count }))} dataKey="value" nameKey="name" outerRadius={90} label>
-                    {(dashboard?.site_distribution || []).map((entry, idx) => (
-                      <Cell key={entry.site} fill={PIE_COLORS[idx % PIE_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </Card>
-          </Col>
-        </Row>
-
-        <Card style={{ marginTop: 16 }} title="票種進度">
-          <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={dashboard?.ticket_type_progress || []}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis allowDecimals={false} />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="quota" name="名額" fill="#2b72d9" />
-              <Bar dataKey="registered" name="已報名" fill="#f4a261" />
-              <Bar dataKey="confirmed" name="已確認" fill="#2a9d8f" />
-            </BarChart>
-          </ResponsiveContainer>
-          <Table
-            pagination={false}
-            rowKey="ticket_type_id"
-            dataSource={dashboard?.ticket_type_progress || []}
-            scroll={{ x: 640 }}
-            columns={[
-              { title: '票種', dataIndex: 'name' },
-              { title: '名額', dataIndex: 'quota' },
-              { title: '已報名', dataIndex: 'registered' },
-              { title: '中籤', dataIndex: 'won' },
-              { title: '已確認', dataIndex: 'confirmed' }
-            ]}
-          />
-        </Card>
+        <DashboardCharts
+          registrationTimeline={registrationTimeline}
+          siteDistribution={siteDistribution}
+          ticketTypeProgress={ticketTypeProgress}
+        />
       </Suspense>
 
       <Card style={{ marginTop: 16 }} title="報名清單">
