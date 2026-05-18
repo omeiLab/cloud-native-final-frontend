@@ -66,10 +66,7 @@ const AppHeader = () => {
     setLoginLoadingRole(option.key);
     setMobileMenuOpen(false);
     try {
-      if (option.password && navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(option.password).catch(() => {});
-      }
-      await startOIDCLogin({ targetPath: option.targetPath, loginHint: option.email });
+      await startOIDCLogin({ targetPath: option.targetPath });
     } catch (error) {
       message.error(error?.error?.message || '登入失敗，請確認後端服務是否正常');
       setLoginLoadingRole(null);

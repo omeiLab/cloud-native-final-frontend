@@ -20,10 +20,7 @@ const LoginPage = () => {
   const handleOIDCLogin = async (option) => {
     setLoadingRole(option.key);
     try {
-      if (option.password && navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(option.password).catch(() => {});
-      }
-      await startOIDCLogin({ targetPath: option.targetPath, loginHint: option.email });
+      await startOIDCLogin({ targetPath: option.targetPath });
     } catch (error) {
       message.error(error?.error?.message || '登入失敗，請確認後端服務是否正常');
       setLoadingRole(null);
@@ -55,8 +52,6 @@ const LoginPage = () => {
                   <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
                     <strong>{option.title}</strong>
                     <small>{option.description}</small>
-                    <small>帳號：{option.email}</small>
-                    <small>密碼：{option.password}</small>
                   </span>
                 </Button>
               ))}
@@ -68,7 +63,7 @@ const LoginPage = () => {
               showIcon
               icon={<SafetyOutlined />}
               message="登入說明"
-              description="測試帳號請在企業登入頁輸入。"
+              description="系統會導向企業登入頁，請使用後端身分服務提供的帳號完成驗證。"
             />
           </Card>
         </Col>

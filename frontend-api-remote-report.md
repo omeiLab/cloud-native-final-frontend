@@ -1,6 +1,6 @@
 # frontend-api.md 對照遠端實測報告（cets.alanh.uk）
 
-更新時間：2026-05-08（UTC+8）
+更新時間：2026-05-15（UTC+8）
 測試對象：
 - API Base：`https://cets.alanh.uk/api/v1`
 - OpenAPI：`https://cets.alanh.uk/api/openapi.json`
@@ -14,10 +14,11 @@
 
 ## 1) 總覽結論
 
-- 遠端 OpenAPI 路徑數：`37`
+- 遠端 OpenAPI 路徑數：`38`；component schema 數：`59`
 - 主要功能（Auth / Events / Registrations / Tickets / Notifications / Admin / WS）皆可連線。
 - 有些端點雖可呼叫，但會因「狀態機限制」回 `409`（這是正確行為，不是 API 壞掉）。
 - 遠端部署與本機版存在差異：`/admin/system/time-offset`、`/admin/ops/run-nightly-lottery` 在遠端不可用（404）。
+- 資料 schema 已是 v2.2 眷屬票種模型：`ticket_types.audience` 區分 `EMPLOYEE` / `DEPENDENT`，不再使用 event/session 層級的 `allow_dependents`、`max_dependents_per_employee`。
 
 ---
 
@@ -96,16 +97,20 @@
 2. `/admin/system/time-offset`、`/admin/ops/run-nightly-lottery`
    - 本機程式有，但不在文件主要規格
    - 遠端實測 `404`（可視為未部署）
+3. `PATCH /registrations/{id}`、`POST /registrations/{id}/resume`
+   - 文件列為取消後重新報名的可選 fallback
+   - 目前遠端 OpenAPI 未列出；前端只在 `ALREADY_REGISTERED` 且本地有取消/棄權紀錄時嘗試，若仍不可用會顯示恢復失敗訊息
 
 ---
 
 ## 4) 對前端的建議（已採用）
 
 - 前端環境已固定走遠端正式 API：
-  - `VITE_API_BASE_URL=https://cets.alanh.uk`
-  - `VITE_WS_BASE_URL=wss://cets.alanh.uk/ws`
+  - `VITE_API_BASE_URL=https://cets.alanh.uk/api/v1`
+  - `VITE_WS_BASE_URL` 可留空，前端會由 API base 推導為 `wss://cets.alanh.uk/ws`
 - UI/流程上避免把 `409` 當成「壞掉」：
   - 這通常是狀態機保護（例如非 WON 不能 confirm）
+- 管理員建立活動 payload 已依遠端 schema 拆成 event → session → ticket type 三段呼叫；ticket type 會帶 `audience`，不再送舊的 `allow_dependents` / `max_dependents_per_employee`。
 - Auth flow 只走 OIDC 五個 endpoint，不使用前端帳密登入或固定 token。
 
 ---

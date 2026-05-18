@@ -9,6 +9,30 @@ const AuthContext = createContext(null);
 
 const isSafeInternalPath = (path) => typeof path === 'string' && path.startsWith('/') && !path.startsWith('//');
 
+const clearOidcTransientState = () => {
+  localStorage.removeItem(OIDC_STATE_KEY);
+  sessionStorage.removeItem(OIDC_STATE_KEY);
+  sessionStorage.removeItem(POST_LOGIN_REDIRECT_KEY);
+};
+
+const storeOidcState = (state) => {
+  sessionStorage.setItem(OIDC_STATE_KEY, state);
+  localStorage.removeItem(OIDC_STATE_KEY);
+};
+
+const readOidcState = () => sessionStorage.getItem(OIDC_STATE_KEY) || localStorage.getItem(OIDC_STATE_KEY);
+
+const forceInteractiveLogin = (authorizeUrlRaw) => {
+  try {
+    const url = new URL(authorizeUrlRaw, window.location.origin);
+    url.searchParams.set('prompt', 'login');
+    url.searchParams.set('max_age', '0');
+    return url.toString();
+  } catch {
+    return authorizeUrlRaw;
+  }
+};
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -39,7 +63,11 @@ export const AuthProvider = ({ children }) => {
     fetchMe();
   }, [fetchMe]);
 
-  const startOIDCLogin = useCallback(async ({ targetPath, loginHint } = {}) => {
+  const startOIDCLogin = useCallback(async ({ targetPath } = {}) => {
+    apiClient.clearAuth();
+    setUser(null);
+    clearOidcTransientState();
+
     const redirectUri = `${window.location.origin}/auth/callback`;
     const res = await apiClient.getOIDCAuthorizeUrl({ redirectUri });
     const authorizeUrlRaw = res.data?.authorize_url;
@@ -47,7 +75,7 @@ export const AuthProvider = ({ children }) => {
     if (!authorizeUrlRaw || !state) {
       throw new Error('OIDC authorize-url response missing authorize_url/state');
     }
-    localStorage.setItem(OIDC_STATE_KEY, state);
+    storeOidcState(state);
 
     if (isSafeInternalPath(targetPath)) {
       sessionStorage.setItem(POST_LOGIN_REDIRECT_KEY, targetPath);
@@ -55,42 +83,33 @@ export const AuthProvider = ({ children }) => {
       sessionStorage.removeItem(POST_LOGIN_REDIRECT_KEY);
     }
 
-    let authorizeUrl = authorizeUrlRaw;
-    if (loginHint) {
-      try {
-        const url = new URL(authorizeUrlRaw);
-        url.searchParams.set('login_hint', loginHint);
-        url.searchParams.set('prompt', 'login');
-        url.searchParams.set('max_age', '0');
-        authorizeUrl = url.toString();
-      } catch {
-        authorizeUrl = authorizeUrlRaw;
-      }
-    }
-
-    window.location.href = authorizeUrl;
+    window.location.href = forceInteractiveLogin(authorizeUrlRaw);
   }, []);
 
   const finishOIDCLogin = useCallback(async ({ code, state }) => {
-    const expectedState = localStorage.getItem(OIDC_STATE_KEY);
+    const expectedState = readOidcState();
     if (!expectedState || expectedState !== state) {
+      apiClient.clearAuth();
+      clearOidcTransientState();
       throw new Error('OIDC state mismatch');
     }
     const res = await apiClient.oidcCallback({ code, state });
-    localStorage.removeItem(OIDC_STATE_KEY);
+    clearOidcTransientState();
     apiClient.setAuthTokens(res.data);
     await fetchMe();
   }, [fetchMe]);
 
   const logout = useCallback(async () => {
+    setUser(null);
+    clearOidcTransientState();
     try {
       await apiClient.logout();
     } catch (error) {
       apiClient.clearAuth();
+    } finally {
+      apiClient.clearAuth();
+      clearOidcTransientState();
     }
-    localStorage.removeItem(OIDC_STATE_KEY);
-    sessionStorage.removeItem(POST_LOGIN_REDIRECT_KEY);
-    setUser(null);
   }, []);
 
   const value = useMemo(() => ({

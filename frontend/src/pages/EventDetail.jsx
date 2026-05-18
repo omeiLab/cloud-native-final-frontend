@@ -417,6 +417,8 @@ const EventDetail = () => {
   }
 
   const primaryStatus = getEventPrimaryStatus();
+  const fallbackImage = pickEventImage(event.id || event.title);
+  const coverImage = event.cover_image_url || fallbackImage;
 
   return (
     <div className="page-wrap event-detail-page">
@@ -425,13 +427,13 @@ const EventDetail = () => {
           <Col xs={24} md={10}>
             <img
               className="event-detail-cover"
-              src={event.cover_image_url || pickEventImage(event.id || event.title)}
+              src={coverImage}
               alt={event.title}
               loading="lazy"
               decoding="async"
               onError={(e) => {
                 e.currentTarget.onerror = null;
-                e.currentTarget.src = pickEventImage(event.id || event.title);
+                e.currentTarget.src = fallbackImage;
               }}
             />
           </Col>

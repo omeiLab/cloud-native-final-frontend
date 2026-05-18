@@ -33,8 +33,6 @@ const LoginModal = ({ open, onClose, onSelectRole, loadingRole }) => (
           <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
             <Text strong>{option.title}</Text>
             <Text type="secondary" style={{ fontSize: 12 }}>{option.description}</Text>
-            <Text type="secondary" style={{ fontSize: 12 }}>帳號：{option.email}</Text>
-            <Text type="secondary" style={{ fontSize: 12 }}>密碼：{option.password}</Text>
           </span>
         </Button>
       ))}

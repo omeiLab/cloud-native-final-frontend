@@ -25,10 +25,10 @@ import {
 import { apiClient } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { Bar, BarChart, CartesianGrid, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell, Legend } from 'recharts';
-import { EVENT_IMAGES } from '../assets/media';
 import dayjs from 'dayjs';
 import { useNotifications } from '../context/NotificationContext';
 import { EVENT_STATUS_LABELS, REGISTRATION_STATUS_LABELS, labelOr } from '../utils/labels';
+import { EVENT_IMAGES } from '../assets/media';
 import '../styles/AdminConsole.css';
 
 const { Title, Paragraph, Text } = Typography;
@@ -54,18 +54,10 @@ const DISEASE_OPTIONS = [
 ];
 
 const defaultSession = {
-  title: '上午場',
-  venue: '新竹園區戶外廣場',
-  starts_at: '2026-06-15T09:00:00+08:00',
-  ends_at: '2026-06-15T12:00:00+08:00',
-  registration_opens_at: '2026-05-01T00:00:00+08:00',
-  registration_closes_at: '2026-06-01T23:59:59+08:00',
-  lottery_at: '2026-06-02T10:00:00+08:00',
-  waitlist_close_at: '2026-06-10T23:59:59+08:00',
   confirmation_deadline_hours: 48,
   ticket_types: [
-    { name: '成人票', quota: 200, sort_order: 0 },
-    { name: '兒童票', quota: 100, sort_order: 1 }
+    { name: '成人票', quota: 200, sort_order: 0, audience: 'EMPLOYEE' },
+    { name: '兒童票', quota: 100, sort_order: 1, audience: 'DEPENDENT' }
   ]
 };
 const PIE_COLORS = ['#2b72d9', '#2a9d8f', '#f4a261', '#9b5de5', '#f28482'];
@@ -102,7 +94,7 @@ const mergeDashboardSessionsLottery = (dash, eventDetail) => {
   }));
 };
 const defaultCreateValues = {
-  title: '2026 春季家庭日',
+  title: '',
   cover_image_url: EVENT_IMAGES[0],
   registration_mode: 'LIMITED',
   adult_has_limits: false,
@@ -123,22 +115,25 @@ const defaultCreateValues = {
   session_count: 1,
   sessions: [
     {
-      title: '第 1 場',
-      venue: '新竹園區戶外廣場',
-      starts_at: now.add(14, 'day'),
-      ends_at: now.add(14, 'day').add(3, 'hour'),
-      adult_quota: 120,
+      title: '',
+      venue: '',
+      starts_at: null,
+      ends_at: null,
+      adult_quota: null,
       require_child_ticket: true,
-      child_quota: 80
+      child_quota: null
     }
   ],
-  allow_dependents: true,
-  max_dependents_per_employee: 2,
-  registration_closes_at: now.add(7, 'day'),
-  registration_opens_at: now.subtract(1, 'day'),
-  lottery_at: now.add(7, 'day').add(3, 'hour'),
-  waitlist_close_at: now.add(10, 'day'),
-  allowed_sites: ['HSINCHU']
+  registration_closes_at: null,
+  registration_opens_at: null,
+  lottery_at: null,
+  waitlist_close_at: null,
+  allowed_sites: []
+};
+
+const normalizeCoverImageUrlForBackend = (value) => {
+  const trimmed = String(value || '').trim();
+  return trimmed || null;
 };
 
 const CETS_ELIGIBILITY_MARKER_PREFIX = '<!--CETS_ELIGIBILITY:';
@@ -254,8 +249,8 @@ const AdminConsolePage = () => {
   const [autoLotteryStatus, setAutoLotteryStatus] = useState('待命中');
   const [autoLotteryLastRunAt, setAutoLotteryLastRunAt] = useState('');
   const [createForm] = Form.useForm();
-  const selectedCreateCover = Form.useWatch('cover_image_url', createForm);
   const createRegistrationMode = Form.useWatch('registration_mode', createForm) || 'LIMITED';
+  const selectedCoverImage = Form.useWatch('cover_image_url', createForm) || '';
   const watchedSessions = Form.useWatch('sessions', createForm) || [];
   const latestSessionEndLabel = useMemo(() => {
     const ends = (watchedSessions || []).map((s) => s?.ends_at).filter(Boolean);
@@ -293,10 +288,6 @@ const AdminConsolePage = () => {
   };
   const getEventId = (eventLike) => eventLike?.data?.id || eventLike?.data?.event_id || eventLike?.id || eventLike?.event_id || '';
   const getSessionId = (sessionLike) => sessionLike?.data?.id || sessionLike?.data?.session_id || sessionLike?.id || sessionLike?.session_id || '';
-  const selectCreateCover = useCallback((img) => {
-    createForm.setFieldValue('cover_image_url', img);
-  }, [createForm]);
-
   const selectedEvent = useMemo(() => events.find((e) => e.id === selectedEventId), [events, selectedEventId]);
   const dashboardEventOptions = useMemo(() => {
     return events.map((event) => {
@@ -417,18 +408,16 @@ const AdminConsolePage = () => {
     const registrationClosesAt = values.registration_closes_at || now.add(7, 'day');
     const isUnlimited = registrationMode === 'UNLIMITED';
     const lotteryAt = isUnlimited ? dayjs(registrationClosesAt).add(1, 'minute') : resolveLimitedLotteryAt(registrationClosesAt);
-    const sessionsInput = Array.isArray(values.sessions) && values.sessions.length ? values.sessions : defaultCreateValues.sessions;
+    const sessionsInput = Array.isArray(values.sessions) ? values.sessions : [];
     const startsAtForWaitlist = sessionsInput?.[0]?.starts_at || now.add(14, 'day');
     const waitlistCloseAt = isUnlimited
       ? dayjs(startsAtForWaitlist).subtract(1, 'minute')
       : resolveLimitedWaitlistCloseAt(values, startsAtForWaitlist);
-    const allowDependents = Boolean(values.allow_dependents);
-    const maxDependents = allowDependents ? Number(values.max_dependents_per_employee || 0) : 0;
     const sessions = (sessionsInput || []).map((s, idx) => {
       const starts = dayjs(s?.starts_at || now.add(14, 'day'));
       const ends = dayjs(s?.ends_at || starts.add(3, 'hour'));
       const closes = dayjs(registrationClosesAt);
-      const opens = dayjs(values.registration_opens_at || defaultSession.registration_opens_at);
+      const opens = dayjs(values.registration_opens_at);
       const lottery = dayjs(lotteryAt);
       const waitlist = dayjs(waitlistCloseAt);
       const adultQuota = Math.max(0, Number(s?.adult_quota || 0));
@@ -436,25 +425,23 @@ const AdminConsolePage = () => {
       const childQuota = requireChildTicket ? Math.max(0, Number(s?.child_quota || 0)) : 0;
       const totalQuota = isUnlimited ? 999999 : adultQuota + childQuota;
       const ticketTypes = isUnlimited
-        ? [{ name: '一般票（不限額）', quota: totalQuota, sort_order: 0 }]
+        ? [{ name: '一般票（不限額）', quota: totalQuota, sort_order: 0, audience: 'EMPLOYEE' }]
         : requireChildTicket
           ? [
-            { name: '成人票', quota: adultQuota, sort_order: 0 },
-            { name: '兒童票', quota: childQuota, sort_order: 1 }
+            { name: '成人票', quota: adultQuota, sort_order: 0, audience: 'EMPLOYEE' },
+            { name: '兒童票', quota: childQuota, sort_order: 1, audience: 'DEPENDENT' }
           ]
-          : [{ name: '成人票', quota: adultQuota, sort_order: 0 }];
+          : [{ name: '成人票', quota: adultQuota, sort_order: 0, audience: 'EMPLOYEE' }];
       return {
         ...defaultSession,
-        title: s?.title || `第 ${idx + 1} 場`,
-        venue: s?.venue || defaultSession.venue,
+        title: s?.title,
+        venue: s?.venue,
         starts_at: starts.toISOString(),
         ends_at: ends.toISOString(),
         registration_opens_at: opens.toISOString(),
         registration_closes_at: closes.toISOString(),
         lottery_at: lottery.toISOString(),
         waitlist_close_at: waitlist.toISOString(),
-        allow_dependents: allowDependents,
-        max_dependents_per_employee: maxDependents,
         ticket_types: ticketTypes
       };
     });
@@ -465,10 +452,8 @@ const AdminConsolePage = () => {
         values.description || '',
         buildEligibilityFromFormValues({ ...values, require_child_ticket: requireChildTicketAny })
       ),
-      cover_image_url: values.cover_image_url,
+      cover_image_url: normalizeCoverImageUrlForBackend(values.cover_image_url),
       allowed_sites: values.allowed_sites || [],
-      allow_dependents: allowDependents,
-      max_dependents_per_employee: maxDependents,
       sessions
     };
   };
@@ -483,7 +468,8 @@ const AdminConsolePage = () => {
       const values = await createForm.validateFields();
       validateSessionTimeline(values);
       const payload = buildCreatePayload(values);
-      const created = await apiClient.adminCreateEvent(payload);
+      const { sessions = [], ...eventPayload } = payload;
+      const created = await apiClient.adminCreateEvent(eventPayload);
       const createdEventId = getEventId(created);
       const createdEvent = created?.data?.id ? created.data : null;
       if (!createdEventId) {
@@ -493,7 +479,7 @@ const AdminConsolePage = () => {
       // 1) 建活動時就會把 sessions/ticket_types 一起建立
       // 2) 只建 event(DRAFT)，需再呼叫 /admin/events/{id}/sessions 與 /admin/sessions/{id}/ticket-types
       if ((createdEvent?.sessions?.length || 0) === 0) {
-        for (const sessionPayload of payload.sessions || []) {
+        for (const sessionPayload of sessions) {
           const { ticket_types: ticketTypes, ...sessionBody } = sessionPayload;
           const createdSession = await apiClient.adminCreateSession(createdEventId, sessionBody);
           const createdSessionId = getSessionId(createdSession);
@@ -539,6 +525,9 @@ const AdminConsolePage = () => {
 
   const handleCreate = async () => createEvent(true);
   const handleCreateDraft = async () => createEvent(false);
+  const handleSelectCoverImage = (src) => {
+    createForm.setFieldsValue({ cover_image_url: src });
+  };
 
   const resetEditMode = () => {
     setEditingEventId('');
@@ -562,7 +551,7 @@ const AdminConsolePage = () => {
       ...defaultCreateValues,
       title: detail?.title || '',
       description: cleanDescription || '',
-      cover_image_url: detail?.cover_image_url || EVENT_IMAGES[0],
+      cover_image_url: EVENT_IMAGES.includes(detail?.cover_image_url) ? detail.cover_image_url : EVENT_IMAGES[0],
       registration_mode: isUnlimitedMode ? 'UNLIMITED' : 'LIMITED',
       adult_quota: Number(adultTicket?.quota || 0),
       require_child_ticket: Boolean(childTicket),
@@ -585,18 +574,12 @@ const AdminConsolePage = () => {
       session_count: Math.max(1, sessions.length || detail?.session_count || 1),
       sessions: sessions.length
         ? sessions.map((s, idx) => ({
-          title: s?.title || `第 ${idx + 1} 場`,
-          venue: s?.venue || defaultSession.venue,
-          starts_at: s?.starts_at ? dayjs(s.starts_at) : now.add(14, 'day'),
-          ends_at: s?.ends_at ? dayjs(s.ends_at) : now.add(14, 'day').add(3, 'hour')
+          title: s?.title || '',
+          venue: s?.venue || '',
+          starts_at: s?.starts_at ? dayjs(s.starts_at) : null,
+          ends_at: s?.ends_at ? dayjs(s.ends_at) : null
         }))
         : defaultCreateValues.sessions,
-      allow_dependents: Boolean(firstSession?.allow_dependents ?? detail?.allow_dependents),
-      max_dependents_per_employee: Number(
-        firstSession?.max_dependents_per_employee
-        ?? detail?.max_dependents_per_employee
-        ?? defaultCreateValues.max_dependents_per_employee
-      ),
       registration_closes_at: firstSession?.registration_closes_at ? dayjs(firstSession.registration_closes_at) : defaultCreateValues.registration_closes_at,
       registration_opens_at: firstSession?.registration_opens_at ? dayjs(firstSession.registration_opens_at) : defaultCreateValues.registration_opens_at,
       waitlist_close_at: firstSession?.waitlist_close_at ? dayjs(firstSession.waitlist_close_at) : defaultCreateValues.waitlist_close_at,
@@ -663,9 +646,13 @@ const AdminConsolePage = () => {
             values.description || '',
             buildEligibilityFromFormValues({ ...values, require_child_ticket: requireChildTicketAny })
           ),
-          cover_image_url: values.cover_image_url || null
+          cover_image_url: normalizeCoverImageUrlForBackend(values.cover_image_url)
         }
-        : buildCreatePayload(values);
+        : (() => {
+          const eventPayload = buildCreatePayload(values);
+          delete eventPayload.sessions;
+          return eventPayload;
+        })();
       await apiClient.adminPatchEvent(editingEventId, payload);
       if (publishAfterSave) {
         await apiClient.adminPublishEvent(editingEventId);
@@ -997,7 +984,7 @@ const AdminConsolePage = () => {
                           label="其他注意事項(選填)"
                           extra="會逐行顯示在員工報名視窗；可不勾選「有限制」僅填寫本欄。"
                         >
-                          <Input.TextArea rows={2} placeholder={'每行一則，例：須穿著防滑鞋\n禁止攜帶寵物'} />
+                          <Input.TextArea rows={2} placeholder="每行一則" />
                         </Form.Item>
                       </Card>
 
@@ -1044,7 +1031,7 @@ const AdminConsolePage = () => {
                             label="兒童票其他注意事項(選填)"
                             extra="會逐行顯示在員工報名兒童票時的注意事項。"
                           >
-                            <Input.TextArea rows={2} placeholder="每行一則補充說明" />
+                          <Input.TextArea rows={2} placeholder="每行一則" />
                           </Form.Item>
                         </Card>
                       ) : null}
@@ -1059,29 +1046,24 @@ const AdminConsolePage = () => {
                     />
                   )}
                   <Divider orientation="left">圖片與廠區</Divider>
-                  <Form.Item
-                    name="cover_image_url"
-                    label="快速套用活動圖"
-                    rules={[{ required: true, message: '請先選擇活動圖片' }]}
-                  >
-                    <Space wrap>
-                      {EVENT_IMAGES.map((img) => (
+                  <Form.Item label="活動圖片" required>
+                    <Form.Item name="cover_image_url" noStyle>
+                      <Input type="hidden" />
+                    </Form.Item>
+                    <div className="admin-cover-choice" role="group" aria-label="活動圖片">
+                      {EVENT_IMAGES.map((src, idx) => (
                         <button
-                          key={img}
+                          key={src}
                           type="button"
-                          className={`admin-cover-choice${selectedCreateCover === img ? ' selected' : ''}`}
-                          aria-pressed={selectedCreateCover === img}
-                          onClick={() => selectCreateCover(img)}
+                          className={`admin-cover-option${selectedCoverImage === src ? ' is-selected' : ''}`}
+                          aria-pressed={selectedCoverImage === src}
+                          onClick={() => handleSelectCoverImage(src)}
                         >
-                          <img
-                            src={img}
-                            alt="cover candidate"
-                            loading="lazy"
-                            decoding="async"
-                          />
+                          <img src={src} alt="" loading="lazy" />
+                          <span>內建 {idx + 1}</span>
                         </button>
                       ))}
-                    </Space>
+                    </div>
                   </Form.Item>
                   <Form.Item name="allowed_sites" label="開放廠區" rules={[{ required: true, message: '請至少選擇一個開放廠區' }]}>
                     <Checkbox.Group options={SITES} onChange={handleSitePreview} />
@@ -1108,7 +1090,7 @@ const AdminConsolePage = () => {
                                     label="場次名稱"
                                     rules={[{ required: true, message: '請填寫場次名稱' }]}
                                   >
-                                    <Input placeholder={`例如：第 ${idx + 1} 場`} />
+                                    <Input />
                                   </Form.Item>
                                 </Col>
                                 <Col xs={24} md={16}>
@@ -1118,7 +1100,7 @@ const AdminConsolePage = () => {
                                     label="場次地點"
                                     rules={[{ required: true, message: '請填寫場次地點' }]}
                                   >
-                                    <Input placeholder="例如：新竹園區戶外廣場" />
+                                    <Input />
                                   </Form.Item>
                                 </Col>
                               </Row>
@@ -1216,13 +1198,13 @@ const AdminConsolePage = () => {
                         <Space wrap>
                           <Button
                             onClick={() => add({
-                              title: `第 ${fields.length + 1} 場`,
-                              venue: defaultSession.venue,
-                              starts_at: now.add(14, 'day'),
-                              ends_at: now.add(14, 'day').add(3, 'hour'),
-                              adult_quota: 120,
+                              title: '',
+                              venue: '',
+                              starts_at: null,
+                              ends_at: null,
+                              adult_quota: null,
                               require_child_ticket: true,
-                              child_quota: 80
+                              child_quota: null
                             })}
                           >
                             新增場次
@@ -1236,27 +1218,6 @@ const AdminConsolePage = () => {
                       </Space>
                     )}
                   </Form.List>
-
-                  <Row gutter={12} style={{ marginTop: 12 }}>
-                    <Col xs={24} md={8}>
-                      <Form.Item
-                        name="allow_dependents"
-                        label="是否允許眷屬報名"
-                        valuePropName="checked"
-                      >
-                        <Checkbox>允許員工攜眷屬</Checkbox>
-                      </Form.Item>
-                    </Col>
-                    <Col xs={24} md={8}>
-                      <Form.Item
-                        name="max_dependents_per_employee"
-                        label="每位員工最多眷屬數"
-                        rules={[{ required: true, message: '請設定眷屬上限' }]}
-                      >
-                        <InputNumber min={0} max={10} style={{ width: '100%' }} />
-                      </Form.Item>
-                    </Col>
-                  </Row>
 
                   <Divider orientation="left">報名時間</Divider>
                   <Row gutter={12}>
@@ -1584,7 +1545,7 @@ const AdminConsolePage = () => {
                     description={(
                       <Space direction="vertical" size={8} style={{ width: '100%' }}>
                         <span>
-                          下表場次若後端儀表板未回傳 <code>sessions_lottery</code>，會改由活動詳情（GET /events）的場次補上；「待抽籤人數」可能顯示為 —，仍可手動按「執行抽籤」。
+                          下表場次若後端儀表板未回傳 <code>sessions_lottery</code>，會改由活動詳情（GET /events）的場次補上；「待抽籤人數」可能顯示為「未提供」，仍可手動按「執行抽籤」。
                         </span>
                         <span>
                           「立即檢查並執行／即時抽籤」按下後會呼叫<strong>同上抽籤 POST</strong>；若該測試環境尚未部署手動路徑，

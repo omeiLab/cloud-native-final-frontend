@@ -306,7 +306,7 @@ Content-Type: application/json
 
 常見錯誤:`INELIGIBLE`(403)、`REGISTRATION_CLOSED`(409)、`ALREADY_REGISTERED`(409)。
 
-**取消後再次報名（重要）**：`DELETE /registrations/{id}` 僅將同一筆紀錄標為 `CANCELLED`（列仍存在）。`ALREADY_REGISTERED` **不應**在僅存在 `CANCELLED`／`FORFEITED`（及若產品允許則含 `LOST`、`EXPIRED`）時回傳；應允許再度 `POST /registrations` 建立新有效報名，或將該筆更新回 `REGISTERED`。前端會在收到 `ALREADY_REGISTERED` 且本地有對應之 `CANCELLED`／`FORFEITED` 時，依序嘗試 **`PATCH /registrations/{id}`**（body：`ticket_type_id`、`dependent_ids`）與 **`POST /registrations/{id}/resume`**（同上 body）；若後端未實作則需以上述方式修正 `POST` 之唯一性判斷。
+**取消後再次報名（重要）**：`DELETE /registrations/{id}` 僅將同一筆紀錄標為 `CANCELLED`（列仍存在）。`ALREADY_REGISTERED` **不應**在僅存在 `CANCELLED`／`FORFEITED`（及若產品允許則含 `LOST`、`EXPIRED`）時回傳；應允許再度 `POST /registrations` 建立新有效報名，或將該筆更新回 `REGISTERED`。前端會在收到 `ALREADY_REGISTERED` 且本地有對應之 `CANCELLED`／`FORFEITED` 時，依序嘗試 **`PATCH /registrations/{id}`**（body：`ticket_type_id`）與 **`POST /registrations/{id}/resume`**（同上 body）；若後端未實作則需以上述方式修正 `POST` 之唯一性判斷。
 
 ### 3.2 取消(報名期間內)
 

@@ -23,6 +23,56 @@
   width: 100%;
 }
 
+.admin-console-page .admin-cover-choice {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+  gap: 10px;
+  margin: -8px 0 18px;
+}
+
+.admin-console-page .admin-cover-option {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 7px;
+  border: 1px solid var(--ds-line);
+  border-radius: var(--ds-radius-md);
+  background: var(--ds-surface);
+  color: var(--ds-text);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.admin-console-page .admin-cover-option:hover,
+.admin-console-page .admin-cover-option:focus-visible {
+  border-color: var(--ds-red);
+  box-shadow: 0 0 0 3px rgba(218, 41, 28, 0.12);
+  outline: none;
+}
+
+.admin-console-page .admin-cover-option.is-selected {
+  border-color: var(--ds-red);
+  box-shadow: inset 0 0 0 1px var(--ds-red);
+}
+
+.admin-console-page .admin-cover-option img {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: calc(var(--ds-radius-md) - 2px);
+  object-fit: cover;
+  background: var(--ds-surface-muted);
+}
+
+.admin-console-page .admin-cover-option span {
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .admin-console-page .admin-console-hero .ant-card-body {
   padding: var(--ds-space-sm);
 }
@@ -138,38 +188,6 @@
   font-size: 14px;
   font-weight: 800;
   white-space: nowrap;
-}
-
-.admin-console-page .admin-cover-choice {
-  width: 82px;
-  height: 52px;
-  border: 1px solid var(--ds-line);
-  border-radius: var(--ds-radius-md);
-  padding: 0;
-  overflow: hidden;
-  background: transparent;
-  cursor: pointer;
-  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
-}
-
-.admin-console-page .admin-cover-choice img {
-  width: 100%;
-  height: 100%;
-  display: block;
-  object-fit: cover;
-}
-
-.admin-console-page .admin-cover-choice:hover,
-.admin-console-page .admin-cover-choice:focus-visible,
-.admin-console-page .admin-cover-choice.selected {
-  transform: translateY(-1px);
-  border-color: var(--ds-red);
-  box-shadow: 0 12px 28px rgba(218, 41, 28, 0.18);
-}
-
-.admin-console-page .admin-cover-choice:focus-visible {
-  outline: 3px solid var(--ds-focus);
-  outline-offset: 2px;
 }
 
 @media (min-width: 1025px) {

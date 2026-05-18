@@ -39,15 +39,14 @@ npm install
 
 ### 本機環境檔
 
-建立 `.env.local`，開發時讓前端走 Vite proxy：
+建立 `.env.local`。本機開發直接呼叫遠端後端，不再透過 Vite proxy：
 
 ```env
-VITE_API_BASE_URL=/api/v1
-VITE_DEV_PROXY_API_TARGET=http://localhost:8080
-VITE_DEV_PROXY_WS_TARGET=ws://localhost:8080
+VITE_API_BASE_URL=https://cets.alanh.uk/api/v1
+# VITE_WS_BASE_URL=
 ```
 
-如果要改後端位置，請調整 `.env.local` 內的 proxy target。
+如果要改後端位置，請調整 `VITE_API_BASE_URL`。前端會照 `VITE_API_BASE_URL` 原樣使用，不會自動補 `/api/v1`。
 
 ### 開發模式
 
@@ -102,11 +101,11 @@ frontend/
 
 ## 🔑 API 設定
 
-開發模式建議使用 Vite proxy：`VITE_API_BASE_URL=/api/v1`。`vite.config.js` 會依 `VITE_DEV_PROXY_API_TARGET` / `VITE_DEV_PROXY_WS_TARGET` 代理 `/api` 與 `/ws`；若後端在本機，可設為 `http://localhost:8080` / `ws://localhost:8080`。
+開發模式直接使用完整 API base URL，例如 `VITE_API_BASE_URL=https://cets.alanh.uk/api/v1`。前端不會自動補 `/api/v1`，後端需允許本機開發來源的 CORS。
 
 ### 登入
 
-前端提供員工、管理員、驗票員三個 OIDC / OAuth 登入按鈕。按鈕使用 `auth-pass.md` 的測試帳密顯示對應帳號,並以 `login_hint` 帶入 Auth0;密碼需在 Auth0 hosted login 頁輸入。
+前端提供員工、管理員、驗票員三個 OIDC / OAuth 登入入口。點擊後會導向後端身分服務產生的企業登入頁，前端不保存或顯示帳密。
 
 ### API 端點
 

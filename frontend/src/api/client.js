@@ -5,17 +5,14 @@ const normalizeApiBase = (rawUrl) => {
   if (!trimmed) {
     return '';
   }
-  return trimmed.endsWith('/api/v1') ? trimmed : `${trimmed}/api/v1`;
+  return trimmed;
 };
 
 const resolveDefaultApiBase = () => {
   if (import.meta.env.VITE_API_BASE_URL) {
     return normalizeApiBase(import.meta.env.VITE_API_BASE_URL);
   }
-  if (typeof window !== 'undefined') {
-    return `${window.location.origin}/api/v1`;
-  }
-  return '/api/v1';
+  return '';
 };
 
 const resolveWsBase = (apiBaseUrl) => {
@@ -275,9 +272,11 @@ class APIClient {
 
   async logout() {
     const refreshToken = this.getRefreshToken();
-    const res = await this.client.post('/auth/logout', refreshToken ? { refresh_token: refreshToken } : undefined);
-    this.clearAuth();
-    return res;
+    try {
+      return await this.client.post('/auth/logout', refreshToken ? { refresh_token: refreshToken } : undefined);
+    } finally {
+      this.clearAuth();
+    }
   }
 
   async getEvents(params = {}) {

@@ -28,5 +28,5 @@ These are generated artifacts and should not be committed.
 
 ## Notes
 
-- Current `.env.local` uses `/api/v1` with Vite proxy (`vite.config.js`) targeting `https://cets.alanh.uk`.
-- If teammate uses different backend, update `.env.local` accordingly.
+- Current `.env.local` should use the full remote API base: `VITE_API_BASE_URL=https://cets.alanh.uk/api/v1`.
+- If teammate uses a different backend, update `VITE_API_BASE_URL` accordingly. The frontend no longer uses a Vite `/api` proxy.
