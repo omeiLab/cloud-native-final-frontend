@@ -3,8 +3,7 @@ import react from '@vitejs/plugin-react'
 
 const vendorChunks = [
   ['react-vendor', ['react', 'react-dom', 'react-router-dom']],
-  ['antd-vendor', ['antd']],
-  ['antd-icons', ['@ant-design/icons']],
+  ['antd-vendor', ['antd', '@ant-design/icons']],
   ['chart-vendor', ['recharts']],
   ['scan-vendor', ['@zxing/browser', 'qrcode']]
 ]
