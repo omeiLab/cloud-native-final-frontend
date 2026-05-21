@@ -15,7 +15,6 @@ import {
   Select,
   Space,
   Statistic,
-  Switch,
   Table,
   Tabs,
   Tag,
@@ -255,10 +254,7 @@ const adminInitialState = {
   editLoading: false,
   activeTabKey: 'event-create',
   editingEventId: '',
-  autoLotteryEnabled: true,
-  autoLotteryRunning: false,
-  autoLotteryStatus: '待命中',
-  autoLotteryLastRunAt: ''
+  autoLotteryRunning: false
 };
 
 const adminStateReducer = (state, action) => {
@@ -334,10 +330,7 @@ const useAdminConsoleController = () => {
     editLoading,
     activeTabKey,
     editingEventId,
-    autoLotteryEnabled,
-    autoLotteryRunning,
-    autoLotteryStatus,
-    autoLotteryLastRunAt
+    autoLotteryRunning
   } = adminState;
   const setEvents = useCallback((value) => setAdminState('events', value), [setAdminState]);
   const setLocalDraftEvents = useCallback((value) => setAdminState('localDraftEvents', value), [setAdminState]);
@@ -353,10 +346,7 @@ const useAdminConsoleController = () => {
   const setEditLoading = useCallback((value) => setAdminState('editLoading', value), [setAdminState]);
   const setActiveTabKey = useCallback((value) => setAdminState('activeTabKey', value), [setAdminState]);
   const setEditingEventId = useCallback((value) => setAdminState('editingEventId', value), [setAdminState]);
-  const setAutoLotteryEnabled = useCallback((value) => setAdminState('autoLotteryEnabled', value), [setAdminState]);
   const setAutoLotteryRunning = useCallback((value) => setAdminState('autoLotteryRunning', value), [setAdminState]);
-  const setAutoLotteryStatus = useCallback((value) => setAdminState('autoLotteryStatus', value), [setAdminState]);
-  const setAutoLotteryLastRunAt = useCallback((value) => setAdminState('autoLotteryLastRunAt', value), [setAdminState]);
   const [createForm] = Form.useForm();
   const createRegistrationMode = Form.useWatch('registration_mode', createForm) || 'LIMITED';
   const selectedCoverImage = Form.useWatch('cover_image_url', createForm) || '';
@@ -870,15 +860,11 @@ const useAdminConsoleController = () => {
       cancelText: '取消',
       onOk: async () => {
         setAutoLotteryRunning(true);
-        setAutoLotteryStatus(`即時抽籤執行中（${pending.length} 場）...`);
         try {
           await Promise.all(pending.map((row) => apiClient.adminRunLottery(row.session_id)));
-          setAutoLotteryLastRunAt(dayjs().format('YYYY-MM-DD HH:mm:ss'));
-          setAutoLotteryStatus(`即時抽籤完成：${pending.length}/${pending.length}`);
           message.success(`即時抽籤完成：${pending.length}/${pending.length}`);
           await loadDashboard(selectedEventId);
         } catch (e) {
-          setAutoLotteryStatus(`即時抽籤失敗：${getErrorMessage(e, '請稍後重試')}`);
           message.error(getErrorMessage(e, '即時抽籤失敗'));
           throw e;
         } finally {
@@ -887,56 +873,6 @@ const useAdminConsoleController = () => {
       }
     });
   };
-
-  const runDueLotteries = useCallback(async ({ silent = true } = {}) => {
-    if (!isAdminFull || !selectedEventId) return;
-    const sessions = dashboard?.sessions_lottery || [];
-    const nowAt = dayjs();
-    const dueSessions = sessions.filter((row) => {
-      if (row?.lottery_executed_at) return false;
-      if (!row?.lottery_at) return false;
-      const lotteryAt = dayjs(row.lottery_at);
-      if (!lotteryAt.isValid()) return false;
-      return nowAt.isAfter(lotteryAt) || nowAt.isSame(lotteryAt);
-    });
-    if (!dueSessions.length) {
-      if (!silent) {
-        setAutoLotteryStatus('目前沒有到點且未執行的場次');
-      }
-      return;
-    }
-    setAutoLotteryRunning(true);
-    setAutoLotteryStatus(`偵測到 ${dueSessions.length} 個到點場次，執行中...`);
-    try {
-      await Promise.all(dueSessions.map((row) => apiClient.adminRunLottery(row.session_id)));
-      setAutoLotteryLastRunAt(dayjs().format('YYYY-MM-DD HH:mm:ss'));
-      setAutoLotteryStatus(`自動抽籤已完成：${dueSessions.length}/${dueSessions.length}`);
-      await loadDashboard(selectedEventId);
-      if (!silent) {
-        message.success(`自動抽籤完成：${dueSessions.length}/${dueSessions.length}`);
-      }
-    } catch (error) {
-      setAutoLotteryStatus(`自動抽籤失敗：${getErrorMessage(error, '請稍後重試')}`);
-      if (!silent) {
-        message.error(getErrorMessage(error, '自動抽籤失敗'));
-      }
-    } finally {
-      setAutoLotteryRunning(false);
-    }
-  }, [dashboard, isAdminFull, selectedEventId]);
-
-  useEffect(() => {
-    if (!autoLotteryEnabled || !isAdminFull || !selectedEventId) {
-      return undefined;
-    }
-    runDueLotteries({ silent: true });
-    const timerId = globalThis.setInterval(() => {
-      runDueLotteries({ silent: true });
-    }, 30000);
-    return () => {
-      globalThis.clearInterval(timerId);
-    };
-  }, [autoLotteryEnabled, isAdminFull, selectedEventId, runDueLotteries]);
 
   return {
     loading,
@@ -968,11 +904,7 @@ const useAdminConsoleController = () => {
     siteCount,
     editLoading,
     editingEventId,
-    autoLotteryEnabled,
-    setAutoLotteryEnabled,
     autoLotteryRunning,
-    autoLotteryStatus,
-    autoLotteryLastRunAt,
     handleSelectCoverImage,
     handleSitePreview,
     handleCreate,
@@ -984,7 +916,6 @@ const useAdminConsoleController = () => {
     handleCancel,
     runInstantLotteryForSelectedEvent,
     handleExportSync,
-    runDueLotteries,
     handleRunLottery
   };
 };
@@ -1262,11 +1193,11 @@ const CoverAndSiteFields = ({ controller }) => {
               key={src}
               type="button"
               className={'admin-cover-option' + (selectedCoverImage === src ? ' is-selected' : '')}
+              aria-label={`選擇活動圖片 ${idx + 1}`}
               aria-pressed={selectedCoverImage === src}
               onClick={() => handleSelectCoverImage(src)}
             >
               <img src={src} alt="" loading="lazy" />
-              <span>內建 {idx + 1}</span>
             </button>
           ))}
         </div>
@@ -1611,17 +1542,12 @@ const DashboardTab = ({ controller }) => {
     exportingSync,
     editLoading,
     isAdminFull,
-    autoLotteryEnabled,
-    setAutoLotteryEnabled,
     autoLotteryRunning,
-    autoLotteryStatus,
-    autoLotteryLastRunAt,
     handlePublish,
     enterEditMode,
     handleCancel,
     runInstantLotteryForSelectedEvent,
     handleExportSync,
-    runDueLotteries,
     handleRunLottery
   } = controller;
   const registrationTimeline = dashboard?.registration_timeline || EMPTY_ARRAY;
@@ -1749,56 +1675,6 @@ const DashboardTab = ({ controller }) => {
       </Card>
 
       <Card style={{ marginTop: 16 }} title="抽籤執行（依場次）">
-        <Alert
-          type="warning"
-          showIcon
-          style={{ marginBottom: 12 }}
-          message="後端／瀏覽器除錯重點"
-          description={
-            <span>
-              已用目前 API base 的 <code>openapi.json</code> 比對：目前部署規格書列出
-              <strong><code>POST /admin/sessions/{'{session_id}'}/run-lottery</code></strong> 作為管理員手動抽籤路徑，
-              與後端 <strong>lottery-runner／排程</strong> 使用同一套邏輯。前端只呼叫此路徑，不再保留舊版抽籤 endpoint fallback。
-            </span>
-          }
-        />
-        <Alert
-          type="info"
-          showIcon
-          style={{ marginBottom: 12 }}
-          message="流程說明（需後端提供抽籤 API 或由排程完成）"
-          description={(
-            <Space direction="vertical" size={8} style={{ width: '100%' }}>
-              <span>
-                下表場次若後端儀表板未回傳 <code>sessions_lottery</code>，會改由活動詳情（GET /events）的場次補上；「待抽籤人數」可能顯示為「未提供」，仍可手動按「執行抽籤」。
-              </span>
-              <span>
-                「立即檢查並執行／即時抽籤」按下後會呼叫<strong>同上抽籤 POST</strong>；若該測試環境尚未部署手動路徑，
-                仍可由 <strong>後端 lottery-runner／排程</strong> 在 <code>lottery_at</code> 到點時處理。
-              </span>
-              <Space wrap>
-                <span>自動抽籤：</span>
-                <Switch
-                  checked={autoLotteryEnabled}
-                  onChange={setAutoLotteryEnabled}
-                  disabled={!isAdminFull}
-                  checkedChildren="開啟"
-                  unCheckedChildren="關閉"
-                />
-                <Button
-                  size="small"
-                  onClick={() => runDueLotteries({ silent: false })}
-                  loading={autoLotteryRunning}
-                  disabled={!isAdminFull || !selectedEventId}
-                >
-                  立即檢查並執行
-                </Button>
-              </Space>
-              <span>自動抽籤狀態：{autoLotteryStatus}</span>
-              <span>最近執行時間：{autoLotteryLastRunAt || '尚未執行'}</span>
-            </Space>
-          )}
-        />
         <Table
           rowKey="session_id"
           pagination={false}
