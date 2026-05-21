@@ -3,9 +3,9 @@ import { Alert, Card, Spin, Typography } from 'antd';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { POST_LOGIN_REDIRECT_KEY } from '../constant';
+import { getPostLoginRedirectPath } from '../utils/authRedirect';
 
 const { Paragraph } = Typography;
-const isSafeInternalPath = (path) => typeof path === 'string' && path.startsWith('/') && !path.startsWith('//');
 
 const OIDCCallbackPage = () => {
   const [search] = useSearchParams();
@@ -29,10 +29,10 @@ const OIDCCallbackPage = () => {
 
     callbackStartedRef.current = true;
     finishOIDCLogin({ code, state })
-      .then(() => {
+      .then((loggedInUser) => {
         const redirectPath = sessionStorage.getItem(POST_LOGIN_REDIRECT_KEY);
         sessionStorage.removeItem(POST_LOGIN_REDIRECT_KEY);
-        navigate(isSafeInternalPath(redirectPath) ? redirectPath : '/', { replace: true });
+        navigate(getPostLoginRedirectPath(loggedInUser, redirectPath), { replace: true });
       })
       .catch((e) => {
         setError(e?.error?.message || e?.message || 'OIDC 登入失敗，請重新登入');

@@ -6,7 +6,6 @@ import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
 import { useUiPreferences } from '../context/UiPreferencesContext';
 import { LOGO_IMAGE } from '../assets/media';
-import LoginModal from './LoginModal';
 import AnimatedThemeToggler from './AnimatedThemeToggler';
 import { ROLE_LABELS, labelOr } from '../utils/labels';
 import '../styles/Header.css';
@@ -31,8 +30,7 @@ const AppHeader = () => {
     setTextScale('normal');
   };
 
-  const [loginOpen, setLoginOpen] = useState(false);
-  const [loginLoadingRole, setLoginLoadingRole] = useState(null);
+  const [loginLoading, setLoginLoading] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profilePopoverOpen, setProfilePopoverOpen] = useState(false);
   const canAccessTicketBox = user?.role === 'EMPLOYEE';
@@ -57,19 +55,14 @@ const AppHeader = () => {
     navigate('/');
   };
 
-  const openLoginModal = () => {
+  const handleLogin = async () => {
     setMobileMenuOpen(false);
-    setLoginOpen(true);
-  };
-
-  const handleRoleLogin = async (option) => {
-    setLoginLoadingRole(option.key);
-    setMobileMenuOpen(false);
+    setLoginLoading(true);
     try {
-      await startOIDCLogin({ targetPath: option.targetPath });
+      await startOIDCLogin();
     } catch (error) {
       message.error(error?.error?.message || '登入失敗，請確認後端服務是否正常');
-      setLoginLoadingRole(null);
+      setLoginLoading(false);
     }
   };
 
@@ -188,7 +181,7 @@ const AppHeader = () => {
               </Button>
             </Popover>
           ) : (
-            <Button type="primary" onClick={openLoginModal}>登入</Button>
+            <Button type="primary" loading={loginLoading} onClick={handleLogin}>登入</Button>
           )}
         </Space>
       </div>
@@ -204,7 +197,7 @@ const AppHeader = () => {
             <Avatar size={28} icon={<UserOutlined />} />
           </Button>
         ) : (
-          <Button type="primary" size="small" onClick={openLoginModal}>登入</Button>
+          <Button type="primary" size="small" loading={loginLoading} onClick={handleLogin}>登入</Button>
         )}
       </div>
 
@@ -299,20 +292,13 @@ const AppHeader = () => {
                 </div>
               </>
             ) : (
-              <Button type="primary" className="mobile-drawer-login" onClick={openLoginModal}>
+              <Button type="primary" className="mobile-drawer-login" loading={loginLoading} onClick={handleLogin}>
                 登入
               </Button>
             )}
           </div>
         </div>
       </Drawer>
-
-      <LoginModal
-        open={loginOpen}
-        onClose={() => setLoginOpen(false)}
-        onSelectRole={handleRoleLogin}
-        loadingRole={loginLoadingRole}
-      />
     </Header>
   );
 };

@@ -1,29 +1,22 @@
 import React, { useState } from 'react';
-import { Alert, Button, Card, Col, Row, Space, Typography, message } from 'antd';
-import { AuditOutlined, IdcardOutlined, QrcodeOutlined, SafetyOutlined } from '@ant-design/icons';
+import { Alert, Button, Card, Col, Row, Typography, message } from 'antd';
+import { LoginOutlined, SafetyOutlined } from '@ant-design/icons';
 import { useAuth } from '../context/AuthContext';
-import { ROLE_LOGIN_OPTIONS } from '../constant';
 import '../styles/LoginPage.css';
 
 const { Title, Paragraph } = Typography;
 
-const ROLE_ICONS = {
-  EMPLOYEE: <IdcardOutlined />,
-  ADMIN: <AuditOutlined />,
-  VERIFIER: <QrcodeOutlined />
-};
-
 const LoginPage = () => {
   const { startOIDCLogin } = useAuth();
-  const [loadingRole, setLoadingRole] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-  const handleOIDCLogin = async (option) => {
-    setLoadingRole(option.key);
+  const handleOIDCLogin = async () => {
+    setLoading(true);
     try {
-      await startOIDCLogin({ targetPath: option.targetPath });
+      await startOIDCLogin();
     } catch (error) {
       message.error(error?.error?.message || '登入失敗，請確認後端服務是否正常');
-      setLoadingRole(null);
+      setLoading(false);
     }
   };
 
@@ -38,24 +31,16 @@ const LoginPage = () => {
               使用企業登入進入活動平台。中籤後請於期限內確認領票，現場出示 QR 入場。
             </Paragraph>
 
-            <Space direction="vertical" style={{ width: '100%' }} size={12}>
-              {ROLE_LOGIN_OPTIONS.map((option) => (
-                <Button
-                  key={option.key}
-                  block
-                  size="large"
-                  icon={ROLE_ICONS[option.key]}
-                  loading={loadingRole === option.key}
-                  onClick={() => handleOIDCLogin(option)}
-                  style={{ height: 'auto', paddingBlock: 12, textAlign: 'left' }}
-                >
-                  <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
-                    <strong>{option.title}</strong>
-                    <small>{option.description}</small>
-                  </span>
-                </Button>
-              ))}
-            </Space>
+            <Button
+              block
+              type="primary"
+              size="large"
+              icon={<LoginOutlined />}
+              loading={loading}
+              onClick={handleOIDCLogin}
+            >
+              企業登入
+            </Button>
 
             <Alert
               style={{ marginTop: 20 }}

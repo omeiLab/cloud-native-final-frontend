@@ -4,13 +4,12 @@ import {
   OIDC_STATE_KEY,
   POST_LOGIN_REDIRECT_KEY
 } from '../constant';
+import { isSafeInternalPath } from '../utils/authRedirect';
 
 const AuthContext = createContext(null);
 const appBasePath = import.meta.env.BASE_URL === '/'
   ? ''
   : import.meta.env.BASE_URL.replace(/\/$/, '');
-
-const isSafeInternalPath = (path) => typeof path === 'string' && path.startsWith('/') && !path.startsWith('//');
 
 const clearOidcTransientState = () => {
   localStorage.removeItem(OIDC_STATE_KEY);
@@ -44,7 +43,7 @@ export const AuthProvider = ({ children }) => {
     if (!apiClient.getAccessToken() && !apiClient.getRefreshToken()) {
       setUser(null);
       setLoading(false);
-      return;
+      return null;
     }
 
     setLoading(true);
@@ -53,10 +52,13 @@ export const AuthProvider = ({ children }) => {
         await apiClient.refresh();
       }
       const res = await apiClient.getMe();
-      setUser(res.data);
+      const currentUser = res.data;
+      setUser(currentUser);
+      return currentUser;
     } catch (error) {
       apiClient.clearAuth();
       setUser(null);
+      return null;
     } finally {
       setLoading(false);
     }
@@ -99,7 +101,7 @@ export const AuthProvider = ({ children }) => {
     const res = await apiClient.oidcCallback({ code, state });
     clearOidcTransientState();
     apiClient.setAuthTokens(res.data);
-    await fetchMe();
+    return fetchMe();
   }, [fetchMe]);
 
   const logout = useCallback(async () => {
