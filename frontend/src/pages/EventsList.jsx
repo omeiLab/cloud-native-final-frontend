@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Col, Empty, Input, Row, Select, Skeleton, Tag, Typography } from 'antd';
+import { Alert, Button, Card, Col, Empty, Input, message, Row, Select, Skeleton, Tag, Typography } from 'antd';
 import {
   CalendarOutlined,
   ClockCircleOutlined,
@@ -15,6 +15,7 @@ import { useAuth } from '../context/AuthContext';
 import { pickEventImage, resolvePublicAssetUrl } from '../assets/media';
 import '../styles/EventsList.css';
 
+const LOGIN_ERROR_MESSAGE = '登入失敗，請確認後端服務是否正常';
 const { Title, Paragraph } = Typography;
 
 const ALL_FILTER_VALUE = 'all';
@@ -33,6 +34,21 @@ const DATE_FILTER_OPTIONS = [
   { label: '一個月內', value: 'month' },
   { label: '三個月內', value: 'quarter' }
 ];
+
+const SKELETON_CARD_KEYS = [
+  'event-skeleton-1',
+  'event-skeleton-2',
+  'event-skeleton-3',
+  'event-skeleton-4',
+  'event-skeleton-5',
+  'event-skeleton-6'
+];
+
+const INITIAL_FILTERS = {
+  keyword: '',
+  dateWindow: ALL_FILTER_VALUE,
+  statusFilter: ALL_FILTER_VALUE
+};
 
 const getEventSearchText = (event) => (
   `${event.title || ''} ${event.venue || ''} ${(event.allowed_sites || []).join(' ')}`
@@ -136,13 +152,12 @@ const EventCard = ({ event, primaryStatus, onOpen }) => {
 
 const EventsList = () => {
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, startOIDCLogin } = useAuth();
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [keyword, setKeyword] = useState('');
-  const [dateWindow, setDateWindow] = useState(ALL_FILTER_VALUE);
-  const [statusFilter, setStatusFilter] = useState(ALL_FILTER_VALUE);
+  const [filters, setFilters] = useState(INITIAL_FILTERS);
+  const { keyword, dateWindow, statusFilter } = filters;
 
   const fetchEvents = useCallback(async (params = {}) => {
     try {
@@ -181,8 +196,7 @@ const EventsList = () => {
         const detail = detailMap.get(item.id);
         const firstSession = detail?.sessions?.[0];
         const derivedEndsAt = (detail?.sessions || [])
-          .map((s) => s?.ends_at)
-          .filter(Boolean)
+          .flatMap((s) => (s?.ends_at ? [s.ends_at] : []))
           .reduce((max, cur) => {
             if (!max) return cur;
             const a = dayjs(max);
@@ -275,7 +289,7 @@ const EventsList = () => {
     });
   }, [dateWindow, events, getStatusFilterValue, keyword, statusFilter]);
 
-  const sortedVisibleEvents = useMemo(() => [...visibleEvents].sort((a, b) => {
+  const sortedVisibleEvents = useMemo(() => visibleEvents.slice().sort((a, b) => {
     const aCanRegister = canRegisterEvent(a);
     const bCanRegister = canRegisterEvent(b);
     if (aCanRegister !== bCanRegister) {
@@ -305,6 +319,34 @@ const EventsList = () => {
     navigate(`/events/${eventId}`);
   }, [navigate]);
 
+  const updateFilter = useCallback((key, value) => {
+    setFilters((currentFilters) => (
+      currentFilters[key] === value
+        ? currentFilters
+        : { ...currentFilters, [key]: value }
+    ));
+  }, []);
+
+  const handleKeywordChange = useCallback((event) => {
+    updateFilter('keyword', event.target.value);
+  }, [updateFilter]);
+
+  const handleDateWindowChange = useCallback((value) => {
+    updateFilter('dateWindow', value);
+  }, [updateFilter]);
+
+  const handleStatusFilterChange = useCallback((value) => {
+    updateFilter('statusFilter', value);
+  }, [updateFilter]);
+
+  const handleLogin = useCallback(async () => {
+    try {
+      await startOIDCLogin();
+    } catch (err) {
+      message.error(err?.error?.message || LOGIN_ERROR_MESSAGE);
+    }
+  }, [startOIDCLogin]);
+
   return (
     <div className="events-list-container page-wrap">
       {authLoading ? (
@@ -314,6 +356,14 @@ const EventsList = () => {
       ) : !user ? (
         <Card className="events-hero hero-card guest-hero">
           <Title level={2}>台積電晶彩活動通</Title>
+          <Button
+            type="primary"
+            size="large"
+            className="guest-login-button"
+            onClick={handleLogin}
+          >
+            登入
+          </Button>
         </Card>
       ) : (
         <Card className="events-hero hero-card">
@@ -339,21 +389,21 @@ const EventsList = () => {
                 prefix={<SearchOutlined />}
                 placeholder="搜尋活動、地點、廠區"
                 value={keyword}
-                onChange={(e) => setKeyword(e.target.value)}
+                onChange={handleKeywordChange}
               />
               <Select
                 className="events-date-filter"
                 aria-label="活動日期"
                 value={dateWindow}
                 options={DATE_FILTER_OPTIONS}
-                onChange={setDateWindow}
+                onChange={handleDateWindowChange}
               />
               <Select
                 className="events-status-filter"
                 aria-label="報名狀態"
                 options={STATUS_FILTER_OPTIONS}
                 value={statusFilter}
-                onChange={setStatusFilter}
+                onChange={handleStatusFilterChange}
               />
               <Button
                 className="events-refresh-button"
@@ -371,8 +421,8 @@ const EventsList = () => {
           {loading ? (
             <div className="loading-container">
               <Row gutter={[24, 24]} style={{ width: '100%' }}>
-                {[1, 2, 3, 4, 5, 6].map((idx) => (
-                  <Col key={idx} xs={24} sm={12} md={8}>
+                {SKELETON_CARD_KEYS.map((key) => (
+                  <Col key={key} xs={24} sm={12} md={8}>
                     <Card className="event-card">
                       <Skeleton active avatar paragraph={{ rows: 4 }} />
                     </Card>

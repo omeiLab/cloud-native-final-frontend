@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Button, Tooltip } from 'antd';
-import { CustomerServiceOutlined, PauseCircleOutlined } from '@ant-design/icons';
+import { PauseCircleOutlined, PlayCircleOutlined } from '@ant-design/icons';
 import { publicAssetPath } from '../assets/media';
 
 const MUSIC_URL = publicAssetPath('/music/tsmcsong.mp3');
@@ -51,16 +51,14 @@ const BackgroundMusic = () => {
       <Tooltip title={tip}>
         <Button
           type={enabled ? 'primary' : 'default'}
-          shape="round"
-          icon={enabled ? <CustomerServiceOutlined /> : <PauseCircleOutlined />}
+          shape="circle"
+          icon={enabled ? <PauseCircleOutlined /> : <PlayCircleOutlined />}
+          aria-label={tip}
           onClick={toggleMusic}
-        >
-          {enabled ? '背景音樂開啟中' : '背景音樂已關閉'}
-        </Button>
+        />
       </Tooltip>
     </div>
   );
 };
 
 export default BackgroundMusic;
-
