@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { memo, useCallback, useEffect, useMemo, useReducer, useState } from 'react';
 import { Button, Card, Col, Descriptions, Empty, List, Modal, Row, Space, Spin, Tabs, Tag, Typography, message } from 'antd';
 import { CheckCircleOutlined, FullscreenExitOutlined, FullscreenOutlined, QrcodeOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -10,6 +10,9 @@ import { REGISTRATION_STATUS_LABELS, TICKET_STATUS_LABELS, labelOr } from '../ut
 import '../styles/Profile.css';
 
 const { Title, Paragraph, Text } = Typography;
+
+const TICKET_QR_IMAGE_SIZE = 640;
+const TICKET_QR_MARGIN_MODULES = 4;
 
 const normalizeTicketTypeLabel = (name, fallbackId = '') => {
   const text = String(name || '');
@@ -26,6 +29,19 @@ const buildFallbackEventTitle = (reg) => {
     return `活動（場次 ${reg.session_id}）`;
   }
   return '活動資訊待同步';
+};
+
+const getQrSecondsRemaining = (expiresAt) => {
+  if (!expiresAt) return null;
+  return Math.max(dayjs(expiresAt).diff(dayjs(), 'second'), 0);
+};
+
+const formatQrCountdown = (seconds) => {
+  if (seconds === null) return '倒數計算中';
+  if (seconds <= 0) return '更新中';
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = String(seconds % 60).padStart(2, '0');
+  return `剩餘 ${minutes}:${remainingSeconds}`;
 };
 
 /** 通知 title 常為「前綴 — 活動名」；payload.event_title 若有則優先 */
@@ -90,55 +106,337 @@ const enrichRegistrationsFromNotifications = (regs, notificationItems) => {
   });
 };
 
-const UserProfile = () => {
-  const { user, logout } = useAuth();
-  const [registrations, setRegistrations] = useState([]);
-  const [tickets, setTickets] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [selectedTicketId, setSelectedTicketId] = useState('');
-  const [showQRModal, setShowQRModal] = useState(false);
-  const [qrData, setQrData] = useState(null);
-  const [qrImageUrl, setQrImageUrl] = useState('');
-  const [ticketFullscreen, setTicketFullscreen] = useState(false);
-  const [copyingPayload, setCopyingPayload] = useState(false);
+const initialTicketQrModalState = {
+  qrData: null,
+  qrImageUrl: '',
+  qrSecondsRemaining: null,
+  fullscreen: false,
+  copyingPayload: false
+};
+
+const ticketQrModalReducer = (state, action) => {
+  switch (action.type) {
+    case 'loaded':
+      return {
+        ...state,
+        qrData: action.qrData,
+        qrImageUrl: action.qrImageUrl,
+        qrSecondsRemaining: action.qrSecondsRemaining
+      };
+    case 'countdownUpdated':
+      return { ...state, qrSecondsRemaining: action.qrSecondsRemaining };
+    case 'fullscreenToggled':
+      return { ...state, fullscreen: !state.fullscreen };
+    case 'copyingUpdated':
+      return { ...state, copyingPayload: action.copyingPayload };
+    case 'reset':
+      return initialTicketQrModalState;
+    default:
+      return state;
+  }
+};
+
+const TicketQrModal = memo(({ ticketId, onClose }) => {
+  const [state, dispatch] = useReducer(ticketQrModalReducer, initialTicketQrModalState);
+  const { qrData, qrImageUrl, qrSecondsRemaining, fullscreen, copyingPayload } = state;
+  const open = Boolean(ticketId);
+
+  const handleClose = useCallback(() => {
+    dispatch({ type: 'reset' });
+    onClose();
+  }, [onClose]);
 
   useEffect(() => {
-    loadData();
-  }, []);
-
-  useEffect(() => {
-    if (!showQRModal || !selectedTicketId) {
-      return;
+    if (!ticketId) {
+      dispatch({ type: 'reset' });
+      return undefined;
     }
 
+    let cancelled = false;
     let timer;
     const refreshQr = async () => {
       try {
-        const res = await apiClient.getTicketQR(selectedTicketId);
-        setQrData(res.data);
+        const res = await apiClient.getTicketQR(ticketId);
         const image = await QRCode.toDataURL(res.data.qr_payload, {
-          width: 320,
-          margin: 1
+          errorCorrectionLevel: 'M',
+          margin: TICKET_QR_MARGIN_MODULES,
+          width: TICKET_QR_IMAGE_SIZE,
+          color: {
+            dark: '#000000',
+            light: '#ffffff'
+          }
         });
-        setQrImageUrl(image);
+        if (!cancelled) {
+          dispatch({
+            type: 'loaded',
+            qrData: res.data,
+            qrImageUrl: image,
+            qrSecondsRemaining: getQrSecondsRemaining(res.data.qr_expires_at)
+          });
+        }
       } catch (e) {
-        // 若票券不可產生 QR（例如 USED/REVOKED），直接提示並關閉視窗，避免一直轉圈還要手動關閉。
-        message.warning(e?.error?.message || '此票券目前無法產生 QR');
-        setShowQRModal(false);
-        setQrData(null);
-        setQrImageUrl('');
-        setTicketFullscreen(false);
+        if (!cancelled) {
+          message.warning(e?.error?.message || '此票券目前無法產生 QR');
+          dispatch({ type: 'reset' });
+          onClose();
+        }
       }
     };
 
     refreshQr();
     timer = setInterval(refreshQr, 25000);
-    return () => clearInterval(timer);
-  }, [selectedTicketId, showQRModal]);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [onClose, ticketId]);
 
-  const loadData = async () => {
+  useEffect(() => {
+    if (!open || !qrData?.qr_expires_at) {
+      return undefined;
+    }
+
+    const updateCountdown = () => {
+      dispatch({
+        type: 'countdownUpdated',
+        qrSecondsRemaining: getQrSecondsRemaining(qrData.qr_expires_at)
+      });
+    };
+
+    updateCountdown();
+    const timer = setInterval(updateCountdown, 1000);
+    return () => clearInterval(timer);
+  }, [open, qrData?.qr_expires_at]);
+
+  const copyQrPayload = useCallback(async () => {
+    const payload = qrData?.qr_payload;
+    if (!payload) {
+      message.warning('尚未取得 QR payload');
+      return;
+    }
+    dispatch({ type: 'copyingUpdated', copyingPayload: true });
     try {
-      setLoading(true);
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(payload);
+      } else {
+        const el = document.createElement('textarea');
+        el.value = payload;
+        el.style.cssText = 'position: fixed; left: -9999px; top: 0;';
+        document.body.appendChild(el);
+        el.focus();
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+      }
+      message.success('已複製 QR payload，可貼到「驗票端」備援核銷');
+    } catch {
+      message.error('複製失敗，請手動長按選取或改用電腦瀏覽器');
+    } finally {
+      dispatch({ type: 'copyingUpdated', copyingPayload: false });
+    }
+  }, [qrData?.qr_payload]);
+
+  return (
+    <Modal
+      title="票券詳情"
+      open={open}
+      onCancel={handleClose}
+      footer={null}
+      width={fullscreen ? '100vw' : 456}
+      className={`ticket-modal${fullscreen ? ' ticket-fullscreen-modal' : ''}`}
+    >
+      {ticketId ? (
+        <div className={`ticket-detail-modal${fullscreen ? ' fullscreen' : ''}`}>
+          {!qrData ? <Spin /> : null}
+          {qrData ? (
+            <>
+              <div className="ticket-modal-toolbar">
+                <Button
+                  type="default"
+                  icon={fullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
+                  onClick={() => dispatch({ type: 'fullscreenToggled' })}
+                >
+                  {fullscreen ? '退出全螢幕' : '全螢幕展示'}
+                </Button>
+                <Button
+                  type="primary"
+                  icon={<QrcodeOutlined />}
+                  loading={copyingPayload}
+                  onClick={copyQrPayload}
+                >
+                  複製 QR payload
+                </Button>
+              </div>
+              <div className="ticket-summary-panel">
+                <QrcodeOutlined className="ticket-summary-icon" />
+                <div className="ticket-summary-copy">
+                  <Text className="ticket-summary-label">QR 倒數</Text>
+                  <Text strong className="ticket-summary-countdown">
+                    {formatQrCountdown(qrSecondsRemaining)}
+                  </Text>
+                </div>
+              </div>
+              <div className="ticket-qr-frame">
+                {qrImageUrl ? <img src={qrImageUrl} alt="ticket qr" /> : null}
+              </div>
+            </>
+          ) : null}
+        </div>
+      ) : null}
+    </Modal>
+  );
+});
+
+const TabsLoading = memo(() => (
+  <div className="loading-container">
+    <Spin size="large" />
+  </div>
+));
+
+const TicketCard = memo(({ ticket, registration, onOpenTicket, onForfeitTicket }) => {
+  const canForfeit = registration?.status === 'WON' || registration?.status === 'CONFIRMED';
+  const canShowQr = ticket.status === 'ISSUED';
+
+  const handleOpen = useCallback(() => {
+    if (!canShowQr) {
+      message.warning(`票券狀態為 ${ticket.status}，無法產生 QR`);
+      return;
+    }
+    onOpenTicket(ticket.id);
+  }, [canShowQr, onOpenTicket, ticket.id, ticket.status]);
+
+  const handleForfeit = useCallback((e) => {
+    e.stopPropagation();
+    onForfeitTicket(ticket);
+  }, [onForfeitTicket, ticket]);
+
+  return (
+    <Card hoverable onClick={handleOpen}>
+      <Paragraph strong>
+        {registration?.event_title || ticket.event_title || buildFallbackEventTitle(registration) || ticket.id}
+      </Paragraph>
+      <Paragraph type="secondary" style={{ marginBottom: 8 }}>
+        {(registration?.session_title || ticket.session_title)
+          ? `場次：${registration?.session_title || ticket.session_title}`
+          : null}
+        {(registration?.ticket_type_name || ticket.ticket_type_name || registration?.ticket_type_id || ticket.ticket_type_id)
+          ? `　票種：${normalizeTicketTypeLabel(
+            registration?.ticket_type_name || ticket.ticket_type_name,
+            registration?.ticket_type_id || ticket.ticket_type_id
+          )}`
+          : null}
+      </Paragraph>
+      <Paragraph>
+        狀態：
+        <Tag color={ticket.status === 'ISSUED' ? 'green' : 'default'}>
+          {labelOr(TICKET_STATUS_LABELS, ticket.status, ticket.status)}
+        </Tag>
+      </Paragraph>
+      <Paragraph type="secondary">發行時間: {dayjs(ticket.issued_at).format('YYYY-MM-DD HH:mm')}</Paragraph>
+      <Button danger size="small" onClick={handleForfeit} disabled={!canForfeit}>
+        放棄票券
+      </Button>
+    </Card>
+  );
+});
+
+const TicketsPanel = memo(({ loading, tickets, registrationById, onOpenTicket, onForfeitTicket }) => (
+  <div className="tabs-content">
+    {loading ? (
+      <TabsLoading />
+    ) : !tickets.length ? (
+      <Empty description="暫無票券" />
+    ) : (
+      <Row gutter={[16, 16]}>
+        {tickets.map((ticket) => (
+          <Col key={ticket.id} xs={24} sm={12} md={8}>
+            <TicketCard
+              ticket={ticket}
+              registration={registrationById.get(ticket.registration_id)}
+              onOpenTicket={onOpenTicket}
+              onForfeitTicket={onForfeitTicket}
+            />
+          </Col>
+        ))}
+      </Row>
+    )}
+  </div>
+));
+
+const RegistrationsPanel = memo(({ loading, registrations }) => (
+  <div className="tabs-content">
+    {loading ? (
+      <TabsLoading />
+    ) : registrations.length === 0 ? (
+      <Empty description="暫無報名記錄" />
+    ) : (
+      <List
+        dataSource={registrations}
+        renderItem={(reg) => (
+          <List.Item
+            actions={[
+              <Tag key="status" color={reg.status === 'CONFIRMED' ? 'green' : 'blue'}>
+                {labelOr(REGISTRATION_STATUS_LABELS, reg.status, reg.status)}
+              </Tag>
+            ]}
+          >
+            <List.Item.Meta
+              title={reg.event_title || buildFallbackEventTitle(reg)}
+              description={
+                <Space direction="vertical" size={0}>
+                  <span>場次：{reg.session_title || reg.session_id}</span>
+                  <span>票種：{normalizeTicketTypeLabel(reg.ticket_type_name, reg.ticket_type_id)}</span>
+                  <span>建立時間: {dayjs(reg.created_at).format('YYYY-MM-DD HH:mm')}</span>
+                </Space>
+              }
+            />
+          </List.Item>
+        )}
+      />
+    )}
+  </div>
+));
+
+const ProfileHeader = memo(({ user, ticketCount, onLogout }) => (
+  <Card className="profile-header-card">
+    <Row gutter={[24, 24]}>
+      <Col xs={24} md={8} style={{ textAlign: 'center' }}>
+        <div className="avatar">
+          <img src={pickAvatarImage(`${user?.name || ''}${user?.email || ''}`)} alt="profile avatar" loading="lazy" decoding="async" />
+        </div>
+        <Title level={3} style={{ marginTop: 12 }}>🐣 {user?.name}</Title>
+        <Paragraph type="secondary">{user?.email}</Paragraph>
+        <Tag>{user?.role}</Tag>
+        <br />
+        <Button type="primary" danger style={{ marginTop: 16 }} onClick={onLogout}>
+          登出
+        </Button>
+      </Col>
+      <Col xs={24} md={16}>
+        <Descriptions title="員工資訊" column={1}>
+          <Descriptions.Item label="員工編號">{user?.employee_id}</Descriptions.Item>
+          <Descriptions.Item label="部門">{user?.department || '-'}</Descriptions.Item>
+          <Descriptions.Item label="廠區">{user?.site}</Descriptions.Item>
+          <Descriptions.Item label="帳號狀態">{user?.status}</Descriptions.Item>
+          <Descriptions.Item label="可用票券">{ticketCount}</Descriptions.Item>
+        </Descriptions>
+      </Col>
+    </Row>
+  </Card>
+));
+
+const UserProfile = () => {
+  const { user, logout } = useAuth();
+  const [registrations, setRegistrations] = useState([]);
+  const [tickets, setTickets] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedTicketId, setSelectedTicketId] = useState('');
+
+  const loadData = useCallback(async ({ showLoading = true } = {}) => {
+    try {
+      if (showLoading) {
+        setLoading(true);
+      }
       const [registrationsRes, ticketsRes] = await Promise.all([
         apiClient.getMyRegistrations({ page: 1, page_size: 100 }),
         apiClient.getMyTickets({ page: 1, page_size: 100 })
@@ -149,7 +447,7 @@ const UserProfile = () => {
       let enrichedTickets = ticketItems;
       if (registrationItems.length) {
         try {
-          const registrationEventIds = Array.from(new Set(registrationItems.map((r) => r.event_id).filter(Boolean)));
+          const registrationEventIds = Array.from(new Set(registrationItems.flatMap((r) => (r.event_id ? [r.event_id] : []))));
           const directEventPairs = await Promise.all(
             registrationEventIds.map(async (eventId) => {
               try {
@@ -161,7 +459,7 @@ const UserProfile = () => {
             })
           );
 
-          const neededSessionIds = new Set(registrationItems.map((r) => r.session_id).filter(Boolean));
+          const neededSessionIds = new Set(registrationItems.flatMap((r) => (r.session_id ? [r.session_id] : [])));
           const sessionMap = new Map();
           const ticketTypeMap = new Map();
 
@@ -254,7 +552,11 @@ const UserProfile = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadData({ showLoading: false });
+  }, [loadData]);
 
   const ticketCount = useMemo(() => tickets.filter((t) => t.status === 'ISSUED').length, [tickets]);
   const registrationById = useMemo(
@@ -262,7 +564,7 @@ const UserProfile = () => {
     [registrations]
   );
 
-  const handleForfeitTicket = (ticket) => {
+  const handleForfeitTicket = useCallback((ticket) => {
     const registrationId = ticket?.registration_id;
     if (!registrationId) {
       message.warning('此票券缺少 registration_id，暫時無法放棄');
@@ -284,246 +586,56 @@ const UserProfile = () => {
         }
       }
     });
-  };
+  }, [loadData]);
 
-  const copyQrPayload = async () => {
-    const payload = qrData?.qr_payload;
-    if (!payload) {
-      message.warning('尚未取得 QR payload');
-      return;
+  const handleCloseTicketModal = useCallback(() => {
+    setSelectedTicketId('');
+  }, []);
+
+  const handleOpenTicket = useCallback((ticketId) => {
+    setSelectedTicketId(ticketId);
+  }, []);
+
+  const tabItems = useMemo(() => [
+    {
+      key: 'tickets',
+      label: (
+        <span>
+          <QrcodeOutlined /> 我的票匣
+        </span>
+      ),
+      children: (
+        <TicketsPanel
+          loading={loading}
+          tickets={tickets}
+          registrationById={registrationById}
+          onOpenTicket={handleOpenTicket}
+          onForfeitTicket={handleForfeitTicket}
+        />
+      )
+    },
+    {
+      key: 'registrations',
+      label: (
+        <span>
+          <CheckCircleOutlined /> 我的報名
+        </span>
+      ),
+      children: <RegistrationsPanel loading={loading} registrations={registrations} />
     }
-    setCopyingPayload(true);
-    try {
-      if (navigator?.clipboard?.writeText) {
-        await navigator.clipboard.writeText(payload);
-      } else {
-        const el = document.createElement('textarea');
-        el.value = payload;
-        el.style.position = 'fixed';
-        el.style.left = '-9999px';
-        document.body.appendChild(el);
-        el.focus();
-        el.select();
-        document.execCommand('copy');
-        document.body.removeChild(el);
-      }
-      message.success('已複製 QR payload，可貼到「驗票端」手動核銷');
-    } catch {
-      message.error('複製失敗，請手動長按選取或改用電腦瀏覽器');
-    } finally {
-      setCopyingPayload(false);
-    }
-  };
+  ], [handleForfeitTicket, handleOpenTicket, loading, registrationById, registrations, tickets]);
 
   return (
     <div className="page-wrap profile-container">
-      <Card className="profile-header-card">
-        <Row gutter={[24, 24]}>
-          <Col xs={24} md={8} style={{ textAlign: 'center' }}>
-            <div className="avatar">
-              <img src={pickAvatarImage(`${user?.name || ''}${user?.email || ''}`)} alt="profile avatar" loading="lazy" decoding="async" />
-            </div>
-            <Title level={3} style={{ marginTop: 12 }}>🐣 {user?.name}</Title>
-            <Paragraph type="secondary">{user?.email}</Paragraph>
-            <Tag>{user?.role}</Tag>
-            <br />
-            <Button type="primary" danger style={{ marginTop: 16 }} onClick={logout}>
-              登出
-            </Button>
-          </Col>
-          <Col xs={24} md={16}>
-            <Descriptions title="員工資訊" column={1}>
-              <Descriptions.Item label="員工編號">{user?.employee_id}</Descriptions.Item>
-              <Descriptions.Item label="部門">{user?.department || '-'}</Descriptions.Item>
-              <Descriptions.Item label="廠區">{user?.site}</Descriptions.Item>
-              <Descriptions.Item label="帳號狀態">{user?.status}</Descriptions.Item>
-              <Descriptions.Item label="可用票券">{ticketCount}</Descriptions.Item>
-            </Descriptions>
-          </Col>
-        </Row>
-      </Card>
+      <ProfileHeader user={user} ticketCount={ticketCount} onLogout={logout} />
 
       <Tabs
         defaultActiveKey="tickets"
         style={{ marginTop: 24 }}
-        items={[
-          {
-            key: 'tickets',
-            label: (
-              <span>
-                <QrcodeOutlined /> 我的票匣
-              </span>
-            ),
-            children: (
-              <div className="tabs-content">
-                {loading ? (
-                  <div className="loading-container">
-                    <Spin size="large" />
-                  </div>
-                ) : !tickets.length ? (
-                  <Empty description="暫無票券" />
-                ) : (
-                  <Row gutter={[16, 16]}>
-                    {tickets.map((ticket) => (
-                      <Col key={ticket.id} xs={24} sm={12} md={8}>
-                        {(() => {
-                          const reg = registrationById.get(ticket.registration_id);
-                          const canForfeit = reg?.status === 'WON' || reg?.status === 'CONFIRMED';
-                          const canShowQr = ticket.status === 'ISSUED';
-                          return (
-                        <Card
-                          hoverable
-                          onClick={() => {
-                            if (!canShowQr) {
-                              message.warning(`票券狀態為 ${ticket.status}，無法產生 QR`);
-                              return;
-                            }
-                            setSelectedTicketId(ticket.id);
-                            setShowQRModal(true);
-                          }}
-                        >
-                          <Paragraph strong>
-                            {reg?.event_title || ticket.event_title || buildFallbackEventTitle(reg) || ticket.id}
-                          </Paragraph>
-                          <Paragraph type="secondary" style={{ marginBottom: 8 }}>
-                            {(reg?.session_title || ticket.session_title)
-                              ? `場次：${reg?.session_title || ticket.session_title}`
-                              : null}
-                            {(reg?.ticket_type_name || ticket.ticket_type_name || reg?.ticket_type_id || ticket.ticket_type_id)
-                              ? `　票種：${normalizeTicketTypeLabel(
-                                reg?.ticket_type_name || ticket.ticket_type_name,
-                                reg?.ticket_type_id || ticket.ticket_type_id
-                              )}`
-                              : null}
-                          </Paragraph>
-                          <Paragraph>
-                            狀態：
-                            <Tag color={ticket.status === 'ISSUED' ? 'green' : 'default'}>
-                              {labelOr(TICKET_STATUS_LABELS, ticket.status, ticket.status)}
-                            </Tag>
-                          </Paragraph>
-                          <Paragraph type="secondary">發行時間: {dayjs(ticket.issued_at).format('YYYY-MM-DD HH:mm')}</Paragraph>
-                          <Button
-                            danger
-                            size="small"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleForfeitTicket(ticket);
-                            }}
-                            disabled={!canForfeit}
-                          >
-                            放棄票券
-                          </Button>
-                        </Card>
-                          );
-                        })()}
-                      </Col>
-                    ))}
-                  </Row>
-                )}
-              </div>
-            )
-          },
-          {
-            key: 'registrations',
-            label: (
-              <span>
-                <CheckCircleOutlined /> 我的報名
-              </span>
-            ),
-            children: (
-              <div className="tabs-content">
-                {loading ? (
-                  <div className="loading-container">
-                    <Spin size="large" />
-                  </div>
-                ) : registrations.length === 0 ? (
-                  <Empty description="暫無報名記錄" />
-                ) : (
-                  <List
-                    dataSource={registrations}
-                    renderItem={(reg) => (
-                      <List.Item
-                        actions={[
-                          <Tag key="status" color={reg.status === 'CONFIRMED' ? 'green' : 'blue'}>
-                            {labelOr(REGISTRATION_STATUS_LABELS, reg.status, reg.status)}
-                          </Tag>
-                        ]}
-                      >
-                        <List.Item.Meta
-                          title={reg.event_title || buildFallbackEventTitle(reg)}
-                          description={
-                            <Space direction="vertical" size={0}>
-                              <span>場次：{reg.session_title || reg.session_id}</span>
-                              <span>票種：{normalizeTicketTypeLabel(reg.ticket_type_name, reg.ticket_type_id)}</span>
-                              <span>建立時間: {dayjs(reg.created_at).format('YYYY-MM-DD HH:mm')}</span>
-                            </Space>
-                          }
-                        />
-                      </List.Item>
-                    )}
-                  />
-                )}
-              </div>
-            )
-          }
-        ]}
+        items={tabItems}
       />
 
-      {/* 票券詳情 Modal */}
-      <Modal
-        title="票券詳情"
-        open={showQRModal}
-        onCancel={() => {
-          setShowQRModal(false);
-          setQrData(null);
-          setQrImageUrl('');
-          setTicketFullscreen(false);
-        }}
-        footer={null}
-        width={ticketFullscreen ? '100vw' : 456}
-        className={`ticket-modal${ticketFullscreen ? ' ticket-fullscreen-modal' : ''}`}
-      >
-        {selectedTicketId ? (
-          <div className={`ticket-detail-modal${ticketFullscreen ? ' fullscreen' : ''}`}>
-            {!qrData ? <Spin /> : null}
-            {qrData ? (
-              <>
-                <div className="ticket-modal-toolbar">
-                  <Button
-                    type="default"
-                    icon={ticketFullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
-                    onClick={() => setTicketFullscreen((v) => !v)}
-                  >
-                    {ticketFullscreen ? '退出全螢幕' : '全螢幕展示'}
-                  </Button>
-                  <Button
-                    type="primary"
-                    icon={<QrcodeOutlined />}
-                    loading={copyingPayload}
-                    onClick={copyQrPayload}
-                  >
-                    複製 QR payload
-                  </Button>
-                </div>
-                <div className="ticket-summary-panel">
-                  <QrcodeOutlined className="ticket-summary-icon" />
-                  <div className="ticket-summary-copy">
-                    <Text className="ticket-summary-label">票券</Text>
-                    <Text strong className="ticket-summary-id">{qrData.ticket.id}</Text>
-                    <Text className="ticket-summary-expiry">
-                      QR 約 60 秒更新一次（到期: {dayjs(qrData.qr_expires_at).format('HH:mm:ss')}）
-                    </Text>
-                  </div>
-                </div>
-                <div className="ticket-qr-frame">
-                  {qrImageUrl ? <img src={qrImageUrl} alt="ticket qr" /> : null}
-                </div>
-              </>
-            ) : null}
-          </div>
-        ) : null}
-      </Modal>
+      <TicketQrModal ticketId={selectedTicketId} onClose={handleCloseTicketModal} />
     </div>
   );
 };

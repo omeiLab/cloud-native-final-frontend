@@ -28,6 +28,9 @@
   grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
   gap: 10px;
   margin: -8px 0 18px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
 }
 
 .admin-console-page .admin-cover-option {

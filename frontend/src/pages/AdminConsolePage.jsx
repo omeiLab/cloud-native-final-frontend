@@ -202,7 +202,7 @@ const mergeDashboardSessionsLottery = (dash, eventDetail) => {
   }));
 };
 const defaultCreateValues = {
-  title: '',
+  title: '2026 春季家庭日',
   cover_image_url: EVENT_IMAGES[0],
   registration_mode: 'LIMITED',
   adult_has_limits: false,
@@ -223,20 +223,20 @@ const defaultCreateValues = {
   session_count: 1,
   sessions: [
     {
-      title: '',
-      venue: '',
-      starts_at: null,
-      ends_at: null,
-      adult_quota: null,
+      title: '第 1 場',
+      venue: '新竹園區戶外廣場',
+      starts_at: now.add(14, 'day'),
+      ends_at: now.add(14, 'day').add(3, 'hour'),
+      adult_quota: 120,
       require_child_ticket: true,
-      child_quota: null
+      child_quota: 80
     }
   ],
-  registration_closes_at: null,
-  registration_opens_at: null,
-  lottery_at: null,
-  waitlist_close_at: null,
-  allowed_sites: []
+  registration_closes_at: now.add(7, 'day'),
+  registration_opens_at: now.subtract(1, 'day'),
+  lottery_at: now.add(7, 'day').add(3, 'hour'),
+  waitlist_close_at: now.add(10, 'day'),
+  allowed_sites: ['HSINCHU']
 };
 
 const adminInitialState = {
@@ -350,7 +350,7 @@ const useAdminConsoleController = () => {
   const [createForm] = Form.useForm();
   const createRegistrationMode = Form.useWatch('registration_mode', createForm) || 'LIMITED';
   const selectedCoverImage = Form.useWatch('cover_image_url', createForm) || '';
-  const watchedSessions = Form.useWatch('sessions', createForm) || [];
+  const watchedSessions = Form.useWatch('sessions', createForm) || EMPTY_ARRAY;
   const latestSessionEndLabel = useMemo(() => {
     const max = (watchedSessions || []).reduce((m, session) => {
       const cur = session?.ends_at;
@@ -462,7 +462,7 @@ const useAdminConsoleController = () => {
     }
   };
 
-  const loadEvents = async (draftsOverride) => {
+  const loadEvents = useCallback(async (draftsOverride) => {
     const drafts = draftsOverride || localDraftEvents;
     const res = await apiClient.getEvents({ scope: 'all', page: 1, page_size: 50 });
     const fetchedItems = res.data.items || [];
@@ -473,12 +473,12 @@ const useAdminConsoleController = () => {
       }
     });
     setEvents(merged);
-    if (!selectedEventId && merged.length) {
-      setSelectedEventId(merged[0].id);
+    if (merged.length) {
+      setSelectedEventId((current) => current || merged[0].id);
     }
-  };
+  }, [localDraftEvents, setEvents, setSelectedEventId]);
 
-  const loadDashboard = async (eventId) => {
+  const loadDashboard = useCallback(async (eventId) => {
     if (!eventId) return;
     const [dashboardRes, regRes, eventRes] = await Promise.all([
       apiClient.adminGetDashboard(eventId).catch(() => ({ data: {} })),
@@ -492,16 +492,16 @@ const useAdminConsoleController = () => {
     const sessionsLottery = mergeDashboardSessionsLottery(dash, eventData);
     setDashboard({ ...dash, sessions_lottery: sessionsLottery });
     setRegistrations(regRes.data?.items || []);
-  };
+  }, [setDashboard, setRegistrations]);
 
   useEffect(() => {
     setLoading(true);
     loadEvents().finally(() => setLoading(false));
-  }, []);
+  }, [loadEvents, setLoading]);
 
   useEffect(() => {
     loadDashboard(selectedEventId).catch(() => {});
-  }, [selectedEventId]);
+  }, [loadDashboard, selectedEventId]);
 
   const buildCreatePayload = (values) => {
     const registrationMode = values.registration_mode || 'LIMITED';
@@ -1187,7 +1187,8 @@ const CoverAndSiteFields = ({ controller }) => {
         <Form.Item name="cover_image_url" noStyle>
           <Input type="hidden" />
         </Form.Item>
-        <div className="admin-cover-choice" role="group" aria-label="活動圖片">
+        <fieldset className="admin-cover-choice">
+          <legend className="sr-only">活動圖片</legend>
           {EVENT_IMAGES.map((src, idx) => (
             <button
               key={src}
@@ -1200,7 +1201,7 @@ const CoverAndSiteFields = ({ controller }) => {
               <img src={src} alt="" loading="lazy" />
             </button>
           ))}
-        </div>
+        </fieldset>
       </Form.Item>
       <Form.Item name="allowed_sites" label="開放廠區" rules={[{ required: true, message: '請至少選擇一個開放廠區' }]}>
         <Checkbox.Group options={SITES} onChange={handleSitePreview} />
