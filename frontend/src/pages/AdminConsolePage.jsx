@@ -168,7 +168,6 @@ const defaultSession = {
   ]
 };
 const PIE_COLORS = ['#2b72d9', '#2a9d8f', '#f4a261', '#9b5de5', '#f28482'];
-const now = dayjs();
 
 /** 儀表板 sessions_lottery 列（後端欄位可能用 id 或別名） */
 const normalizeSessionsLotteryRows = (raw) => {
@@ -201,42 +200,47 @@ const mergeDashboardSessionsLottery = (dash, eventDetail) => {
     registered_pending: undefined
   }));
 };
-const defaultCreateValues = {
-  title: '2026 春季家庭日',
-  cover_image_url: EVENT_IMAGES[0],
-  registration_mode: 'LIMITED',
-  adult_has_limits: false,
-  adult_gender: 'ANY',
-  adult_height_min_cm: null,
-  adult_height_max_cm: null,
-  adult_age_min: null,
-  adult_age_max: null,
-  adult_health_unlimited: true,
-  adult_health_no_diseases: [],
-  child_has_limits: false,
-  child_age_min: null,
-  child_age_max: null,
-  child_health_unlimited: true,
-  child_health_no_diseases: [],
-  adult_other_restrictions: '',
-  child_other_restrictions: '',
-  session_count: 1,
-  sessions: [
-    {
-      title: '第 1 場',
-      venue: '新竹園區戶外廣場',
-      starts_at: now.add(14, 'day'),
-      ends_at: now.add(14, 'day').add(3, 'hour'),
-      adult_quota: 120,
-      require_child_ticket: true,
-      child_quota: 80
-    }
-  ],
-  registration_closes_at: now.add(7, 'day'),
-  registration_opens_at: now.subtract(1, 'day'),
-  lottery_at: now.add(7, 'day').add(3, 'hour'),
-  waitlist_close_at: now.add(10, 'day'),
-  allowed_sites: ['HSINCHU']
+const createDefaultCreateValues = () => {
+  const current = dayjs().second(0).millisecond(0);
+  const sessionStartsAt = current.add(14, 'day');
+
+  return {
+    title: '2026 春季家庭日',
+    cover_image_url: EVENT_IMAGES[0],
+    registration_mode: 'LIMITED',
+    adult_has_limits: false,
+    adult_gender: 'ANY',
+    adult_height_min_cm: null,
+    adult_height_max_cm: null,
+    adult_age_min: null,
+    adult_age_max: null,
+    adult_health_unlimited: true,
+    adult_health_no_diseases: [],
+    child_has_limits: false,
+    child_age_min: null,
+    child_age_max: null,
+    child_health_unlimited: true,
+    child_health_no_diseases: [],
+    adult_other_restrictions: '',
+    child_other_restrictions: '',
+    session_count: 1,
+    sessions: [
+      {
+        title: '第 1 場',
+        venue: '新竹園區戶外廣場',
+        starts_at: sessionStartsAt,
+        ends_at: sessionStartsAt.add(3, 'hour'),
+        adult_quota: 120,
+        require_child_ticket: true,
+        child_quota: 80
+      }
+    ],
+    registration_closes_at: current.add(7, 'day'),
+    registration_opens_at: current,
+    lottery_at: current.add(7, 'day').add(3, 'hour'),
+    waitlist_close_at: current.add(10, 'day'),
+    allowed_sites: ['HSINCHU']
+  };
 };
 
 const adminInitialState = {
@@ -250,6 +254,7 @@ const adminInitialState = {
   cancelling: false,
   exportingSync: false,
   deletingDraftId: '',
+  publishingDraftId: '',
   editLoading: false,
   activeTabKey: 'event-create',
   editingEventId: '',
@@ -325,6 +330,7 @@ const useAdminConsoleController = () => {
     cancelling,
     exportingSync,
     deletingDraftId,
+    publishingDraftId,
     editLoading,
     activeTabKey,
     editingEventId,
@@ -340,11 +346,17 @@ const useAdminConsoleController = () => {
   const setCancelling = useCallback((value) => setAdminState('cancelling', value), [setAdminState]);
   const setExportingSync = useCallback((value) => setAdminState('exportingSync', value), [setAdminState]);
   const setDeletingDraftId = useCallback((value) => setAdminState('deletingDraftId', value), [setAdminState]);
+  const setPublishingDraftId = useCallback((value) => setAdminState('publishingDraftId', value), [setAdminState]);
   const setEditLoading = useCallback((value) => setAdminState('editLoading', value), [setAdminState]);
   const setActiveTabKey = useCallback((value) => setAdminState('activeTabKey', value), [setAdminState]);
   const setEditingEventId = useCallback((value) => setAdminState('editingEventId', value), [setAdminState]);
   const setAutoLotteryRunning = useCallback((value) => setAdminState('autoLotteryRunning', value), [setAdminState]);
   const [createForm] = Form.useForm();
+  const initialCreateValues = useMemo(() => createDefaultCreateValues(), []);
+  const resetCreateFormToDefaults = useCallback(() => {
+    createForm.resetFields();
+    createForm.setFieldsValue(createDefaultCreateValues());
+  }, [createForm]);
   const createRegistrationMode = Form.useWatch('registration_mode', createForm) || 'LIMITED';
   const selectedCoverImage = Form.useWatch('cover_image_url', createForm) || '';
   const watchedSessions = Form.useWatch('sessions', createForm) || EMPTY_ARRAY;
@@ -506,20 +518,21 @@ const useAdminConsoleController = () => {
   }, [loadDashboard, selectedEventId]);
 
   const buildCreatePayload = (values) => {
+    const fallbackNow = dayjs().second(0).millisecond(0);
     const registrationMode = values.registration_mode || 'LIMITED';
-    const registrationClosesAt = values.registration_closes_at || now.add(7, 'day');
+    const registrationClosesAt = values.registration_closes_at || fallbackNow.add(7, 'day');
     const isUnlimited = registrationMode === 'UNLIMITED';
     const lotteryAt = isUnlimited ? dayjs(registrationClosesAt).add(1, 'minute') : resolveLimitedLotteryAt(registrationClosesAt);
     const sessionsInput = Array.isArray(values.sessions) ? values.sessions : [];
-    const startsAtForWaitlist = sessionsInput?.[0]?.starts_at || now.add(14, 'day');
+    const startsAtForWaitlist = sessionsInput?.[0]?.starts_at || fallbackNow.add(14, 'day');
     const waitlistCloseAt = isUnlimited
       ? dayjs(startsAtForWaitlist).subtract(1, 'minute')
       : resolveLimitedWaitlistCloseAt(values, startsAtForWaitlist);
     const sessions = (sessionsInput || []).map((s) => {
-      const starts = dayjs(s?.starts_at || now.add(14, 'day'));
+      const starts = dayjs(s?.starts_at || fallbackNow.add(14, 'day'));
       const ends = dayjs(s?.ends_at || starts.add(3, 'hour'));
       const closes = dayjs(registrationClosesAt);
-      const opens = dayjs(values.registration_opens_at);
+      const opens = dayjs(values.registration_opens_at || fallbackNow);
       const lottery = dayjs(lotteryAt);
       const waitlist = dayjs(waitlistCloseAt);
       const adultQuota = Math.max(0, Number(s?.adult_quota || 0));
@@ -603,7 +616,7 @@ const useAdminConsoleController = () => {
       } else {
         message.success('草稿活動建立成功');
       }
-      createForm.resetFields();
+      resetCreateFormToDefaults();
       await loadEvents();
       setSelectedEventId(createdEventId);
       await loadDashboard(createdEventId);
@@ -622,10 +635,11 @@ const useAdminConsoleController = () => {
 
   const resetEditMode = () => {
     setEditingEventId('');
-    createForm.resetFields();
+    resetCreateFormToDefaults();
   };
 
   const buildEditInitialValues = (detail) => {
+    const defaults = createDefaultCreateValues();
     const sessions = Array.isArray(detail?.sessions) ? detail.sessions : [];
     const firstSession = sessions[0] || {};
     const { adultTicket, childTicket } = resolveSessionTicketFields(firstSession);
@@ -634,7 +648,7 @@ const useAdminConsoleController = () => {
       || String(adultTicket?.name || '').includes('不限');
 
     return {
-      ...defaultCreateValues,
+      ...defaults,
       title: detail?.title || '',
       description: cleanDescription || '',
       cover_image_url: EVENT_IMAGES.includes(resolvePublicAssetUrl(detail?.cover_image_url))
@@ -658,11 +672,11 @@ const useAdminConsoleController = () => {
             child_quota: Number(sessionChildTicket?.quota || 0)
           };
         })
-        : defaultCreateValues.sessions,
-      registration_closes_at: firstSession?.registration_closes_at ? dayjs(firstSession.registration_closes_at) : defaultCreateValues.registration_closes_at,
-      registration_opens_at: firstSession?.registration_opens_at ? dayjs(firstSession.registration_opens_at) : defaultCreateValues.registration_opens_at,
-      waitlist_close_at: firstSession?.waitlist_close_at ? dayjs(firstSession.waitlist_close_at) : defaultCreateValues.waitlist_close_at,
-      lottery_at: firstSession?.lottery_at ? dayjs(firstSession.lottery_at) : defaultCreateValues.lottery_at,
+        : defaults.sessions,
+      registration_closes_at: firstSession?.registration_closes_at ? dayjs(firstSession.registration_closes_at) : defaults.registration_closes_at,
+      registration_opens_at: firstSession?.registration_opens_at ? dayjs(firstSession.registration_opens_at) : defaults.registration_opens_at,
+      waitlist_close_at: firstSession?.waitlist_close_at ? dayjs(firstSession.waitlist_close_at) : defaults.waitlist_close_at,
+      lottery_at: firstSession?.lottery_at ? dayjs(firstSession.lottery_at) : defaults.lottery_at,
       allowed_sites: detail?.allowed_sites || []
     };
   };
@@ -826,6 +840,30 @@ const useAdminConsoleController = () => {
     });
   };
 
+  const handlePublishDraft = async (eventRecord) => {
+    if (!eventRecord?.id) return;
+    if (!isAdminFull) {
+      message.warning('你目前是唯讀管理員（ADMIN_VIEWER），無法發佈草稿');
+      return;
+    }
+    setPublishingDraftId(eventRecord.id);
+    try {
+      await apiClient.adminPublishEvent(eventRecord.id);
+      if (editingEventId === eventRecord.id) {
+        resetEditMode();
+      }
+      message.success('草稿已發佈');
+      await loadEvents();
+      const nextSelectedEventId = selectedEventId || eventRecord.id;
+      setSelectedEventId(nextSelectedEventId);
+      await loadDashboard(nextSelectedEventId);
+    } catch (error) {
+      message.error(getErrorMessage(error, '發佈草稿失敗'));
+    } finally {
+      setPublishingDraftId('');
+    }
+  };
+
   const handleExportSync = async () => {
     if (!selectedEventId) return;
     setExportingSync(true);
@@ -904,6 +942,8 @@ const useAdminConsoleController = () => {
     activeTabKey,
     setActiveTabKey,
     createForm,
+    initialCreateValues,
+    resetCreateFormToDefaults,
     createRegistrationMode,
     selectedCoverImage,
     latestSessionEndLabel,
@@ -925,6 +965,7 @@ const useAdminConsoleController = () => {
     cancelling,
     exportingSync,
     deletingDraftId,
+    publishingDraftId,
     editLoading,
     editingEventId,
     autoLotteryRunning,
@@ -935,6 +976,7 @@ const useAdminConsoleController = () => {
     resetEditMode,
     enterEditMode,
     handleDeleteDraft,
+    handlePublishDraft,
     handlePublish,
     handleCancel,
     runInstantLotteryForSelectedEvent,
@@ -1010,7 +1052,7 @@ const EventCreateTab = ({ controller }) => (
     <Form
       form={controller.createForm}
       layout="vertical"
-      initialValues={defaultCreateValues}
+      initialValues={controller.initialCreateValues}
       className="admin-create-form"
     >
       <EventBasicFields />
@@ -1425,7 +1467,7 @@ const EventCreateActions = ({ controller }) => {
     isEditing,
     creating,
     isAdminFull,
-    createForm,
+    resetCreateFormToDefaults,
     handleCreate,
     handleCreateDraft,
     updateEvent,
@@ -1436,16 +1478,17 @@ const EventCreateActions = ({ controller }) => {
   return (
     <>
       <Divider />
-      <Space wrap className="admin-create-actions">
+      <div className="admin-create-actions">
         {isEditing ? (
           <>
-            <Button type="primary" onClick={() => updateEvent(false)} loading={creating} disabled={!isAdminFull}>
-              儲存
-            </Button>
-            <Button onClick={() => updateEvent(true)} loading={creating} disabled={!isAdminFull}>
+            <Button type="primary" onClick={() => updateEvent(true)} loading={creating} disabled={!isAdminFull}>
               發佈
             </Button>
+            <Button onClick={() => updateEvent(false)} loading={creating} disabled={!isAdminFull}>
+              儲存成草稿
+            </Button>
             <Button
+              className="admin-create-cancel"
               onClick={() => {
                 resetEditMode();
                 setActiveTabKey('dashboard');
@@ -1456,12 +1499,12 @@ const EventCreateActions = ({ controller }) => {
           </>
         ) : (
           <>
-            <Button type="primary" onClick={handleCreateDraft} loading={creating} disabled={!isAdminFull}>儲存</Button>
-            <Button onClick={handleCreate} loading={creating} disabled={!isAdminFull}>發佈</Button>
-            <Button onClick={() => createForm.resetFields()}>取消編輯</Button>
+            <Button type="primary" onClick={handleCreate} loading={creating} disabled={!isAdminFull}>發佈</Button>
+            <Button onClick={handleCreateDraft} loading={creating} disabled={!isAdminFull}>儲存成草稿</Button>
+            <Button className="admin-create-cancel" onClick={resetCreateFormToDefaults}>取消編輯</Button>
           </>
         )}
-      </Space>
+      </div>
     </>
   );
 };
@@ -1472,9 +1515,11 @@ const DraftsTab = ({ controller }) => {
     editLoading,
     editingEventId,
     deletingDraftId,
+    publishingDraftId,
     isAdminFull,
     enterEditMode,
-    handleDeleteDraft
+    handleDeleteDraft,
+    handlePublishDraft
   } = controller;
 
   return (
@@ -1525,17 +1570,24 @@ const DraftsTab = ({ controller }) => {
             render: (_, record) => (
               <Space wrap>
                 <Button
-                  type="primary"
                   loading={editLoading && editingEventId === record.id}
-                  disabled={!isAdminFull || deletingDraftId === record.id}
+                  disabled={!isAdminFull || deletingDraftId === record.id || publishingDraftId === record.id}
                   onClick={() => enterEditMode(record.id)}
                 >
                   載入編輯
                 </Button>
                 <Button
+                  type="primary"
+                  loading={publishingDraftId === record.id}
+                  disabled={!isAdminFull || editLoading || deletingDraftId === record.id}
+                  onClick={() => handlePublishDraft(record)}
+                >
+                  立即發佈
+                </Button>
+                <Button
                   danger
                   loading={deletingDraftId === record.id}
-                  disabled={!isAdminFull || editLoading}
+                  disabled={!isAdminFull || editLoading || publishingDraftId === record.id}
                   onClick={() => handleDeleteDraft(record)}
                 >
                   刪除

@@ -20,7 +20,15 @@
 }
 
 .admin-console-page .admin-create-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
   width: 100%;
+}
+
+.admin-console-page .admin-create-actions .admin-create-cancel {
+  margin-left: auto;
 }
 
 .admin-console-page .admin-cover-choice {
@@ -182,7 +190,7 @@
 
 @media (min-width: 1025px) {
   .admin-console-page .admin-create-actions {
-    gap: 10px !important;
+    gap: 10px;
   }
 
   .admin-console-page .admin-dashboard-actions .ant-btn,
@@ -204,7 +212,7 @@
   .admin-console-page .admin-dashboard-actions,
   .admin-console-page .admin-create-actions {
     width: 100%;
-    gap: 8px !important;
+    gap: 8px;
   }
 
   .admin-console-page .admin-dashboard-actions .ant-btn,
@@ -255,6 +263,10 @@
   .admin-console-page .admin-dashboard-actions .ant-btn,
   .admin-console-page .admin-create-actions .ant-btn {
     width: 100%;
+  }
+
+  .admin-console-page .admin-create-actions .admin-create-cancel {
+    margin-left: 0;
   }
 
   .admin-console-page .admin-console-hero-main {

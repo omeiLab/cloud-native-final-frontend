@@ -93,6 +93,7 @@ describe('apiClient basic http calls', () => {
     await apiClient.adminGetEvents({ page: 1, page_size: 50 });
     await apiClient.adminGetEvent('evt-draft-1');
     await apiClient.adminCancelEvent('evt-draft-1', '刪除草稿');
+    await apiClient.adminPublishEvent('evt-draft-1');
 
     expect(mocks.getMock).toHaveBeenNthCalledWith(1, '/admin/events', {
       params: { page: 1, page_size: 50 }
@@ -101,5 +102,6 @@ describe('apiClient basic http calls', () => {
     expect(mocks.postMock).toHaveBeenCalledWith('/admin/events/evt-draft-1/cancel', {
       reason: '刪除草稿'
     });
+    expect(mocks.postMock).toHaveBeenCalledWith('/admin/events/evt-draft-1/publish');
   });
 });

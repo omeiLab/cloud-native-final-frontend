@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useReducer, useRef } from 'react';
 import { BrowserQRCodeReader } from '@zxing/browser';
-import { BarcodeFormat, DecodeHintType, NotFoundException } from '@zxing/library';
+import {
+  BarcodeFormat,
+  ChecksumException,
+  DecodeHintType,
+  FormatException,
+  NotFoundException
+} from '@zxing/library';
 import { apiClient } from '../../api/client';
 
 const DEFAULT_VERIFIER_DEVICE_ID = import.meta.env.VITE_VERIFIER_DEVICE_ID || 'scanner-A-01';
@@ -49,9 +55,19 @@ const buildVideoConstraints = () => ({
   }
 });
 
-const isScannerMiss = (error) => (
+export const isScannerMiss = (error) => (
   error instanceof NotFoundException ||
-  /NotFoundException|No MultiFormat Readers|No QR code|not found/i.test(String(error || ''))
+  error instanceof FormatException ||
+  error instanceof ChecksumException ||
+  /NotFoundException|FormatException|ChecksumException|No MultiFormat Readers|No QR code|not found/i.test(String(error || ''))
+);
+
+export const getScannerMissHint = (error) => (
+  error instanceof FormatException ||
+  error instanceof ChecksumException ||
+  /FormatException|ChecksumException/i.test(String(error || ''))
+    ? '偵測到 QR 但畫面不完整或模糊，請對準完整 QR'
+    : '尚未辨識到 QR，請靠近並保持對焦'
 );
 
 const initialVerifierState = {
@@ -95,7 +111,7 @@ const verifierReducer = (state, action) => {
         scannerHint: action.hint
       };
     case 'scanMissed':
-      return { ...state, scannerHint: '尚未辨識到 QR，請靠近並保持對焦' };
+      return { ...state, scannerHint: action.hint || '尚未辨識到 QR，請靠近並保持對焦' };
     case 'qrDetected':
       return {
         ...state,
@@ -267,7 +283,7 @@ export const useVerifierController = () => {
           }
           if (scanErr && isScannerMiss(scanErr)) {
             if (Date.now() - lastNotFoundLogAtRef.current > NOT_FOUND_HINT_INTERVAL_MS) {
-              dispatch({ type: 'scanMissed' });
+              dispatch({ type: 'scanMissed', hint: getScannerMissHint(scanErr) });
               lastNotFoundLogAtRef.current = Date.now();
             }
             return;
