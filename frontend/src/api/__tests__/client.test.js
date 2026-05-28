@@ -88,4 +88,18 @@ describe('apiClient basic http calls', () => {
     expect(authorizeRes.data.data.state).toBe('state-1');
     expect(callbackRes.data.data.access_token).toBe('a');
   });
+
+  it('calls admin event list and detail endpoints for admin draft flow', async () => {
+    await apiClient.adminGetEvents({ page: 1, page_size: 50 });
+    await apiClient.adminGetEvent('evt-draft-1');
+    await apiClient.adminCancelEvent('evt-draft-1', '刪除草稿');
+
+    expect(mocks.getMock).toHaveBeenNthCalledWith(1, '/admin/events', {
+      params: { page: 1, page_size: 50 }
+    });
+    expect(mocks.getMock).toHaveBeenNthCalledWith(2, '/admin/events/evt-draft-1');
+    expect(mocks.postMock).toHaveBeenCalledWith('/admin/events/evt-draft-1/cancel', {
+      reason: '刪除草稿'
+    });
+  });
 });

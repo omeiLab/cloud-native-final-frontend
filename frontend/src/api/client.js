@@ -345,6 +345,14 @@ class APIClient {
     return this.client.post('/admin/events', payload);
   }
 
+  async adminGetEvents(params = {}) {
+    return this.client.get('/admin/events', { params });
+  }
+
+  async adminGetEvent(eventId) {
+    return this.client.get(`/admin/events/${eventId}`);
+  }
+
   async adminPatchEvent(eventId, payload) {
     return this.client.patch(`/admin/events/${eventId}`, payload);
   }
