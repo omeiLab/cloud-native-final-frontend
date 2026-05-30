@@ -10,10 +10,7 @@ on:
       - .github/workflows/frontend-deploy.yml
   workflow_dispatch:
 
-permissions:
-  contents: read
-  pages: write
-  id-token: write
+permissions: {}
 
 concurrency:
   group: github-pages
@@ -23,6 +20,8 @@ jobs:
   build:
     name: Build frontend
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     env:
       VITE_BASE_PATH: ${{ vars.VITE_BASE_PATH || format('/{0}/', github.event.repository.name) }}
       VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
@@ -73,6 +72,9 @@ jobs:
     name: Deploy frontend
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
