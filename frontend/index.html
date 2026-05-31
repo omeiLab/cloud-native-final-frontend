@@ -5,6 +5,25 @@
     <link rel="icon" type="image/png" href="%BASE_URL%image/logo.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CETS - Event Management Platform</title>
+    <script>
+      (function () {
+        try {
+          var color = localStorage.getItem('cets_color_mode') || 'dark';
+          var scale = localStorage.getItem('cets_text_scale') || 'large';
+          var locale = localStorage.getItem('cets_locale_v2')
+            || localStorage.getItem('cets_locale')
+            || 'zh-TW';
+          var root = document.documentElement;
+          root.classList.add(color === 'dark' ? 'theme-dark' : 'theme-light');
+          if (scale === 'large') root.classList.add('text-large');
+          else if (scale === 'xlarge') root.classList.add('text-xlarge');
+          root.lang = locale === 'en' ? 'en' : 'zh-Hant-TW';
+        } catch (e) {
+          document.documentElement.classList.add('theme-dark', 'text-large');
+          document.documentElement.lang = 'zh-Hant-TW';
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

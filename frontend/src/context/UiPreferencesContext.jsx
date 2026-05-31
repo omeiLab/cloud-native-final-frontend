@@ -9,6 +9,13 @@ const STORAGE_KEYS = {
   locale: 'cets_locale_v2'
 };
 
+/** First-visit defaults: Traditional Chinese, dark theme, large text. */
+export const UI_PREFERENCE_DEFAULTS = {
+  colorMode: 'dark',
+  textScale: 'large',
+  locale: 'zh-TW'
+};
+
 const readStored = (key, fallback) => {
   try {
     const v = localStorage.getItem(key);
@@ -18,13 +25,24 @@ const readStored = (key, fallback) => {
   }
 };
 
+const readInitialLocale = () => {
+  const stored =
+    readStored(STORAGE_KEYS.locale, null)
+    ?? readStored('cets_locale', null);
+  if (stored === 'en' || stored === 'zh-TW') {
+    return stored;
+  }
+  return UI_PREFERENCE_DEFAULTS.locale;
+};
+
 export const UiPreferencesProvider = ({ children }) => {
-  const [colorMode, setColorMode] = useState(() => readStored(STORAGE_KEYS.colorMode, 'dark'));
-  const [textScale, setTextScale] = useState(() => readStored(STORAGE_KEYS.textScale, 'large'));
-  const [locale, setLocale] = useState(() => {
-    const stored = readStored(STORAGE_KEYS.locale, 'zh-TW');
-    return stored === 'en' || stored === 'zh-TW' ? stored : 'zh-TW';
-  });
+  const [colorMode, setColorMode] = useState(() =>
+    readStored(STORAGE_KEYS.colorMode, UI_PREFERENCE_DEFAULTS.colorMode)
+  );
+  const [textScale, setTextScale] = useState(() =>
+    readStored(STORAGE_KEYS.textScale, UI_PREFERENCE_DEFAULTS.textScale)
+  );
+  const [locale, setLocale] = useState(readInitialLocale);
 
   useEffect(() => {
     try {
