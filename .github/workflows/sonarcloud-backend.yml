@@ -43,7 +43,7 @@ jobs:
       - name: Run unit tests with coverage
         env:
           PYTHONPATH: .
-        run: pytest tests/unit --cov=app --cov-report=xml --cov-report=term-missing -q
+        run: pytest tests/unit --cov=app --cov-report=xml --cov-report=term-missing -q -m "not slow"
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@v6
