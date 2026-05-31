@@ -460,6 +460,21 @@
     font-weight: 700;
   }
 
+  .language-toggle-mobile {
+    width: 100%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-start !important;
+    gap: 10px;
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  .language-toggle-mobile .anticon {
+    color: var(--ds-red);
+    font-size: 17px;
+  }
+
   .mobile-drawer-item-meta {
     color: var(--ds-muted);
     font-size: 12px;
