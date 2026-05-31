@@ -68,7 +68,7 @@ class Settings(BaseSettings):
     # production 上線時 values-prod overlay 移除 localhost(同 callback 守衛邏輯)。
     cors_allowed_origins: str = Field(default="https://cets.alanh.uk,http://localhost:5173")
 
-    mock_oidc_issuer: str = Field(default="http://mock-oidc.cets-system.svc.cluster.local")
+    mock_oidc_issuer: str = Field(default="https://mock-oidc.cets-system.svc.cluster.local")
     mock_oidc_client_id: str = Field(default="cets")
     mock_oidc_client_secret: str = Field(default="cets-dev-secret")
 

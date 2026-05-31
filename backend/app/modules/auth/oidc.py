@@ -71,7 +71,7 @@ class OIDCConfig:
 
     @property
     def is_mock(self) -> bool:
-        return "mock-oidc" in self.issuer or self.issuer.startswith("http://")
+        return "mock-oidc" in self.issuer
 
     @property
     def issuer_with_slash(self) -> str:
