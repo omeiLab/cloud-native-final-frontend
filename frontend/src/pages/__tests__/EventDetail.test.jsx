@@ -1,6 +1,7 @@
 import React from 'react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { renderWithProviders } from '../../test/renderWithRouter';
+import { screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import EventDetail from '../EventDetail';
 
@@ -50,7 +51,7 @@ describe('EventDetail page', () => {
   });
 
   it('renders event detail after loading', async () => {
-    render(
+    renderWithProviders(
       <MemoryRouter initialEntries={['/events/evt-1']}>
         <Routes>
           <Route path="/events/:eventId" element={<EventDetail />} />
@@ -68,7 +69,7 @@ describe('EventDetail page', () => {
   it('shows an error alert when event loading fails', async () => {
     getEventMock.mockRejectedValue({ error: { message: 'Event unavailable' } });
 
-    render(
+    renderWithProviders(
       <MemoryRouter initialEntries={['/events/evt-1']}>
         <Routes>
           <Route path="/events/:eventId" element={<EventDetail />} />
@@ -82,7 +83,7 @@ describe('EventDetail page', () => {
   it('shows empty state when event is missing', async () => {
     getEventMock.mockResolvedValue({ data: null });
 
-    render(
+    renderWithProviders(
       <MemoryRouter initialEntries={['/events/evt-missing']}>
         <Routes>
           <Route path="/events/:eventId" element={<EventDetail />} />

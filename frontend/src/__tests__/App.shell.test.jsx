@@ -1,5 +1,6 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import { renderWithProviders } from '../test/renderWithRouter';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -35,7 +36,7 @@ import App from '../App';
 
 describe('App shell', () => {
   it('renders layout, footer, and background music on standard routes', async () => {
-    render(<App />);
+    renderWithProviders(<App />);
     expect(await screen.findByText('Events Home')).toBeInTheDocument();
     expect(screen.getByText(/CETS Events/)).toBeInTheDocument();
     expect(screen.getByTestId('bg-music')).toBeInTheDocument();

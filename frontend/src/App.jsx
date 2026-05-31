@@ -4,6 +4,7 @@ import { Layout, Spin } from 'antd';
 import Header from './components/Header';
 import MobileBottomBar from './components/MobileBottomBar';
 import BackgroundMusic from './components/BackgroundMusic';
+import useI18n from './hooks/useI18n';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { publicAssetPath } from './assets/media';
@@ -54,6 +55,7 @@ export const ProtectedRoute = ({ children, allowRoles }) => {
 const AppShell = () => {
   const location = useLocation();
   const { user } = useAuth();
+  const { m } = useI18n();
   const hideBackgroundMusic = location.pathname === '/verify';
   return (
     <Layout
@@ -108,7 +110,7 @@ const AppShell = () => {
           </Routes>
         </Suspense>
       </Content>
-      <Footer className="app-footer">CETS Events｜TSMC employee event platform</Footer>
+      <Footer className="app-footer">{m.footer.text}</Footer>
       <MobileBottomBar />
       {!hideBackgroundMusic ? <BackgroundMusic /> : null}
     </Layout>

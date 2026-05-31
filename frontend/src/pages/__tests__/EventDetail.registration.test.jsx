@@ -1,7 +1,7 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, fireEvent } from '@testing-library/react';
+import { renderWithProviders } from '../../test/renderWithRouter';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { fireEvent } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { Modal } from 'antd';
 
@@ -67,7 +67,7 @@ describe('EventDetail registration flow', () => {
   });
 
   it('opens registration dialog and submits registration', async () => {
-    render(
+    renderWithProviders(
       <MemoryRouter initialEntries={['/events/evt-1']}>
         <Routes>
           <Route path="/events/:eventId" element={<EventDetail />} />
@@ -100,7 +100,7 @@ describe('EventDetail registration flow', () => {
       }
     });
 
-    render(
+    renderWithProviders(
       <MemoryRouter initialEntries={['/events/evt-1']}>
         <Routes>
           <Route path="/events/:eventId" element={<EventDetail />} />
@@ -129,7 +129,7 @@ describe('EventDetail registration flow', () => {
       }
     });
 
-    render(
+    renderWithProviders(
       <MemoryRouter initialEntries={['/events/evt-1']}>
         <Routes>
           <Route path="/events/:eventId" element={<EventDetail />} />
@@ -163,7 +163,7 @@ describe('EventDetail registration flow', () => {
       return { destroy: vi.fn(), update: vi.fn() };
     });
 
-    render(
+    renderWithProviders(
       <MemoryRouter initialEntries={['/events/evt-1']}>
         <Routes>
           <Route path="/events/:eventId" element={<EventDetail />} />

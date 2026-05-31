@@ -1,5 +1,6 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { renderWithProviders } from '../../test/renderWithRouter';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import dayjs from 'dayjs';
 import { Modal } from 'antd';
@@ -90,7 +91,7 @@ describe('UserProfile page', () => {
   });
 
   it('renders profile header and tabs after loading', async () => {
-    render(<UserProfile />);
+    renderWithProviders(<UserProfile />);
     expect(await screen.findByText(/Alice/)).toBeInTheDocument();
     await waitFor(() => {
       expect(screen.getByText('Employee info')).toBeInTheDocument();
@@ -100,14 +101,14 @@ describe('UserProfile page', () => {
   });
 
   it('renders ticket cards in the default tickets tab', async () => {
-    render(<UserProfile />);
+    renderWithProviders(<UserProfile />);
     expect(await screen.findByText('Spring Family Day')).toBeInTheDocument();
     expect(screen.getByText('Forfeit ticket')).toBeInTheDocument();
     expect(screen.getByText('Issued')).toBeInTheDocument();
   });
 
   it('switches to registrations tab', async () => {
-    render(<UserProfile />);
+    renderWithProviders(<UserProfile />);
     await screen.findByText(/Alice/);
     fireEvent.click(screen.getByText('My registrations'));
     await waitFor(() => {
@@ -116,7 +117,7 @@ describe('UserProfile page', () => {
   });
 
   it('opens ticket QR modal when an issued ticket card is clicked', async () => {
-    render(<UserProfile />);
+    renderWithProviders(<UserProfile />);
     const title = await screen.findByText('Spring Family Day');
     fireEvent.click(title.closest('.ant-card'));
 
@@ -133,7 +134,7 @@ describe('UserProfile page', () => {
       return { destroy: vi.fn(), update: vi.fn() };
     });
 
-    render(<UserProfile />);
+    renderWithProviders(<UserProfile />);
     await screen.findByText('Forfeit ticket');
     fireEvent.click(screen.getByText('Forfeit ticket'));
 
@@ -144,7 +145,7 @@ describe('UserProfile page', () => {
   });
 
   it('closes ticket QR modal from the dialog', async () => {
-    render(<UserProfile />);
+    renderWithProviders(<UserProfile />);
     const title = await screen.findByText('Spring Family Day');
     fireEvent.click(title.closest('.ant-card'));
     const modal = await screen.findByRole('dialog');
@@ -182,7 +183,7 @@ describe('UserProfile page', () => {
       }
     });
 
-    render(<UserProfile />);
+    renderWithProviders(<UserProfile />);
     await screen.findByText('My registrations');
     fireEvent.click(screen.getByText('My registrations'));
     expect(await screen.findByText('Enriched Family Day')).toBeInTheDocument();

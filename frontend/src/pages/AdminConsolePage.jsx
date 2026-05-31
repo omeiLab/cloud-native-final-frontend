@@ -25,7 +25,7 @@ import { apiClient } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import dayjs from 'dayjs';
 import { useNotifications } from '../context/NotificationContext';
-import { EVENT_STATUS_LABELS, REGISTRATION_STATUS_LABELS, labelOr } from '../utils/labels';
+import { EVENT_STATUS_LABELS, REGISTRATION_STATUS_LABELS, labelOr, useI18n } from '../utils/labels';
 import { EVENT_IMAGES, resolvePublicAssetUrl, publicRootPath } from '../assets/media';
 import '../styles/AdminConsole.css';
 
@@ -999,28 +999,34 @@ const AdminConsolePage = () => {
   );
 };
 
-const AdminConsoleHero = ({ loading, isAdminViewer }) => (
+const AdminConsoleHero = ({ loading, isAdminViewer }) => {
+  const { m } = useI18n();
+  const t = m.admin;
+  return (
   <Card loading={loading} className="admin-console-hero">
     <div className="admin-console-hero-main">
       <div>
-        <Text className="admin-console-kicker">Admin console</Text>
-        <Title level={3}>Control panel</Title>
-        <Paragraph>Create events, review registrations, run lotteries, and export reports in one workspace.</Paragraph>
+        <Text className="admin-console-kicker">{t.kicker}</Text>
+        <Title level={3}>{t.title}</Title>
+        <Paragraph>{t.desc}</Paragraph>
       </div>
     </div>
     {isAdminViewer ? (
       <Alert
         type="warning"
         showIcon
-        message="You are signed in as ADMIN_VIEWER (read-only)"
-        description="You can view the dashboard and registrations, but cannot create, publish, cancel events, or run lotteries."
+        message={t.viewerWarning}
+        description={t.viewerDesc}
       />
     ) : null}
   </Card>
-);
+  );
+};
 
 const AdminConsoleTabs = ({ controller }) => {
-  const draftTabLabel = 'Draft events' + (controller.draftEvents.length ? ' (' + controller.draftEvents.length + ')' : '');
+  const { m } = useI18n();
+  const t = m.admin;
+  const draftTabLabel = t.draftEvents + (controller.draftEvents.length ? ' (' + controller.draftEvents.length + ')' : '');
 
   return (
     <Tabs
@@ -1032,7 +1038,7 @@ const AdminConsoleTabs = ({ controller }) => {
       items={[
         {
           key: 'event-create',
-          label: controller.isEditing ? 'Edit event' : 'Create event',
+          label: controller.isEditing ? t.editEvent : t.createEvent,
           children: <EventCreateTab controller={controller} />
         },
         {
@@ -1042,7 +1048,7 @@ const AdminConsoleTabs = ({ controller }) => {
         },
         {
           key: 'dashboard',
-          label: 'Dashboard',
+          label: t.dashboard,
           children: <DashboardTab controller={controller} />
         }
       ]}

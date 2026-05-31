@@ -1,5 +1,6 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import { renderWithProviders } from '../../test/renderWithRouter';
 import { describe, expect, it, vi } from 'vitest';
 import VerifierPage from '../VerifierPage';
 
@@ -29,7 +30,7 @@ describe('VerifierPage', () => {
       handleManualVerify: vi.fn()
     });
 
-    render(<VerifierPage />);
+    renderWithProviders(<VerifierPage />);
     expect(screen.getByText('Ticket verification')).toBeInTheDocument();
     expect(screen.getByText('Start camera scan')).toBeInTheDocument();
     expect(screen.getByText('Idle')).toBeInTheDocument();
@@ -50,7 +51,7 @@ describe('VerifierPage', () => {
             used_at: '2026-05-30'
           }
         },
-        scannerHint: 'Verified — entry allowed',
+        scannerHint: 'Verified ??entry allowed',
         scanning: true
       },
       statusTone: 'success',
@@ -61,7 +62,7 @@ describe('VerifierPage', () => {
       handleManualVerify: vi.fn()
     });
 
-    render(<VerifierPage />);
+    renderWithProviders(<VerifierPage />);
     expect(screen.getByText('Scanning')).toBeInTheDocument();
     expect(screen.getByText('Verification succeeded')).toBeInTheDocument();
     expect(screen.getByText('Ticket already verified')).toBeInTheDocument();

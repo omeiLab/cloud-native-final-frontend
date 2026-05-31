@@ -8,6 +8,9 @@ import {
   NotFoundException
 } from '@zxing/library';
 import { apiClient } from '../../api/client';
+import { messages as enMessages } from '../../i18n/en';
+
+const DEFAULT_VERIFIER_COPY = enMessages.verifier;
 
 const DEFAULT_VERIFIER_DEVICE_ID = import.meta.env.VITE_VERIFIER_DEVICE_ID || 'scanner-A-01';
 const SCAN_DEDUP_MS = 3500;
@@ -25,8 +28,8 @@ const QR_READER_OPTIONS = {
   tryPlayVideoTimeout: 8000
 };
 
-export const formatVerifyError = (e) => {
-  const msg = e?.error?.message || e?.message || 'Verification failed';
+export const formatVerifyError = (e, fallback = 'Verification failed') => {
+  const msg = e?.error?.message || e?.message || fallback;
   const details = e?.error?.details;
   if (!details || typeof details !== 'object') {
     return msg;
@@ -62,24 +65,24 @@ export const isScannerMiss = (error) => (
   /NotFoundException|FormatException|ChecksumException|No MultiFormat Readers|No QR code|not found/i.test(String(error || ''))
 );
 
-export const getScannerMissHint = (error) => (
+export const getScannerMissHint = (error, copy) => (
   error instanceof FormatException ||
   error instanceof ChecksumException ||
   /FormatException|ChecksumException/i.test(String(error || ''))
-    ? 'QR detected but frame is incomplete or blurry. Center the full code.'
-    : 'QR code not detected yet. Move closer and keep focus.'
+    ? (copy?.qrBlurry || 'QR detected but frame is incomplete or blurry. Center the full code.')
+    : (copy?.qrNotDetected || 'QR code not detected yet. Move closer and keep focus.')
 );
 
-const initialVerifierState = {
+const createInitialVerifierState = (copy) => ({
   scanning: false,
   result: null,
   error: '',
   deviceId: DEFAULT_VERIFIER_DEVICE_ID,
   manualPayload: '',
-  scannerHint: 'Scanner idle',
+  scannerHint: copy?.scannerIdle || 'Scanner idle',
   lastDetectedText: '',
   lastDetectedAt: ''
-};
+});
 
 export const verifierReducer = (state, action) => {
   switch (action.type) {
@@ -89,19 +92,19 @@ export const verifierReducer = (state, action) => {
         scanning: true,
         error: '',
         result: null,
-        scannerHint: 'Initializing camera…'
+        scannerHint: action.hint
       };
     case 'scanReady':
       return {
         ...state,
         scanning: true,
-        scannerHint: 'Camera ready — waiting for QR code'
+        scannerHint: action.hint
       };
     case 'scanStopped':
       return {
         ...state,
         scanning: false,
-        scannerHint: 'Scanning stopped'
+        scannerHint: action.hint
       };
     case 'scanFailed':
       return {
@@ -111,7 +114,7 @@ export const verifierReducer = (state, action) => {
         scannerHint: action.hint
       };
     case 'scanMissed':
-      return { ...state, scannerHint: action.hint || 'QR code not detected yet. Move closer and keep focus.' };
+      return { ...state, scannerHint: action.hint };
     case 'qrDetected':
       return {
         ...state,
@@ -119,7 +122,7 @@ export const verifierReducer = (state, action) => {
         error: '',
         lastDetectedText: action.text,
         lastDetectedAt: action.detectedAt,
-        scannerHint: 'QR detected — verifying…'
+        scannerHint: action.hint
       };
     case 'scannerMessage':
       return { ...state, scannerHint: action.message };
@@ -128,25 +131,29 @@ export const verifierReducer = (state, action) => {
         ...state,
         result: { ok: true, data: action.data },
         error: '',
-        scannerHint: 'Verified — entry allowed'
+        scannerHint: action.hint
       };
     case 'verifyFailed':
       return {
         ...state,
         result: null,
         error: action.error,
-        scannerHint: 'Verification failed — see error below'
+        scannerHint: action.hint
       };
     case 'deviceIdChanged':
       return { ...state, deviceId: action.value };
     case 'manualPayloadChanged':
       return { ...state, manualPayload: action.value };
+    case 'resetCopy':
+      return { ...state, scannerHint: action.hint };
     default:
       return state;
   }
 };
 
-export const useVerifierController = () => {
+export const useVerifierController = (copy = DEFAULT_VERIFIER_COPY) => {
+  const copyRef = useRef(copy);
+  copyRef.current = copy;
   const videoRef = useRef(null);
   const readerRef = useRef(null);
   const scannerControlsRef = useRef(null);
@@ -156,7 +163,7 @@ export const useVerifierController = () => {
   const verifyPayloadRef = useRef(null);
   const deviceIdRef = useRef(DEFAULT_VERIFIER_DEVICE_ID);
   const manualPayloadRef = useRef('');
-  const [state, dispatch] = useReducer(verifierReducer, initialVerifierState);
+  const [state, dispatch] = useReducer(verifierReducer, copy, createInitialVerifierState);
 
   const { error, result, scanning } = state;
   const statusTone = error ? 'error' : result?.ok ? 'success' : scanning ? 'scanning' : 'idle';
@@ -204,21 +211,31 @@ export const useVerifierController = () => {
   }, []);
 
   const verifyPayload = useCallback(async (qrPayload) => {
+    const c = copyRef.current;
     const currentPayload = String(qrPayload || '').trim();
-    dispatch({ type: 'qrDetected', text: currentPayload, detectedAt: new Date().toLocaleString() });
+    dispatch({
+      type: 'qrDetected',
+      text: currentPayload,
+      detectedAt: new Date().toLocaleString(),
+      hint: c.qrDetected
+    });
     try {
       if (!currentPayload) {
-        throw new Error('Provide a QR payload first.');
+        throw new Error(c.providePayload);
       }
       const currentDeviceId = String(deviceIdRef.current || '').trim();
       if (!currentDeviceId) {
-        throw new Error('Verifier device ID is not set.');
+        throw new Error(c.deviceNotSet);
       }
       const res = await apiClient.verifyTicket({ qr_payload: currentPayload, device_id: currentDeviceId });
-      dispatch({ type: 'verifySuccess', data: res.data });
+      dispatch({ type: 'verifySuccess', data: res.data, hint: c.verifiedEntry });
       playTone('success');
     } catch (e) {
-      dispatch({ type: 'verifyFailed', error: formatVerifyError(e) });
+      dispatch({
+        type: 'verifyFailed',
+        error: formatVerifyError(e, c.verifyFailedDefault),
+        hint: c.verifyFailedHint
+      });
       playTone('error');
     }
   }, [playTone]);
@@ -244,25 +261,26 @@ export const useVerifierController = () => {
   }, []);
 
   const handleStartScan = useCallback(async () => {
+    const c = copyRef.current;
     if (!window.isSecureContext) {
       dispatch({
         type: 'scanFailed',
-        error: 'This URL is not a secure origin (HTTPS/localhost). Mobile Chrome blocks the camera.',
-        hint: 'Security check failed: HTTPS or localhost is required'
+        error: c.httpsRequired,
+        hint: c.httpsHint
       });
       return;
     }
     if (!navigator.mediaDevices?.getUserMedia) {
       dispatch({
         type: 'scanFailed',
-        error: 'This browser does not support the camera API.',
-        hint: 'Browser does not support mediaDevices.getUserMedia'
+        error: c.noCameraApi,
+        hint: c.noGetUserMedia
       });
       return;
     }
 
     releaseScanner();
-    dispatch({ type: 'scanStarting' });
+    dispatch({ type: 'scanStarting', hint: c.initializing });
     const reader = new BrowserQRCodeReader(QR_HINTS, QR_READER_OPTIONS);
     readerRef.current = reader;
 
@@ -283,31 +301,34 @@ export const useVerifierController = () => {
           }
           if (scanErr && isScannerMiss(scanErr)) {
             if (Date.now() - lastNotFoundLogAtRef.current > NOT_FOUND_HINT_INTERVAL_MS) {
-              dispatch({ type: 'scanMissed', hint: getScannerMissHint(scanErr) });
+              dispatch({ type: 'scanMissed', hint: getScannerMissHint(scanErr, copyRef.current) });
               lastNotFoundLogAtRef.current = Date.now();
             }
             return;
           }
           if (scanErr) {
-            dispatch({ type: 'scannerMessage', message: `Scanner message: ${String(scanErr).slice(0, 80)}` });
+            dispatch({
+              type: 'scannerMessage',
+              message: `${copyRef.current.scannerMessage}: ${String(scanErr).slice(0, 80)}`
+            });
           }
         }
       );
       scannerControlsRef.current = controls;
-      dispatch({ type: 'scanReady' });
+      dispatch({ type: 'scanReady', hint: copyRef.current.cameraReady });
     } catch {
       releaseScanner();
       dispatch({
         type: 'scanFailed',
-        error: 'Failed to start camera scanning.',
-        hint: 'Camera initialization failed'
+        error: copyRef.current.cameraInitFailed,
+        hint: copyRef.current.cameraInitHint
       });
     }
   }, [releaseScanner]);
 
   const handleStopScan = useCallback(() => {
     releaseScanner();
-    dispatch({ type: 'scanStopped' });
+    dispatch({ type: 'scanStopped', hint: copyRef.current.scanStopped });
   }, [releaseScanner]);
 
   return {

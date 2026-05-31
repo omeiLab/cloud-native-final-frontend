@@ -1,5 +1,6 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { renderWithProviders } from '../../test/renderWithRouter';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Modal } from 'antd';
 
@@ -181,7 +182,7 @@ describe('AdminConsolePage', () => {
   });
 
   it('renders admin hero and create form defaults', async () => {
-    render(<AdminConsolePage />);
+    renderWithProviders(<AdminConsolePage />);
     expect(await screen.findByText('Admin console')).toBeInTheDocument();
     expect(screen.getByText('Control panel')).toBeInTheDocument();
     expect(screen.getByDisplayValue('2026 Spring Family Day')).toBeInTheDocument();
@@ -189,7 +190,7 @@ describe('AdminConsolePage', () => {
   });
 
   it('loads dashboard tab with stats and registrations', async () => {
-    render(<AdminConsolePage />);
+    renderWithProviders(<AdminConsolePage />);
     await screen.findByText('Admin console');
     fireEvent.click(screen.getByRole('tab', { name: 'Dashboard' }));
 
@@ -204,14 +205,14 @@ describe('AdminConsolePage', () => {
   it('shows admin viewer warning when role is read-only', async () => {
     adminMocks.useAuthMock.mockReturnValue({ user: { role: 'ADMIN_VIEWER' } });
 
-    render(<AdminConsolePage />);
+    renderWithProviders(<AdminConsolePage />);
     expect(await screen.findByText('You are signed in as ADMIN_VIEWER (read-only)')).toBeInTheDocument();
   });
 
   it('renders draft events tab when drafts exist', async () => {
     adminMocks.adminGetEvents.mockResolvedValue(draftEventList);
 
-    render(<AdminConsolePage />);
+    renderWithProviders(<AdminConsolePage />);
     await screen.findByText('Admin console');
     fireEvent.click(screen.getByRole('tab', { name: /Draft events/ }));
 
@@ -220,7 +221,7 @@ describe('AdminConsolePage', () => {
   });
 
   it('exports registrations as CSV from the dashboard tab', async () => {
-    render(<AdminConsolePage />);
+    renderWithProviders(<AdminConsolePage />);
     await screen.findByText('Admin console');
     fireEvent.click(screen.getByRole('tab', { name: 'Dashboard' }));
     await screen.findByText('Export CSV');
@@ -235,7 +236,7 @@ describe('AdminConsolePage', () => {
   it('runs session lottery after confirmation', async () => {
     const confirmSpy = mockModalConfirmOk();
 
-    render(<AdminConsolePage />);
+    renderWithProviders(<AdminConsolePage />);
     await screen.findByText('Admin console');
     fireEvent.click(screen.getByRole('tab', { name: 'Dashboard' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Run lottery' }));
@@ -249,7 +250,7 @@ describe('AdminConsolePage', () => {
   it('runs instant lottery for all pending sessions', async () => {
     const confirmSpy = mockModalConfirmOk();
 
-    render(<AdminConsolePage />);
+    renderWithProviders(<AdminConsolePage />);
     await screen.findByText('Admin console');
     fireEvent.click(screen.getByRole('tab', { name: 'Dashboard' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Run lottery now' }));
@@ -261,7 +262,7 @@ describe('AdminConsolePage', () => {
   });
 
   it('creates a draft event from the create form', async () => {
-    render(<AdminConsolePage />);
+    renderWithProviders(<AdminConsolePage />);
     await screen.findByText('Admin console');
     fireEvent.click(getCreateActions().getByRole('button', { name: 'Save as draft' }));
 
@@ -272,7 +273,7 @@ describe('AdminConsolePage', () => {
   });
 
   it('creates and publishes a new event', async () => {
-    render(<AdminConsolePage />);
+    renderWithProviders(<AdminConsolePage />);
     await screen.findByText('Admin console');
     fireEvent.click(getCreateActions().getByRole('button', { name: 'Publish' }));
 
@@ -285,7 +286,7 @@ describe('AdminConsolePage', () => {
   it('cancels the selected event with a reason', async () => {
     const confirmSpy = mockModalConfirmOk();
 
-    render(<AdminConsolePage />);
+    renderWithProviders(<AdminConsolePage />);
     await screen.findByText('Admin console');
     fireEvent.click(screen.getByRole('tab', { name: 'Dashboard' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Delete event' }));
@@ -301,7 +302,7 @@ describe('AdminConsolePage', () => {
     adminMocks.adminGetEvents.mockResolvedValue(draftEventList);
     adminMocks.adminGetEvent.mockResolvedValue(draftEventDetail);
 
-    render(<AdminConsolePage />);
+    renderWithProviders(<AdminConsolePage />);
     await screen.findByText('Admin console');
     fireEvent.click(screen.getByRole('tab', { name: /Draft events/ }));
     fireEvent.click(await screen.findByText('Load for edit'));
@@ -320,7 +321,7 @@ describe('AdminConsolePage', () => {
   it('publishes a draft event from the dashboard tab', async () => {
     adminMocks.adminGetEvents.mockResolvedValue(draftEventList);
 
-    render(<AdminConsolePage />);
+    renderWithProviders(<AdminConsolePage />);
     await screen.findByText('Admin console');
     fireEvent.click(screen.getByRole('tab', { name: 'Dashboard' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Publish event' }));
@@ -333,7 +334,7 @@ describe('AdminConsolePage', () => {
   it('publishes a draft directly from the drafts table', async () => {
     adminMocks.adminGetEvents.mockResolvedValue(draftEventList);
 
-    render(<AdminConsolePage />);
+    renderWithProviders(<AdminConsolePage />);
     await screen.findByText('Admin console');
     fireEvent.click(screen.getByRole('tab', { name: /Draft events/ }));
     fireEvent.click(await screen.findByRole('button', { name: 'Publish now' }));
@@ -347,7 +348,7 @@ describe('AdminConsolePage', () => {
     adminMocks.adminGetEvents.mockResolvedValue(draftEventList);
     const confirmSpy = mockModalConfirmOk();
 
-    render(<AdminConsolePage />);
+    renderWithProviders(<AdminConsolePage />);
     await screen.findByText('Admin console');
     fireEvent.click(screen.getByRole('tab', { name: /Draft events/ }));
     fireEvent.click(await screen.findByRole('button', { name: 'Delete' }));

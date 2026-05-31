@@ -6,7 +6,7 @@ import QRCode from 'qrcode';
 import { apiClient } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { pickAvatarImage } from '../assets/media';
-import { REGISTRATION_STATUS_LABELS, TICKET_STATUS_LABELS, labelOr } from '../utils/labels';
+import { REGISTRATION_STATUS_LABELS, TICKET_STATUS_LABELS, labelOr, useI18n } from '../utils/labels';
 import '../styles/Profile.css';
 
 const { Title, Paragraph, Text } = Typography;
@@ -36,12 +36,12 @@ export const getQrSecondsRemaining = (expiresAt) => {
   return Math.max(dayjs(expiresAt).diff(dayjs(), 'second'), 0);
 };
 
-export const formatQrCountdown = (seconds) => {
-  if (seconds === null) return 'Calculating countdown';
-  if (seconds <= 0) return 'Refreshing';
+export const formatQrCountdown = (seconds, copy) => {
+  if (seconds === null) return copy?.calculatingCountdown || 'Calculating countdown';
+  if (seconds <= 0) return copy?.refreshing || 'Refreshing';
   const minutes = Math.floor(seconds / 60);
   const remainingSeconds = String(seconds % 60).padStart(2, '0');
-  return `Remaining ${minutes}:${remainingSeconds}`;
+  return `${copy?.remaining || 'Remaining'} ${minutes}:${remainingSeconds}`;
 };
 
 /** Prefer payload.event_title; notification titles often use "prefix — event name". */
@@ -136,7 +136,7 @@ export const ticketQrModalReducer = (state, action) => {
   }
 };
 
-const TicketQrModal = memo(({ ticketId, onClose }) => {
+const TicketQrModal = memo(({ ticketId, onClose, copy }) => {
   const [state, dispatch] = useReducer(ticketQrModalReducer, initialTicketQrModalState);
   const { qrData, qrImageUrl, qrSecondsRemaining, fullscreen, copyingPayload } = state;
   const open = Boolean(ticketId);
@@ -176,7 +176,7 @@ const TicketQrModal = memo(({ ticketId, onClose }) => {
         }
       } catch (e) {
         if (!cancelled) {
-          message.warning(e?.error?.message || 'This ticket cannot generate a QR code right now');
+          message.warning(e?.error?.message || copy.qrNotAvailable);
           dispatch({ type: 'reset' });
           onClose();
         }
@@ -211,7 +211,7 @@ const TicketQrModal = memo(({ ticketId, onClose }) => {
   const copyQrPayload = useCallback(async () => {
     const payload = qrData?.qr_payload;
     if (!payload) {
-      message.warning('QR payload is not available yet');
+      message.warning(copy.qrPayloadNotReady);
       return;
     }
     dispatch({ type: 'copyingUpdated', copyingPayload: true });
@@ -228,17 +228,17 @@ const TicketQrModal = memo(({ ticketId, onClose }) => {
         document.execCommand('copy');
         document.body.removeChild(el);
       }
-      message.success('QR payload copied. Paste it into manual verification on the verifier portal.');
+      message.success(copy.qrCopied);
     } catch {
-      message.error('Copy failed. Select manually or use a desktop browser.');
+      message.error(copy.copyFailed);
     } finally {
       dispatch({ type: 'copyingUpdated', copyingPayload: false });
     }
-  }, [qrData?.qr_payload]);
+  }, [qrData?.qr_payload, copy]);
 
   return (
     <Modal
-      title="Ticket details"
+      title={copy.ticketDetails}
       open={open}
       onCancel={handleClose}
       footer={null}
@@ -256,7 +256,7 @@ const TicketQrModal = memo(({ ticketId, onClose }) => {
                   icon={fullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
                   onClick={() => dispatch({ type: 'fullscreenToggled' })}
                 >
-                  {fullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+                  {fullscreen ? copy.exitFullscreen : copy.enterFullscreen}
                 </Button>
                 <Button
                   type="primary"
@@ -264,15 +264,15 @@ const TicketQrModal = memo(({ ticketId, onClose }) => {
                   loading={copyingPayload}
                   onClick={copyQrPayload}
                 >
-                  Copy QR payload
+                  {copy.copyQrPayload}
                 </Button>
               </div>
               <div className="ticket-summary-panel">
                 <QrcodeOutlined className="ticket-summary-icon" />
                 <div className="ticket-summary-copy">
-                  <Text className="ticket-summary-label">QR countdown</Text>
+                  <Text className="ticket-summary-label">{copy.qrCountdown}</Text>
                   <Text strong className="ticket-summary-countdown">
-                    {formatQrCountdown(qrSecondsRemaining)}
+                    {formatQrCountdown(qrSecondsRemaining, copy)}
                   </Text>
                 </div>
               </div>
@@ -293,13 +293,13 @@ const TabsLoading = memo(() => (
   </div>
 ));
 
-const TicketCard = memo(({ ticket, registration, onOpenTicket, onForfeitTicket }) => {
+const TicketCard = memo(({ ticket, registration, onOpenTicket, onForfeitTicket, copy, ticketLabels, labelOrFn }) => {
   const canForfeit = registration?.status === 'WON' || registration?.status === 'CONFIRMED';
   const canShowQr = ticket.status === 'ISSUED';
 
   const handleOpen = useCallback(() => {
     if (!canShowQr) {
-      message.warning(`Ticket status is ${ticket.status}, cannot generate QR code`);
+      message.warning(copy.ticketStatusNoQr.replace('{status}', ticket.status));
       return;
     }
     onOpenTicket(ticket.id);
@@ -317,35 +317,35 @@ const TicketCard = memo(({ ticket, registration, onOpenTicket, onForfeitTicket }
       </Paragraph>
       <Paragraph type="secondary" style={{ marginBottom: 8 }}>
         {(registration?.session_title || ticket.session_title)
-          ? `Session：${registration?.session_title || ticket.session_title}`
+          ? `${copy.session}：${registration?.session_title || ticket.session_title}`
           : null}
         {(registration?.ticket_type_name || ticket.ticket_type_name || registration?.ticket_type_id || ticket.ticket_type_id)
-          ? `　Ticket type：${normalizeTicketTypeLabel(
+          ? `　${copy.ticketType}：${normalizeTicketTypeLabel(
             registration?.ticket_type_name || ticket.ticket_type_name,
             registration?.ticket_type_id || ticket.ticket_type_id
           )}`
           : null}
       </Paragraph>
       <Paragraph>
-        Status：
+        {copy.status}：
         <Tag color={ticket.status === 'ISSUED' ? 'green' : 'default'}>
-          {labelOr(TICKET_STATUS_LABELS, ticket.status, ticket.status)}
+          {labelOrFn(ticketLabels, ticket.status, ticket.status)}
         </Tag>
       </Paragraph>
-      <Paragraph type="secondary">Issued at:  {dayjs(ticket.issued_at).format('YYYY-MM-DD HH:mm')}</Paragraph>
+      <Paragraph type="secondary">{copy.issuedAt}:  {dayjs(ticket.issued_at).format('YYYY-MM-DD HH:mm')}</Paragraph>
       <Button danger size="small" onClick={handleForfeit} disabled={!canForfeit}>
-        Forfeit ticket
+        {copy.forfeitTicket}
       </Button>
     </Card>
   );
 });
 
-const TicketsPanel = memo(({ loading, tickets, registrationById, onOpenTicket, onForfeitTicket }) => (
+const TicketsPanel = memo(({ loading, tickets, registrationById, onOpenTicket, onForfeitTicket, copy, ticketLabels, labelOrFn }) => (
   <div className="tabs-content">
     {loading ? (
       <TabsLoading />
     ) : !tickets.length ? (
-      <Empty description="No tickets yet" />
+      <Empty description={copy.noTickets} />
     ) : (
       <Row gutter={[16, 16]}>
         {tickets.map((ticket) => (
@@ -355,6 +355,10 @@ const TicketsPanel = memo(({ loading, tickets, registrationById, onOpenTicket, o
               registration={registrationById.get(ticket.registration_id)}
               onOpenTicket={onOpenTicket}
               onForfeitTicket={onForfeitTicket}
+              copy={copy}
+              ticketLabels={ticketLabels}
+              labelOrFn={labelOrFn}
+            />
             />
           </Col>
         ))}
@@ -363,12 +367,12 @@ const TicketsPanel = memo(({ loading, tickets, registrationById, onOpenTicket, o
   </div>
 ));
 
-const RegistrationsPanel = memo(({ loading, registrations }) => (
+const RegistrationsPanel = memo(({ loading, registrations, copy, registrationLabels, labelOrFn }) => (
   <div className="tabs-content">
     {loading ? (
       <TabsLoading />
     ) : registrations.length === 0 ? (
-      <Empty description="No registration records yet" />
+      <Empty description={copy.noRegistrations} />
     ) : (
       <List
         dataSource={registrations}
@@ -376,7 +380,7 @@ const RegistrationsPanel = memo(({ loading, registrations }) => (
           <List.Item
             actions={[
               <Tag key="status" color={reg.status === 'CONFIRMED' ? 'green' : 'blue'}>
-                {labelOr(REGISTRATION_STATUS_LABELS, reg.status, reg.status)}
+                {labelOrFn(registrationLabels, reg.status, reg.status)}
               </Tag>
             ]}
           >
@@ -384,9 +388,9 @@ const RegistrationsPanel = memo(({ loading, registrations }) => (
               title={reg.event_title || buildFallbackEventTitle(reg)}
               description={
                 <Space direction="vertical" size={0}>
-                  <span>Session：{reg.session_title || reg.session_id}</span>
-                  <span>Ticket type：{normalizeTicketTypeLabel(reg.ticket_type_name, reg.ticket_type_id)}</span>
-                  <span>Created at: {dayjs(reg.created_at).format('YYYY-MM-DD HH:mm')}</span>
+                  <span>{copy.session}：{reg.session_title || reg.session_id}</span>
+                  <span>{copy.ticketType}：{normalizeTicketTypeLabel(reg.ticket_type_name, reg.ticket_type_id)}</span>
+                  <span>{copy.createdAt}: {dayjs(reg.created_at).format('YYYY-MM-DD HH:mm')}</span>
                 </Space>
               }
             />
@@ -397,7 +401,7 @@ const RegistrationsPanel = memo(({ loading, registrations }) => (
   </div>
 ));
 
-const ProfileHeader = memo(({ user, ticketCount, onLogout }) => (
+const ProfileHeader = memo(({ user, ticketCount, onLogout, copy, common }) => (
   <Card className="profile-header-card">
     <Row gutter={[24, 24]}>
       <Col xs={24} md={8} style={{ textAlign: 'center' }}>
@@ -409,16 +413,16 @@ const ProfileHeader = memo(({ user, ticketCount, onLogout }) => (
         <Tag>{user?.role}</Tag>
         <br />
         <Button type="primary" danger style={{ marginTop: 16 }} onClick={onLogout}>
-          Sign out
+          {common.signOut}
         </Button>
       </Col>
       <Col xs={24} md={16}>
-        <Descriptions title="Employee info" column={1}>
-          <Descriptions.Item label="Employee ID">{user?.employee_id}</Descriptions.Item>
-          <Descriptions.Item label="Department">{user?.department || '-'}</Descriptions.Item>
-          <Descriptions.Item label="Site">{user?.site}</Descriptions.Item>
-          <Descriptions.Item label="Account status">{user?.status}</Descriptions.Item>
-          <Descriptions.Item label="Available tickets">{ticketCount}</Descriptions.Item>
+        <Descriptions title={copy.employeeInfo} column={1}>
+          <Descriptions.Item label={copy.employeeId}>{user?.employee_id}</Descriptions.Item>
+          <Descriptions.Item label={copy.department}>{user?.department || '-'}</Descriptions.Item>
+          <Descriptions.Item label={copy.site}>{user?.site}</Descriptions.Item>
+          <Descriptions.Item label={copy.accountStatus}>{user?.status}</Descriptions.Item>
+          <Descriptions.Item label={copy.availableTickets}>{ticketCount}</Descriptions.Item>
         </Descriptions>
       </Col>
     </Row>
@@ -427,6 +431,14 @@ const ProfileHeader = memo(({ user, ticketCount, onLogout }) => (
 
 const UserProfile = () => {
   const { user, logout } = useAuth();
+  const {
+    m,
+    TICKET_STATUS_LABELS: ticketLabels,
+    REGISTRATION_STATUS_LABELS: registrationLabels,
+    labelOr: labelOrFn
+  } = useI18n();
+  const copy = m.profile;
+  const common = m.common;
   const [registrations, setRegistrations] = useState([]);
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -548,11 +560,11 @@ const UserProfile = () => {
       setRegistrations(enrichedRegistrations);
       setTickets(enrichedTickets);
     } catch (err) {
-      message.error(err?.error?.message || 'Failed to load profile data');
+      message.error(err?.error?.message || copy.loadFailed);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [copy.loadFailed]);
 
   useEffect(() => {
     loadData({ showLoading: false });
@@ -567,26 +579,26 @@ const UserProfile = () => {
   const handleForfeitTicket = useCallback((ticket) => {
     const registrationId = ticket?.registration_id;
     if (!registrationId) {
-      message.warning('This ticket is missing registration_id and cannot be forfeited yet');
+      message.warning(copy.loadFailed);
       return;
     }
     Modal.confirm({
-      title: 'Confirm ticket forfeit',
-      content: 'Forfeiting releases quota. If waitlist is still open, the system may promote waitlisted users. Continue?',
-      okText: 'Confirm forfeit',
-      cancelText: 'Cancel',
+      title: copy.confirmForfeitTitle,
+      content: copy.confirmForfeitContent,
+      okText: copy.forfeitTicket,
+      cancelText: common.cancel,
       okButtonProps: { danger: true },
       onOk: async () => {
         try {
           await apiClient.forfeitRegistration(registrationId);
-          message.success('Ticket forfeited and quota released');
+          message.success(copy.forfeitSuccess);
           await loadData();
         } catch (e) {
-          message.error(e?.error?.message || 'Ticket cannot be forfeited in this status. Contact an admin.');
+          message.error(e?.error?.message || copy.loadFailed);
         }
       }
     });
-  }, [loadData]);
+  }, [common.cancel, copy, loadData]);
 
   const handleCloseTicketModal = useCallback(() => {
     setSelectedTicketId('');
@@ -601,7 +613,7 @@ const UserProfile = () => {
       key: 'tickets',
       label: (
         <span>
-          <QrcodeOutlined /> My tickets
+          <QrcodeOutlined /> {copy.myTickets}
         </span>
       ),
       children: (
@@ -611,6 +623,9 @@ const UserProfile = () => {
           registrationById={registrationById}
           onOpenTicket={handleOpenTicket}
           onForfeitTicket={handleForfeitTicket}
+          copy={copy}
+          ticketLabels={ticketLabels}
+          labelOrFn={labelOrFn}
         />
       )
     },
@@ -618,16 +633,24 @@ const UserProfile = () => {
       key: 'registrations',
       label: (
         <span>
-          <CheckCircleOutlined /> My registrations
+          <CheckCircleOutlined /> {copy.myRegistrations}
         </span>
       ),
-      children: <RegistrationsPanel loading={loading} registrations={registrations} />
+      children: (
+        <RegistrationsPanel
+          loading={loading}
+          registrations={registrations}
+          copy={copy}
+          registrationLabels={registrationLabels}
+          labelOrFn={labelOrFn}
+        />
+      )
     }
-  ], [handleForfeitTicket, handleOpenTicket, loading, registrationById, registrations, tickets]);
+  ], [copy, handleForfeitTicket, handleOpenTicket, labelOrFn, loading, registrationById, registrationLabels, registrations, ticketLabels, tickets]);
 
   return (
     <div className="page-wrap profile-container">
-      <ProfileHeader user={user} ticketCount={ticketCount} onLogout={logout} />
+      <ProfileHeader user={user} ticketCount={ticketCount} onLogout={logout} copy={copy} common={common} />
 
       <Tabs
         defaultActiveKey="tickets"
@@ -635,7 +658,7 @@ const UserProfile = () => {
         items={tabItems}
       />
 
-      <TicketQrModal ticketId={selectedTicketId} onClose={handleCloseTicketModal} />
+      <TicketQrModal ticketId={selectedTicketId} onClose={handleCloseTicketModal} copy={copy} />
     </div>
   );
 };

@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import { Alert, Button, Card, Col, Row, Typography, message } from 'antd';
 import { LoginOutlined, SafetyOutlined } from '@ant-design/icons';
 import { useAuth } from '../context/AuthContext';
+import useI18n from '../hooks/useI18n';
 import '../styles/LoginPage.css';
 
 const { Title, Paragraph } = Typography;
 
 const LoginPage = () => {
   const { startOIDCLogin } = useAuth();
+  const { m } = useI18n();
   const [loading, setLoading] = useState(false);
 
   const handleOIDCLogin = async () => {
@@ -15,7 +17,7 @@ const LoginPage = () => {
     try {
       await startOIDCLogin();
     } catch (error) {
-      message.error(error?.error?.message || 'Sign-in failed. Verify that backend services are running.');
+      message.error(error?.error?.message || m.common.loginError);
       setLoading(false);
     }
   };
@@ -25,11 +27,9 @@ const LoginPage = () => {
       <Row gutter={[24, 24]} justify="center">
         <Col xs={24} md={14} lg={12}>
           <Card className="hero-card">
-            <div className="login-kicker">CETS Events</div>
-            <Title level={2}>TSMC employee event platform</Title>
-            <Paragraph>
-              Sign in with corporate SSO to access events. Confirm won registrations before the deadline and present your QR code at entry.
-            </Paragraph>
+            <div className="login-kicker">{m.login.kicker}</div>
+            <Title level={2}>{m.login.title}</Title>
+            <Paragraph>{m.login.desc}</Paragraph>
 
             <Button
               block
@@ -39,7 +39,7 @@ const LoginPage = () => {
               loading={loading}
               onClick={handleOIDCLogin}
             >
-              Corporate sign-in
+              {m.login.corporateSignIn}
             </Button>
 
             <Alert
@@ -47,8 +47,8 @@ const LoginPage = () => {
               type="info"
               showIcon
               icon={<SafetyOutlined />}
-              message="Sign-in help"
-              description="You will be redirected to corporate sign-in. Use the identity service account provided by backend."
+              message={m.login.helpTitle}
+              description={m.login.helpDesc}
             />
           </Card>
         </Col>

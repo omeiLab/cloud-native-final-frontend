@@ -36,19 +36,23 @@ const initialState = {
   lastDetectedAt: ''
 };
 
+import { messages as enMessages } from '../../../i18n/en';
+
+const v = enMessages.verifier;
+
 describe('verifierReducer', () => {
   it('handles scan lifecycle transitions', () => {
-    expect(verifierReducer(initialState, { type: 'scanStarting' })).toMatchObject({
+    expect(verifierReducer(initialState, { type: 'scanStarting', hint: v.initializing })).toMatchObject({
       scanning: true,
-      scannerHint: 'Initializing camera…'
+      scannerHint: v.initializing
     });
-    expect(verifierReducer(initialState, { type: 'scanReady' })).toMatchObject({
+    expect(verifierReducer(initialState, { type: 'scanReady', hint: v.cameraReady })).toMatchObject({
       scanning: true,
-      scannerHint: 'Camera ready — waiting for QR code'
+      scannerHint: v.cameraReady
     });
-    expect(verifierReducer(initialState, { type: 'scanStopped' })).toMatchObject({
+    expect(verifierReducer(initialState, { type: 'scanStopped', hint: v.scanStopped })).toMatchObject({
       scanning: false,
-      scannerHint: 'Scanning stopped'
+      scannerHint: v.scanStopped
     });
     expect(verifierReducer(initialState, {
       type: 'scanFailed',
@@ -65,14 +69,15 @@ describe('verifierReducer', () => {
     const detected = verifierReducer(initialState, {
       type: 'qrDetected',
       text: 'qr-1',
-      detectedAt: '2026-01-01'
+      detectedAt: '2026-01-01',
+      hint: v.qrDetected
     });
-    expect(detected.scannerHint).toBe('QR detected — verifying…');
+    expect(detected.scannerHint).toBe(v.qrDetected);
 
-    const success = verifierReducer(detected, { type: 'verifySuccess', data: { ticket_id: 't1' } });
+    const success = verifierReducer(detected, { type: 'verifySuccess', data: { ticket_id: 't1' }, hint: v.verifiedEntry });
     expect(success.result).toEqual({ ok: true, data: { ticket_id: 't1' } });
 
-    const failed = verifierReducer(detected, { type: 'verifyFailed', error: 'Invalid ticket' });
+    const failed = verifierReducer(detected, { type: 'verifyFailed', error: 'Invalid ticket', hint: v.verifyFailedHint });
     expect(failed.error).toBe('Invalid ticket');
   });
 

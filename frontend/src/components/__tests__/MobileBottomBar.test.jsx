@@ -1,5 +1,6 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import { renderWithProviders } from '../../test/renderWithRouter';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import MobileBottomBar from '../MobileBottomBar';
@@ -24,7 +25,7 @@ describe('MobileBottomBar', () => {
   });
 
   it('renders employee navigation links', () => {
-    render(
+    renderWithProviders(
       <MemoryRouter>
         <MobileBottomBar />
       </MemoryRouter>
@@ -37,7 +38,7 @@ describe('MobileBottomBar', () => {
   it('renders admin navigation for admin users', () => {
     mobileMocks.user = { role: 'ADMIN' };
 
-    render(
+    renderWithProviders(
       <MemoryRouter initialEntries={['/admin']}>
         <MobileBottomBar />
       </MemoryRouter>
@@ -50,7 +51,7 @@ describe('MobileBottomBar', () => {
   it('renders verifier navigation for verifier users', () => {
     mobileMocks.user = { role: 'VERIFIER' };
 
-    render(
+    renderWithProviders(
       <MemoryRouter initialEntries={['/verify']}>
         <MobileBottomBar />
       </MemoryRouter>
@@ -62,7 +63,7 @@ describe('MobileBottomBar', () => {
   it('renders nothing for guests', () => {
     mobileMocks.user = null;
 
-    const { container } = render(
+    const { container } = renderWithProviders(
       <MemoryRouter>
         <MobileBottomBar />
       </MemoryRouter>

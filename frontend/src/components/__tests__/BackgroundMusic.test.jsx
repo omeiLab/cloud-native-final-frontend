@@ -1,11 +1,12 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
+import { renderWithProviders } from '../../test/renderWithRouter';
 import { describe, expect, it, vi } from 'vitest';
 import BackgroundMusic from '../BackgroundMusic';
 
 describe('BackgroundMusic', () => {
   it('toggles playback when clicked', async () => {
-    render(<BackgroundMusic />);
+    renderWithProviders(<BackgroundMusic />);
     const button = screen.getByRole('button');
     fireEvent.click(button);
     expect(button).toBeInTheDocument();

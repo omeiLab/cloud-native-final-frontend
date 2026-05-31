@@ -1,5 +1,6 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
+import { renderWithProviders } from '../../test/renderWithRouter';
 import { describe, expect, it, vi } from 'vitest';
 import NotificationsPage from '../NotificationsPage';
 
@@ -11,7 +12,7 @@ vi.mock('../../context/NotificationContext', () => ({
   useNotifications: () => ({
     items: [{
       id: 'n1',
-      title: 'Registration succeeded — Spring Family Day',
+      title: 'Registration succeeded ??Spring Family Day',
       body: 'You registered successfully',
       type: 'REGISTRATION_CONFIRMED',
       created_at: '2026-05-30T10:00:00+08:00'
@@ -25,15 +26,15 @@ vi.mock('../../context/NotificationContext', () => ({
 
 describe('NotificationsPage', () => {
   it('renders notifications and supports mark-all-read', async () => {
-    render(<NotificationsPage />);
+    renderWithProviders(<NotificationsPage />);
     expect(screen.getByText('Notifications')).toBeInTheDocument();
-    expect(await screen.findByText('Registration succeeded — Spring Family Day')).toBeInTheDocument();
+    expect(await screen.findByText('Registration succeeded ??Spring Family Day')).toBeInTheDocument();
     fireEvent.click(screen.getByText('Mark all read'));
     expect(markAllReadMock).toHaveBeenCalled();
   });
 
   it('marks a single notification as read when clicked', async () => {
-    render(<NotificationsPage />);
+    renderWithProviders(<NotificationsPage />);
     fireEvent.click(await screen.findByText('Mark read'));
     expect(markReadMock).toHaveBeenCalledWith('n1');
   });

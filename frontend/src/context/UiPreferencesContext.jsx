@@ -5,7 +5,8 @@ const UiPreferencesContext = createContext(null);
 
 const STORAGE_KEYS = {
   colorMode: 'cets_color_mode',
-  textScale: 'cets_text_scale'
+  textScale: 'cets_text_scale',
+  locale: 'cets_locale'
 };
 
 const readStored = (key, fallback) => {
@@ -20,23 +21,29 @@ const readStored = (key, fallback) => {
 export const UiPreferencesProvider = ({ children }) => {
   const [colorMode, setColorMode] = useState(() => readStored(STORAGE_KEYS.colorMode, 'dark'));
   const [textScale, setTextScale] = useState(() => readStored(STORAGE_KEYS.textScale, 'large'));
+  const [locale, setLocale] = useState(() => {
+    const stored = readStored(STORAGE_KEYS.locale, 'zh-TW');
+    return stored === 'en' || stored === 'zh-TW' ? stored : 'zh-TW';
+  });
 
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEYS.colorMode, colorMode);
       localStorage.setItem(STORAGE_KEYS.textScale, textScale);
+      localStorage.setItem(STORAGE_KEYS.locale, locale);
     } catch {
       // ignore
     }
-  }, [colorMode, textScale]);
+  }, [colorMode, textScale, locale]);
 
   useEffect(() => {
     const root = document.documentElement;
+    root.lang = locale === 'zh-TW' ? 'zh-Hant-TW' : 'en';
     root.classList.toggle('theme-dark', colorMode === 'dark');
     root.classList.toggle('theme-light', colorMode !== 'dark');
     root.classList.toggle('text-large', textScale === 'large');
     root.classList.toggle('text-xlarge', textScale === 'xlarge');
-  }, [colorMode, textScale]);
+  }, [colorMode, textScale, locale]);
 
   const antdConfig = useMemo(() => {
     const isDark = colorMode === 'dark';
@@ -91,8 +98,10 @@ export const UiPreferencesProvider = ({ children }) => {
     setColorMode,
     textScale,
     setTextScale,
+    locale,
+    setLocale,
     antdConfig
-  }), [colorMode, textScale, antdConfig]);
+  }), [colorMode, textScale, locale, antdConfig]);
 
   return <UiPreferencesContext.Provider value={value}>{children}</UiPreferencesContext.Provider>;
 };

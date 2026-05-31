@@ -22,7 +22,7 @@ import dayjs from 'dayjs';
 import { apiClient } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { pickEventImage, resolvePublicAssetUrl } from '../assets/media';
-import { REGISTRATION_STATUS_LABELS, SESSION_STATUS_LABELS, labelOr } from '../utils/labels';
+import { REGISTRATION_STATUS_LABELS, SESSION_STATUS_LABELS, labelOr, useI18n } from '../utils/labels';
 import '../styles/EventDetail.css';
 
 const { Title, Paragraph } = Typography;
@@ -41,16 +41,19 @@ export const isAlreadyRegisteredError = (e) =>
 const CETS_ELIGIBILITY_MARKER_PREFIX = '<!--CETS_ELIGIBILITY:';
 const CETS_ELIGIBILITY_MARKER_SUFFIX = '-->';
 
-export const getTicketAudienceLabel = (ticketType) => {
+export const getTicketAudienceLabel = (ticketType, copy) => {
   const audience = String(ticketType?.audience || '').toUpperCase();
   const name = String(ticketType?.name || '');
-  if (audience === 'DEPENDENT' || /Child|child/i.test(name)) return 'Child';
-  if (audience === 'EMPLOYEE' || /Adult|adult/i.test(name)) return 'Adult';
-  return 'Ticket type';
+  const adult = copy?.adult || 'Adult';
+  const child = copy?.child || 'Child';
+  const ticketTypeLabel = copy?.ticketType || 'Ticket type';
+  if (audience === 'DEPENDENT' || /Child|child|兒童/i.test(name)) return child;
+  if (audience === 'EMPLOYEE' || /Adult|adult|成人/i.test(name)) return adult;
+  return ticketTypeLabel;
 };
 
-export const getDefaultTicketType = (ticketTypes = []) => (
-  ticketTypes.find((tt) => getTicketAudienceLabel(tt) === 'Adult') ||
+export const getDefaultTicketType = (ticketTypes = [], copy) => (
+  ticketTypes.find((tt) => getTicketAudienceLabel(tt, copy) === (copy?.adult || 'Adult')) ||
   ticketTypes[0] ||
   null
 );
@@ -80,11 +83,12 @@ export const registrationDialogReducer = (state, action) => {
   switch (action.type) {
     case 'open': {
       const ticketTypes = Array.isArray(action.ticketTypes) ? action.ticketTypes : [];
+      const copy = action.copy;
       return {
         ...registrationDialogInitialState,
         open: true,
         session: action.session,
-        ticketType: action.ticketType || getDefaultTicketType(ticketTypes),
+        ticketType: action.ticketType || getDefaultTicketType(ticketTypes, copy),
         ticketTypes
       };
     }
@@ -124,7 +128,10 @@ const EventSessionActions = ({
   onOpenRegister,
   onCancelRegistration,
   onConfirmRegistration,
-  onForfeitRegistration
+  onForfeitRegistration,
+  copy,
+  registrationLabels,
+  labelOrFn
 }) => {
   const roleCanRegister = REGISTRATION_ALLOWED_ROLES.has(user?.role);
   const sessionRegistrations = registrationsBySession.get(session.id) || [];
@@ -137,14 +144,14 @@ const EventSessionActions = ({
     reg.ticket_type_name || ticketTypes.find((tt) => tt.id === reg.ticket_type_id)?.name || reg.ticket_type_id;
 
   if (user && !roleCanRegister) {
-    return <Tag color="warning">Verifiers and admins cannot register for events</Tag>;
+    return <Tag color="warning">{copy.roleCannotRegister}</Tag>;
   }
 
   const ticketQuotaSummary = ticketTypes.length ? (
     <Space wrap>
       {ticketTypes.map((tt) => (
-        <Tag key={tt.id} color={getTicketAudienceLabel(tt) === 'Child' ? 'cyan' : 'geekblue'}>
-          {tt.name}：Quota {tt.quota ?? '-'}
+        <Tag key={tt.id} color={getTicketAudienceLabel(tt, copy) === copy.child ? 'cyan' : 'geekblue'}>
+          {tt.name}：{copy.quota} {tt.quota ?? '-'}
         </Tag>
       ))}
     </Space>
@@ -158,10 +165,10 @@ const EventSessionActions = ({
           onOpenRegister(session, ticketTypes);
         }}
       >
-        Register for this session
+        {copy.registerSession}
       </Button>
     ) : (
-      <Tag>No ticket types open for registration in this session</Tag>
+      <Tag>{copy.noTicketTypes}</Tag>
     )
   ) : null;
 
@@ -170,16 +177,16 @@ const EventSessionActions = ({
       {activeRegistrations.map((reg) => (
         <Space key={reg.id} wrap>
           <Tag color="blue">
-            Registered ticket type: {getTicketLabel(reg)}
+            {copy.registeredTicket}: {getTicketLabel(reg)}
           </Tag>
-          <Tag>{labelOr(REGISTRATION_STATUS_LABELS, reg.status, reg.status)}</Tag>
+          <Tag>{labelOrFn(registrationLabels, reg.status, reg.status)}</Tag>
           {reg.status === 'REGISTERED' ? (
-            <Button onClick={() => onCancelRegistration(reg.id)}>Cancel registration</Button>
+            <Button onClick={() => onCancelRegistration(reg.id)}>{copy.cancelRegistration}</Button>
           ) : null}
           {reg.status === 'WON' ? (
             <>
-              <Button type="primary" onClick={() => onConfirmRegistration(reg.id)}>Confirm attendance and receive ticket</Button>
-              <Button danger onClick={() => onForfeitRegistration(reg.id)}>Forfeit</Button>
+              <Button type="primary" onClick={() => onConfirmRegistration(reg.id)}>{copy.confirmAttendance}</Button>
+              <Button danger onClick={() => onForfeitRegistration(reg.id)}>{copy.forfeit}</Button>
             </>
           ) : null}
         </Space>
@@ -188,7 +195,7 @@ const EventSessionActions = ({
   ) : null;
 
   if (!isRegistrationOpen && !activeRegistrations.length) {
-    return <Tag>Not open for registration</Tag>;
+    return <Tag>{copy.notOpen}</Tag>;
   }
 
   return (
@@ -200,7 +207,7 @@ const EventSessionActions = ({
   );
 };
 
-const EventHeader = ({ event, primaryStatus, coverImage, fallbackImage }) => (
+const EventHeader = ({ event, primaryStatus, coverImage, fallbackImage, copy, common }) => (
   <Card className="event-head">
     <Row gutter={[24, 24]}>
       <Col xs={24} md={10}>
@@ -225,9 +232,9 @@ const EventHeader = ({ event, primaryStatus, coverImage, fallbackImage }) => (
         </Space>
         <Paragraph>{stripEligibilityMarkerFromDescription(event.description)}</Paragraph>
         <Descriptions column={1} size="small">
-          <Descriptions.Item label="Status">{primaryStatus.label}</Descriptions.Item>
-          <Descriptions.Item label="Allowed sites">{event.allowed_sites?.length ? event.allowed_sites.join(', ') : 'All sites'}</Descriptions.Item>
-          <Descriptions.Item label="Created at">{dayjs(event.created_at).format('YYYY-MM-DD HH:mm')}</Descriptions.Item>
+          <Descriptions.Item label={copy.status}>{primaryStatus.label}</Descriptions.Item>
+          <Descriptions.Item label={copy.allowedSites}>{event.allowed_sites?.length ? event.allowed_sites.join(', ') : common.allSites}</Descriptions.Item>
+          <Descriptions.Item label={copy.createdAt}>{dayjs(event.created_at).format('YYYY-MM-DD HH:mm')}</Descriptions.Item>
         </Descriptions>
       </Col>
     </Row>
@@ -241,23 +248,28 @@ const EventSessionsCard = ({
   onOpenRegister,
   onCancelRegistration,
   onConfirmRegistration,
-  onForfeitRegistration
+  onForfeitRegistration,
+  copy,
+  common,
+  sessionLabels,
+  registrationLabels,
+  labelOrFn
 }) => (
   <Card style={{ marginTop: 16 }}>
-    <Title level={4}>Sessions and ticket types</Title>
+    <Title level={4}>{copy.sessionsTitle}</Title>
     <Collapse
       defaultActiveKey={(event.sessions || []).map((session) => session.id)}
       items={(event.sessions || []).map((session) => ({
         key: session.id,
-        label: `${session.title} | ${dayjs(session.starts_at).format('MM/DD HH:mm')} - ${dayjs(session.ends_at).format('HH:mm')} | ${labelOr(SESSION_STATUS_LABELS, session.status, session.status)}`,
+        label: `${session.title} | ${dayjs(session.starts_at).format('MM/DD HH:mm')} - ${dayjs(session.ends_at).format('HH:mm')} | ${labelOrFn(sessionLabels, session.status, session.status)}`,
         children: (
           <Space direction="vertical" style={{ width: '100%' }}>
             <Descriptions size="small" column={1}>
-              <Descriptions.Item label="Venue">{session.venue}</Descriptions.Item>
-              <Descriptions.Item label="Registration period">
+              <Descriptions.Item label={copy.venue}>{session.venue}</Descriptions.Item>
+              <Descriptions.Item label={copy.registrationPeriod}>
                 {dayjs(session.registration_opens_at).format('YYYY-MM-DD HH:mm')} - {dayjs(session.registration_closes_at).format('YYYY-MM-DD HH:mm')}
               </Descriptions.Item>
-              <Descriptions.Item label="Confirmation deadline">{session.confirmation_deadline_hours} hours</Descriptions.Item>
+              <Descriptions.Item label={copy.confirmationDeadline}>{session.confirmation_deadline_hours} {copy.hours}</Descriptions.Item>
             </Descriptions>
             <EventSessionActions
               session={session}
@@ -267,6 +279,9 @@ const EventSessionsCard = ({
               onCancelRegistration={onCancelRegistration}
               onConfirmRegistration={onConfirmRegistration}
               onForfeitRegistration={onForfeitRegistration}
+              copy={copy}
+              registrationLabels={registrationLabels}
+              labelOrFn={labelOrFn}
             />
           </Space>
         )
@@ -280,22 +295,24 @@ const RegistrationModal = ({
   onSubmit,
   onClose,
   onConfirmChange,
-  onTicketTypeChange
+  onTicketTypeChange,
+  copy,
+  common
 }) => (
   <Modal
-    title={dialog.session ? `Register for ${dialog.session.title}` : 'Register for event'}
+    title={dialog.session ? `${copy.registerFor} ${dialog.session.title}` : copy.registerForEvent}
     open={dialog.open}
     onOk={onSubmit}
     onCancel={onClose}
     confirmLoading={dialog.registering}
     okButtonProps={{ disabled: !dialog.eligibilityConfirmed || !dialog.ticketType }}
-    okText="I confirm eligibility and register"
-    cancelText="Cancel"
+    okText={copy.confirmEligibility}
+    cancelText={common.cancel}
   >
     {dialog.session ? (
       <Space direction="vertical" style={{ width: '100%' }}>
         <Paragraph style={{ marginBottom: 0 }}>
-          Session：{dialog.session.title}
+          {copy.sessionLabel}：{dialog.session.title}
         </Paragraph>
         <Radio.Group
           className="registration-ticket-options"
@@ -308,7 +325,7 @@ const RegistrationModal = ({
                 <span className="registration-ticket-copy">
                   <span className="registration-ticket-name">{tt.name}</span>
                   <span className="registration-ticket-meta">
-                    {getTicketAudienceLabel(tt)}｜Quota {tt.quota ?? '-'}
+                    {getTicketAudienceLabel(tt, copy)}｜{copy.quota} {tt.quota ?? '-'}
                   </span>
                 </span>
               </Radio>
@@ -319,15 +336,15 @@ const RegistrationModal = ({
           checked={dialog.eligibilityConfirmed}
           onChange={(e) => onConfirmChange(e.target.checked)}
         >
-          I confirm that I meet this ticket type requirements
+          {copy.confirmRequirements}
         </Checkbox>
         <Descriptions size="small" column={1}>
-          <Descriptions.Item label="Submissions">1 registration</Descriptions.Item>
-          <Descriptions.Item label="Selected ticket type">{dialog.ticketType?.name || '-'}</Descriptions.Item>
-          <Descriptions.Item label="Ticket type quota">{dialog.ticketType?.quota ?? '-'}</Descriptions.Item>
+          <Descriptions.Item label={copy.submissions}>{copy.oneRegistration}</Descriptions.Item>
+          <Descriptions.Item label={copy.selectedTicketType}>{dialog.ticketType?.name || '-'}</Descriptions.Item>
+          <Descriptions.Item label={copy.ticketTypeQuota}>{dialog.ticketType?.quota ?? '-'}</Descriptions.Item>
         </Descriptions>
         <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-          Each employee submits one registration. Ticket type quota is for reference only.
+          {copy.quotaNote}
         </Paragraph>
       </Space>
     ) : null}
@@ -337,6 +354,15 @@ const RegistrationModal = ({
 const EventDetail = () => {
   const { eventId } = useParams();
   const { user } = useAuth();
+  const {
+    m,
+    EVENT_CARD_STATUS,
+    SESSION_STATUS_LABELS: sessionLabels,
+    REGISTRATION_STATUS_LABELS: registrationLabels,
+    labelOr: labelOrFn
+  } = useI18n();
+  const copy = m.eventDetail;
+  const common = m.common;
   const [pageState, setPageState] = useReducer(eventDetailPageReducer, eventDetailPageInitialState);
   const [registrationDialog, dispatchRegistrationDialog] = useReducer(
     registrationDialogReducer,
@@ -372,7 +398,7 @@ const EventDetail = () => {
     } catch (e) {
       setPageState({
         loading: false,
-        error: e?.error?.message || 'Failed to load event data'
+        error: e?.error?.message || copy.loadFailed
       });
     }
   };
@@ -396,11 +422,11 @@ const EventDetail = () => {
 
   const getEventPrimaryStatus = () => {
     const hasOpenSession = (event?.sessions || []).some((session) => session.status === 'REGISTRATION_OPEN');
-    if (event?.status === 'CANCELLED') return { label: 'Cancelled', color: 'red' };
-    if (event?.status !== 'PUBLISHED') return { label: 'Event not published', color: 'default' };
-    if (user && !REGISTRATION_ALLOWED_ROLES.has(user.role)) return { label: 'This role cannot register', color: 'warning' };
-    if (!hasOpenSession) return { label: 'Closed / not open', color: 'default' };
-    return { label: 'Open for registration', color: 'success' };
+    if (event?.status === 'CANCELLED') return { label: EVENT_CARD_STATUS.cancelled, color: 'red' };
+    if (event?.status !== 'PUBLISHED') return { label: EVENT_CARD_STATUS.notPublished, color: 'default' };
+    if (user && !REGISTRATION_ALLOWED_ROLES.has(user.role)) return { label: EVENT_CARD_STATUS.roleCannotRegister, color: 'warning' };
+    if (!hasOpenSession) return { label: EVENT_CARD_STATUS.closed, color: 'default' };
+    return { label: EVENT_CARD_STATUS.open, color: 'success' };
   };
 
   const tryReactivateRegistration = async (registrationId, ticketType) => {
@@ -443,32 +469,29 @@ const EventDetail = () => {
         session_id: session.id,
         ticket_type_id: ticketType.id
       });
-      message.success('Registration succeeded');
+      message.success(copy.registrationSuccess);
       await loadPage();
     } catch (e) {
       if (prior && isAlreadyRegisteredError(e)) {
         try {
           await tryReactivateRegistration(prior.id, ticketType);
-          message.success('Re-registered successfully');
+          message.success(copy.registrationSuccess);
           await loadPage();
         } catch (e2) {
-          message.error(
-            registrationErrMsg(e2) ||
-              'Unable to resume the cancelled registration. Try again later or contact an admin.'
-          );
+          message.error(registrationErrMsg(e2) || copy.registrationFailed);
         }
         return;
       }
       if (isAlreadyRegisteredError(e)) {
-        message.error('Only one registration per employee per session. Cancel first to change ticket type.');
+        message.error(copy.alreadyRegistered);
         return;
       }
-      message.error(registrationErrMsg(e) || 'Registration failed');
+      message.error(registrationErrMsg(e) || copy.registrationFailed);
     }
   };
 
   const openRegisterModal = (session, ticketTypes) => {
-    dispatchRegistrationDialog({ type: 'open', session, ticketTypes });
+    dispatchRegistrationDialog({ type: 'open', session, ticketTypes, copy });
   };
 
   const submitRegisterModal = async () => {
@@ -490,24 +513,26 @@ const EventDetail = () => {
   const runConfirm = async (registrationId) => {
     try {
       await apiClient.confirmRegistration(registrationId);
-      message.success('Confirmed. Ticket issued.');
+      message.success(copy.confirmSuccess);
       await loadPage();
     } catch (e) {
-      message.error(e?.error?.message || 'Confirmation failed');
+      message.error(e?.error?.message || copy.registrationFailed);
     }
   };
 
   const runForfeit = async (registrationId) => {
     Modal.confirm({
-      title: 'Confirm forfeit',
-      content: 'Forfeiting releases quota to waitlisted users. Continue?',
+      title: copy.confirmForfeitTitle,
+      content: copy.confirmForfeitContent,
+      okText: copy.forfeit,
+      cancelText: common.cancel,
       onOk: async () => {
         try {
           await apiClient.forfeitRegistration(registrationId);
-          message.success('Forfeited');
+          message.success(copy.forfeitSuccess);
           await loadPage();
         } catch (e) {
-          message.error(e?.error?.message || 'Forfeit failed');
+          message.error(e?.error?.message || copy.registrationFailed);
         }
       }
     });
@@ -516,10 +541,10 @@ const EventDetail = () => {
   const runCancel = async (registrationId) => {
     try {
       await apiClient.cancelRegistration(registrationId);
-      message.success('Registration cancelled');
+      message.success(copy.cancelSuccess);
       await loadPage();
     } catch (e) {
-      message.error(e?.error?.message || 'Cancellation failed');
+      message.error(e?.error?.message || copy.registrationFailed);
     }
   };
 
@@ -542,7 +567,7 @@ const EventDetail = () => {
   if (!event) {
     return (
       <div className="page-wrap">
-        <Empty description="Event not found" />
+        <Empty description={copy.eventNotFound} />
       </div>
     );
   }
@@ -558,6 +583,8 @@ const EventDetail = () => {
         primaryStatus={primaryStatus}
         coverImage={coverImage}
         fallbackImage={fallbackImage}
+        copy={copy}
+        common={common}
       />
       <EventSessionsCard
         event={event}
@@ -567,6 +594,11 @@ const EventDetail = () => {
         onCancelRegistration={runCancel}
         onConfirmRegistration={runConfirm}
         onForfeitRegistration={runForfeit}
+        copy={copy}
+        common={common}
+        sessionLabels={sessionLabels}
+        registrationLabels={registrationLabels}
+        labelOrFn={labelOrFn}
       />
       <RegistrationModal
         dialog={registrationDialog}
@@ -574,6 +606,8 @@ const EventDetail = () => {
         onClose={() => dispatchRegistrationDialog({ type: 'close' })}
         onConfirmChange={(value) => dispatchRegistrationDialog({ type: 'set_confirmed', value })}
         onTicketTypeChange={(ticketTypeId) => dispatchRegistrationDialog({ type: 'select_ticket_type', ticketTypeId })}
+        copy={copy}
+        common={common}
       />
     </div>
   );

@@ -1,5 +1,6 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
+import { renderWithProviders } from '../../test/renderWithRouter';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import OIDCCallbackPage from '../OIDCCallbackPage';
@@ -12,7 +13,7 @@ vi.mock('../../context/AuthContext', () => ({
 
 describe('OIDCCallbackPage', () => {
   it('shows error when callback params are missing', () => {
-    render(
+    renderWithProviders(
       <MemoryRouter initialEntries={['/auth/callback']}>
         <Routes>
           <Route path="/auth/callback" element={<OIDCCallbackPage />} />
@@ -24,7 +25,7 @@ describe('OIDCCallbackPage', () => {
 
   it('completes login and redirects on success', async () => {
     finishOIDCLoginMock.mockResolvedValue({ role: 'EMPLOYEE' });
-    render(
+    renderWithProviders(
       <MemoryRouter initialEntries={['/auth/callback?code=abc&state=xyz']}>
         <Routes>
           <Route path="/auth/callback" element={<OIDCCallbackPage />} />

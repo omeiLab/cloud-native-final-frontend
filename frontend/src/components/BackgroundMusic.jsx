@@ -2,10 +2,12 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Button, Tooltip } from 'antd';
 import { PauseCircleOutlined, PlayCircleOutlined } from '@ant-design/icons';
 import { publicAssetPath } from '../assets/media';
+import useI18n from '../hooks/useI18n';
 
 const MUSIC_URL = publicAssetPath('/music/tsmcsong.mp3');
 
 const BackgroundMusic = () => {
+  const { m } = useI18n();
   const audioRef = useRef(null);
   const [enabled, setEnabled] = useState(false);
   const [autoplayBlocked, setAutoplayBlocked] = useState(false);
@@ -41,10 +43,10 @@ const BackgroundMusic = () => {
   };
 
   const tip = autoplayBlocked
-    ? 'Autoplay blocked. Click to enable background music.'
+    ? m.bgm.autoplayBlocked
     : enabled
-      ? 'CloseBackground music'
-      : 'Enable background music';
+      ? m.bgm.pause
+      : m.bgm.enable;
 
   return (
     <div className="bgm-control">

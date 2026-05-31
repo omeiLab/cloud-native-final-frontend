@@ -2,13 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { Badge, Button, Card, Empty, List, Space, Tag, Typography } from 'antd';
 import dayjs from 'dayjs';
 import { useNotifications } from '../context/NotificationContext';
-import { NOTIFICATION_TYPE_LABELS, labelOr } from '../utils/labels';
 import { extractCancellationReason, shouldShowCancellationReasonLine } from '../utils/notificationDisplay';
+import useI18n from '../hooks/useI18n';
 
 const { Title, Paragraph } = Typography;
 
 const NotificationsPage = () => {
   const { items, unreadCount, refreshList, markRead, markAllRead } = useNotifications();
+  const { m, NOTIFICATION_TYPE_LABELS, labelOr } = useI18n();
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -21,19 +22,19 @@ const NotificationsPage = () => {
       <Card>
         <Space style={{ width: '100%', justifyContent: 'space-between' }}>
           <div>
-            <Title level={3} style={{ marginBottom: 0 }}>Notifications</Title>
-            <Paragraph type="secondary">Unread <Badge count={unreadCount} /></Paragraph>
+            <Title level={3} style={{ marginBottom: 0 }}>{m.notifications.title}</Title>
+            <Paragraph type="secondary">{m.notifications.unread} <Badge count={unreadCount} /></Paragraph>
           </div>
           <Space>
-            <Button onClick={() => refreshList()}>Refresh</Button>
-            <Button type="primary" onClick={markAllRead}>Mark all read</Button>
+            <Button onClick={() => refreshList()}>{m.common.refresh}</Button>
+            <Button type="primary" onClick={markAllRead}>{m.notifications.markAllRead}</Button>
           </Space>
         </Space>
       </Card>
 
       <Card style={{ marginTop: 16 }} loading={loading}>
         {items.length === 0 ? (
-          <Empty description="No notifications yet" />
+          <Empty description={m.notifications.empty} />
         ) : (
           <List
             dataSource={items}
@@ -43,9 +44,9 @@ const NotificationsPage = () => {
                 <List.Item
                   actions={[
                     item.read_at ? (
-                      <Tag color="default">Read</Tag>
+                      <Tag color="default">{m.notifications.read}</Tag>
                     ) : (
-                      <Button type="link" onClick={() => markRead(item.id)}>Mark read</Button>
+                      <Button type="link" onClick={() => markRead(item.id)}>{m.notifications.markRead}</Button>
                     )
                   ]}
                 >
@@ -61,7 +62,7 @@ const NotificationsPage = () => {
                         <Paragraph style={{ marginBottom: 8 }}>{item.body}</Paragraph>
                         {cancellationReason ? (
                           <Paragraph style={{ marginBottom: 8 }}>
-                            Cancellation reason：{cancellationReason}
+                            {m.notifications.cancellationReason}：{cancellationReason}
                           </Paragraph>
                         ) : null}
                         <Paragraph type="secondary" style={{ marginBottom: 0 }}>

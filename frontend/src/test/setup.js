@@ -1,6 +1,12 @@
 import { vi } from 'vitest';
 import '@testing-library/jest-dom';
 
+try {
+  localStorage.setItem('cets_locale', 'en');
+} catch {
+  // ignore
+}
+
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
   value: vi.fn().mockImplementation((query) => ({

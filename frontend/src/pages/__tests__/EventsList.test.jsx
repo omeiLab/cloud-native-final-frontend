@@ -1,6 +1,7 @@
 import React from 'react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { renderWithProviders } from '../../test/renderWithRouter';
 import { MemoryRouter } from 'react-router-dom';
 import EventsList from '../EventsList';
 
@@ -63,7 +64,7 @@ describe('EventsList page', () => {
   });
 
   it('renders loaded events for authenticated employees', async () => {
-    render(
+    renderWithProviders(
       <MemoryRouter>
         <EventsList />
       </MemoryRouter>
@@ -79,7 +80,7 @@ describe('EventsList page', () => {
   it('renders guest hero and sign-in action when unauthenticated', async () => {
     eventsListMocks.user = null;
 
-    render(
+    renderWithProviders(
       <MemoryRouter>
         <EventsList />
       </MemoryRouter>
@@ -91,7 +92,7 @@ describe('EventsList page', () => {
   });
 
   it('filters events by keyword and refreshes the list', async () => {
-    render(
+    renderWithProviders(
       <MemoryRouter>
         <EventsList />
       </MemoryRouter>

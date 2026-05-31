@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { POST_LOGIN_REDIRECT_KEY } from '../constant';
 import { getPostLoginRedirectPath } from '../utils/authRedirect';
+import useI18n from '../hooks/useI18n';
 
 const { Paragraph } = Typography;
 
@@ -11,6 +12,7 @@ const OIDCCallbackPage = () => {
   const [search] = useSearchParams();
   const navigate = useNavigate();
   const { finishOIDCLogin } = useAuth();
+  const { m } = useI18n();
   const [error, setError] = useState('');
   const callbackStartedRef = useRef(false);
 
@@ -23,7 +25,7 @@ const OIDCCallbackPage = () => {
     const state = search.get('state');
 
     if (!code || !state) {
-      setError('Missing OIDC callback parameters code/state.');
+      setError(m.oidc.missingParams);
       return;
     }
 
@@ -35,19 +37,19 @@ const OIDCCallbackPage = () => {
         navigate(getPostLoginRedirectPath(loggedInUser, redirectPath), { replace: true });
       })
       .catch((e) => {
-        setError(e?.error?.message || e?.message || 'OIDC sign-in failed. Please sign in again.');
+        setError(e?.error?.message || e?.message || m.oidc.oidcFailed);
       });
-  }, [search, finishOIDCLogin, navigate]);
+  }, [search, finishOIDCLogin, navigate, m.oidc.missingParams, m.oidc.oidcFailed]);
 
   return (
     <div className="page-wrap centered-page">
       <Card>
         {error ? (
-          <Alert type="error" message="Sign-in failed" description={error} />
+          <Alert type="error" message={m.oidc.failed} description={error} />
         ) : (
           <div style={{ textAlign: 'center' }}>
             <Spin size="large" />
-            <Paragraph style={{ marginTop: 16 }}>Completing sign-in, please wait…</Paragraph>
+            <Paragraph style={{ marginTop: 16 }}>{m.oidc.completing}</Paragraph>
           </div>
         )}
       </Card>

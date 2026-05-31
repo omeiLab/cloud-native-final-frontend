@@ -5,9 +5,10 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
 import { useUiPreferences } from '../context/UiPreferencesContext';
+import useI18n from '../hooks/useI18n';
 import { LOGO_IMAGE } from '../assets/media';
 import AnimatedThemeToggler from './AnimatedThemeToggler';
-import { ROLE_LABELS, labelOr } from '../utils/labels';
+import LanguageToggle from './LanguageToggle';
 import '../styles/Header.css';
 
 const { Header } = Layout;
@@ -18,6 +19,8 @@ const AppHeader = () => {
   const { user, logout, startOIDCLogin } = useAuth();
   const { unreadCount, connected } = useNotifications();
   const { colorMode, textScale, setTextScale } = useUiPreferences();
+  const { m, ROLE_LABELS, labelOr } = useI18n();
+
   const cycleTextScale = () => {
     if (textScale === 'normal') {
       setTextScale('large');
@@ -29,6 +32,20 @@ const AppHeader = () => {
     }
     setTextScale('normal');
   };
+
+  const textScaleLabel = textScale === 'normal'
+    ? m.header.standard
+    : textScale === 'large'
+      ? m.header.large
+      : m.header.extraLarge;
+
+  const textScaleTooltip = textScale === 'normal'
+    ? m.header.switchToLargeText
+    : textScale === 'large'
+      ? m.header.switchToExtraLargeText
+      : m.header.switchToStandardText;
+
+  const themeTooltip = colorMode === 'dark' ? m.header.switchToLight : m.header.switchToDark;
 
   const [loginLoading, setLoginLoading] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -61,7 +78,7 @@ const AppHeader = () => {
     try {
       await startOIDCLogin();
     } catch (error) {
-      message.error(error?.error?.message || 'Sign-in failed. Verify that backend services are running.');
+      message.error(error?.error?.message || m.common.loginError);
       setLoginLoading(false);
     }
   };
@@ -72,25 +89,25 @@ const AppHeader = () => {
         {canAccessAdmin ? (
           <Link to="/admin" className="profile-popover-action" onClick={() => setProfilePopoverOpen(false)}>
             <AuditOutlined />
-            <span>Admin console</span>
+            <span>{m.header.adminConsole}</span>
           </Link>
         ) : null}
         {canAccessVerifier ? (
           <Link to="/verify" className="profile-popover-action" onClick={() => setProfilePopoverOpen(false)}>
             <QrcodeOutlined />
-            <span>Verifier portal</span>
+            <span>{m.header.verifierPortal}</span>
           </Link>
         ) : null}
         {canAccessTicketBox ? (
           <Link to="/me" className="profile-popover-action" onClick={() => setProfilePopoverOpen(false)}>
             <IdcardOutlined />
-            <span>My tickets</span>
+            <span>{m.header.myTickets}</span>
           </Link>
         ) : null}
         {canAccessNotifications ? (
           <Link to="/notifications" className="profile-popover-action" onClick={() => setProfilePopoverOpen(false)}>
             <BellOutlined />
-            <span>Notifications</span>
+            <span>{m.header.notifications}</span>
             <Badge count={unreadCount} size="small" />
           </Link>
         ) : null}
@@ -101,7 +118,7 @@ const AppHeader = () => {
           icon={<LogoutOutlined />}
           onClick={handleLogout}
         >
-          Sign out
+          {m.common.signOut}
         </Button>
       </div>
     </div>
@@ -114,34 +131,36 @@ const AppHeader = () => {
           type="text"
           className="mobile-menu-trigger"
           icon={<MenuOutlined />}
-          aria-label="Open navigation menu"
+          aria-label={m.header.openNavMenu}
           onClick={() => setMobileMenuOpen(true)}
         />
         <Link to="/" className="logo" onClick={handleGoHome}>
           <img src={LOGO_IMAGE} alt="TSMC logo" className="logo-image" />
           <span>
             <strong className="logo-title">
-              <span className="logo-title-line1">TSMC</span>
-              <span className="logo-title-line2">CETS Events</span>
+              <span className="logo-title-line1">{m.header.brandLine1}</span>
+              <span className="logo-title-line2">{m.header.brandLine2}</span>
             </strong>
-            <small>TSMC employee event platform</small>
+            <small>{m.header.brandTagline}</small>
           </span>
         </Link>
       </div>
 
       <div className="header-right">
         <Space size="middle" wrap>
-          <Tooltip title={colorMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+          <LanguageToggle />
+
+          <Tooltip title={themeTooltip}>
             <AnimatedThemeToggler className="theme-toggle-btn" variant="circle" duration={520} />
           </Tooltip>
 
-          <Tooltip title={textScale === 'normal' ? 'Switch to large text' : textScale === 'large' ? 'Switch to extra-large text' : 'Switch to standard text'}>
+          <Tooltip title={textScaleTooltip}>
             <Button
               className="ghost-btn"
               icon={<FontSizeOutlined />}
               onClick={cycleTextScale}
             >
-              {textScale === 'normal' ? 'Standard' : textScale === 'large' ? 'Large' : 'Extra large'}
+              {textScaleLabel}
             </Button>
           </Tooltip>
 
@@ -171,17 +190,17 @@ const AppHeader = () => {
               >
                 <Avatar size={32} icon={<UserOutlined />} />
                 <span className="user-name">{user.name}（{labelOr(ROLE_LABELS, user.role)}）</span>
-                <Tooltip title={connected ? 'Realtime notifications connected' : 'Realtime notifications offline (reconnecting)'}>
+                <Tooltip title={connected ? m.header.connected : m.header.offline}>
                   <span
                     className={`connection-dot ${connected ? 'connected' : 'offline'}`}
                     role="status"
-                    aria-label={connected ? 'Realtime notifications connected' : 'Realtime alerts offline'}
+                    aria-label={connected ? m.header.connected : m.header.offline}
                   />
                 </Tooltip>
               </Button>
             </Popover>
           ) : (
-            <Button type="primary" loading={loginLoading} onClick={handleLogin}>Sign in</Button>
+            <Button type="primary" loading={loginLoading} onClick={handleLogin}>{m.common.signIn}</Button>
           )}
         </Space>
       </div>
@@ -191,18 +210,18 @@ const AppHeader = () => {
           <Button
             type="text"
             className="user-button mobile-header-profile-trigger"
-            aria-label="Open account menu"
+            aria-label={m.header.openAccountMenu}
             onClick={() => setMobileMenuOpen(true)}
           >
             <Avatar size={28} icon={<UserOutlined />} />
           </Button>
         ) : (
-          <Button type="primary" size="small" loading={loginLoading} onClick={handleLogin}>Sign in</Button>
+          <Button type="primary" size="small" loading={loginLoading} onClick={handleLogin}>{m.common.signIn}</Button>
         )}
       </div>
 
       <Drawer
-        title="Navigation menu"
+        title={m.header.navMenu}
         placement="left"
         onClose={() => setMobileMenuOpen(false)}
         open={mobileMenuOpen}
@@ -211,15 +230,16 @@ const AppHeader = () => {
       >
         <div className="mobile-drawer-shell">
           <div className="mobile-drawer-main">
-            <Tooltip title={colorMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+            <LanguageToggle className="mobile-drawer-item language-toggle-mobile" block />
+            <Tooltip title={themeTooltip}>
               <AnimatedThemeToggler
                 className="mobile-drawer-item theme-toggle-mobile"
-                label={colorMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                label={themeTooltip}
                 variant="circle"
                 duration={520}
               />
             </Tooltip>
-            <Tooltip title={textScale === 'normal' ? 'Switch to large text' : textScale === 'large' ? 'Switch to extra-large text' : 'Switch to standard text'}>
+            <Tooltip title={textScaleTooltip}>
               <Button
                 block
                 type="text"
@@ -228,7 +248,7 @@ const AppHeader = () => {
               >
                 <span className="mobile-drawer-item-main">
                   <FontSizeOutlined className="mobile-drawer-item-icon" />
-                  Text size: {textScale === 'normal' ? 'Standard' : textScale === 'large' ? 'Large' : 'Extra large'}
+                  {m.header.textSize}: {textScaleLabel}
                 </span>
               </Button>
             </Tooltip>
@@ -242,13 +262,13 @@ const AppHeader = () => {
                     {canAccessAdmin ? (
                       <Link to="/admin" className="mobile-drawer-account-link" onClick={() => setMobileMenuOpen(false)}>
                         <AuditOutlined />
-                        <span>Admin console</span>
+                        <span>{m.header.adminConsole}</span>
                       </Link>
                     ) : null}
                     {canAccessVerifier ? (
                       <Link to="/verify" className="mobile-drawer-account-link" onClick={() => setMobileMenuOpen(false)}>
                         <QrcodeOutlined />
-                        <span>Verifier portal</span>
+                        <span>{m.header.verifierPortal}</span>
                       </Link>
                     ) : null}
                   </div>
@@ -272,20 +292,20 @@ const AppHeader = () => {
                     }}
                   >
                     <LogoutOutlined />
-                    Sign out
+                    {m.common.signOut}
                   </Button>
                 </div>
                 <div className="mobile-drawer-account-actions">
                   {canAccessTicketBox ? (
                     <Link to="/me" className="mobile-drawer-account-link" onClick={() => setMobileMenuOpen(false)}>
                       <IdcardOutlined />
-                      <span>My tickets</span>
+                      <span>{m.header.myTickets}</span>
                     </Link>
                   ) : null}
                   {canAccessNotifications ? (
                     <Link to="/notifications" className="mobile-drawer-account-link" onClick={() => setMobileMenuOpen(false)}>
                       <BellOutlined />
-                      <span>Notifications</span>
+                      <span>{m.header.notifications}</span>
                       <Badge count={unreadCount} size="small" />
                     </Link>
                   ) : null}
@@ -293,7 +313,7 @@ const AppHeader = () => {
               </>
             ) : (
               <Button type="primary" className="mobile-drawer-login" loading={loginLoading} onClick={handleLogin}>
-                Sign in
+                {m.common.signIn}
               </Button>
             )}
           </div>

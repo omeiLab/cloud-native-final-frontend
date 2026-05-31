@@ -8,6 +8,7 @@ import {
   StopOutlined
 } from '@ant-design/icons';
 import { useVerifierController } from './verifier/useVerifierController';
+import useI18n from '../hooks/useI18n';
 import '../styles/Verifier.css';
 
 const { Title } = Typography;
@@ -18,24 +19,25 @@ const ScannerSurface = memo(({
   scannerHint,
   statusTone,
   onStartScan,
-  onStopScan
+  onStopScan,
+  copy
 }) => (
   <section className="scanner-panel">
     <div className={`scan-state ${statusTone}`}>{scannerHint}</div>
 
     <div className="video-frame">
-      <video ref={videoRef} playsInline muted aria-label="Verifier camera feed" />
+      <video ref={videoRef} playsInline muted aria-label={copy.cameraFeed} />
       <div className="scan-guide" />
     </div>
 
     <div className="verifier-scan-actions">
       {!scanning ? (
         <Button type="primary" size="large" icon={<CameraOutlined />} onClick={onStartScan}>
-          Start camera scan
+          {copy.startScan}
         </Button>
       ) : (
         <Button danger size="large" icon={<StopOutlined />} onClick={onStopScan}>
-          Stop scanning
+          {copy.stopScan}
         </Button>
       )}
     </div>
@@ -47,7 +49,8 @@ const ManualVerificationPanel = memo(({
   manualPayload,
   onDeviceIdChange,
   onManualPayloadChange,
-  onManualVerify
+  onManualVerify,
+  copy
 }) => (
   <Collapse
     className="verifier-manual"
@@ -55,18 +58,18 @@ const ManualVerificationPanel = memo(({
     items={[
       {
         key: 'manual',
-        label: 'Manual verification',
+        label: copy.manual,
         children: (
           <div className="verifier-manual-controls">
             <Input
               value={deviceId}
               onChange={(e) => onDeviceIdChange(e.target.value)}
-              addonBefore="Device ID"
+              addonBefore={copy.deviceId}
             />
             <Input.TextArea
               value={manualPayload}
               onChange={(e) => onManualPayloadChange(e.target.value)}
-              placeholder="Paste qr_payload"
+              placeholder={copy.pastePayload}
               autoSize={{ minRows: 3, maxRows: 6 }}
             />
             <Button
@@ -75,7 +78,7 @@ const ManualVerificationPanel = memo(({
               onClick={onManualVerify}
               disabled={!manualPayload.trim()}
             >
-              Verify
+              {copy.verify}
             </Button>
           </div>
         )
@@ -84,7 +87,7 @@ const ManualVerificationPanel = memo(({
   />
 ));
 
-const VerificationResultPanel = memo(({ result, error }) => (
+const VerificationResultPanel = memo(({ result, error, copy }) => (
   <>
     {result?.ok ? (
       <div className="result-panel success">
@@ -92,13 +95,13 @@ const VerificationResultPanel = memo(({ result, error }) => (
           type="success"
           showIcon
           icon={<CheckCircleOutlined />}
-          message="Verification succeeded"
+          message={copy.success}
           description={
             <div>
-              <div>Ticket: {result.data.ticket_id}</div>
-              <div>Name：{result.data.user_name}</div>
-              <div>Verified at: {result.data.used_at}</div>
-              <Tag color="green" style={{ marginTop: 8 }}>Entry allowed</Tag>
+              <div>{copy.ticket}: {result.data.ticket_id}</div>
+              <div>{copy.name}：{result.data.user_name}</div>
+              <div>{copy.verifiedAt}: {result.data.used_at}</div>
+              <Tag color="green" style={{ marginTop: 8 }}>{copy.entryAllowed}</Tag>
             </div>
           }
         />
@@ -107,13 +110,15 @@ const VerificationResultPanel = memo(({ result, error }) => (
 
     {error ? (
       <div className="result-panel error">
-        <Alert type="error" showIcon icon={<CloseCircleOutlined />} message="Verification failed" description={error} />
+        <Alert type="error" showIcon icon={<CloseCircleOutlined />} message={copy.failed} description={error} />
       </div>
     ) : null}
   </>
 ));
 
 const VerifierPage = () => {
+  const { m } = useI18n();
+  const copy = m.verifier;
   const {
     videoRef,
     state,
@@ -123,7 +128,7 @@ const VerifierPage = () => {
     handleDeviceIdChange,
     handleManualPayloadChange,
     handleManualVerify
-  } = useVerifierController();
+  } = useVerifierController(copy);
 
   const {
     deviceId,
@@ -138,8 +143,8 @@ const VerifierPage = () => {
     <div className="page-wrap verifier-shell fade-in-up">
       <Card className="verifier-card">
         <div className="verifier-header">
-          <Title level={3}>Ticket verification</Title>
-          <Tag color={scanning ? 'processing' : 'default'}>{scanning ? 'Scanning' : 'Idle'}</Tag>
+          <Title level={3}>{copy.title}</Title>
+          <Tag color={scanning ? 'processing' : 'default'}>{scanning ? copy.scanning : copy.idle}</Tag>
         </div>
 
         <ScannerSurface
@@ -149,6 +154,7 @@ const VerifierPage = () => {
           statusTone={statusTone}
           onStartScan={handleStartScan}
           onStopScan={handleStopScan}
+          copy={copy}
         />
 
         <ManualVerificationPanel
@@ -157,9 +163,10 @@ const VerifierPage = () => {
           onDeviceIdChange={handleDeviceIdChange}
           onManualPayloadChange={handleManualPayloadChange}
           onManualVerify={handleManualVerify}
+          copy={copy}
         />
 
-        <VerificationResultPanel result={result} error={error} />
+        <VerificationResultPanel result={result} error={error} copy={copy} />
       </Card>
     </div>
   );

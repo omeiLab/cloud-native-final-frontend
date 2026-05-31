@@ -1,5 +1,6 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
+import { renderWithProviders } from '../../test/renderWithRouter';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import AppHeader from '../Header';
@@ -29,13 +30,20 @@ vi.mock('../../context/NotificationContext', () => ({
   })
 }));
 
-vi.mock('../../context/UiPreferencesContext', () => ({
-  useUiPreferences: () => ({
-    colorMode: 'dark',
-    textScale: 'large',
-    setTextScale: setTextScaleMock
-  })
-}));
+vi.mock('../../context/UiPreferencesContext', async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    useUiPreferences: () => ({
+      colorMode: 'dark',
+      textScale: 'large',
+      setTextScale: setTextScaleMock,
+      locale: 'en',
+      setLocale: vi.fn(),
+      antdConfig: { theme: {} }
+    })
+  };
+});
 
 describe('Header', () => {
   beforeEach(() => {
@@ -48,7 +56,7 @@ describe('Header', () => {
   });
 
   it('renders employee navigation actions', () => {
-    render(
+    renderWithProviders(
       <MemoryRouter>
         <AppHeader />
       </MemoryRouter>
@@ -63,7 +71,7 @@ describe('Header', () => {
   it('shows admin console link for admin users', () => {
     headerMocks.user = { role: 'ADMIN', name: 'Admin User' };
 
-    render(
+    renderWithProviders(
       <MemoryRouter>
         <AppHeader />
       </MemoryRouter>
@@ -77,7 +85,7 @@ describe('Header', () => {
   it('shows verifier portal link for verifier users', () => {
     headerMocks.user = { role: 'VERIFIER', name: 'Verifier User' };
 
-    render(
+    renderWithProviders(
       <MemoryRouter>
         <AppHeader />
       </MemoryRouter>
@@ -91,7 +99,7 @@ describe('Header', () => {
     headerMocks.user = null;
     startOIDCLoginMock.mockResolvedValue(undefined);
 
-    render(
+    renderWithProviders(
       <MemoryRouter>
         <AppHeader />
       </MemoryRouter>
@@ -102,7 +110,7 @@ describe('Header', () => {
   });
 
   it('opens mobile navigation drawer with account links', () => {
-    render(
+    renderWithProviders(
       <MemoryRouter>
         <AppHeader />
       </MemoryRouter>
@@ -114,7 +122,7 @@ describe('Header', () => {
   });
 
   it('cycles text scale when the font size button is clicked', () => {
-    render(
+    renderWithProviders(
       <MemoryRouter>
         <AppHeader />
       </MemoryRouter>
