@@ -21,6 +21,8 @@ describe('auth redirect helpers', () => {
     expect(getPostLoginRedirectPath({ role: 'ADMIN' }, '/admin')).toBe('/admin');
     expect(getPostLoginRedirectPath({ role: 'VERIFIER' }, '/verify')).toBe('/verify');
     expect(getPostLoginRedirectPath({ role: 'EMPLOYEE' }, '/events/event-1')).toBe('/events/event-1');
+    expect(getPostLoginRedirectPath({ role: 'DEPENDENT' }, '/events/event-1')).toBe('/');
     expect(isSafeInternalPath('//evil.example/path')).toBe(false);
+    expect(isSafeInternalPath('/safe/path')).toBe(true);
   });
 });

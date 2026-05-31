@@ -25,8 +25,8 @@ const QR_READER_OPTIONS = {
   tryPlayVideoTimeout: 8000
 };
 
-const formatVerifyError = (e) => {
-  const msg = e?.error?.message || e?.message || '核銷失敗';
+export const formatVerifyError = (e) => {
+  const msg = e?.error?.message || e?.message || 'Verification failed';
   const details = e?.error?.details;
   if (!details || typeof details !== 'object') {
     return msg;
@@ -66,8 +66,8 @@ export const getScannerMissHint = (error) => (
   error instanceof FormatException ||
   error instanceof ChecksumException ||
   /FormatException|ChecksumException/i.test(String(error || ''))
-    ? '偵測到 QR 但畫面不完整或模糊，請對準完整 QR'
-    : '尚未辨識到 QR，請靠近並保持對焦'
+    ? 'QR detected but frame is incomplete or blurry. Center the full code.'
+    : 'QR code not detected yet. Move closer and keep focus.'
 );
 
 const initialVerifierState = {
@@ -76,12 +76,12 @@ const initialVerifierState = {
   error: '',
   deviceId: DEFAULT_VERIFIER_DEVICE_ID,
   manualPayload: '',
-  scannerHint: '尚未啟動掃描',
+  scannerHint: 'Scanner idle',
   lastDetectedText: '',
   lastDetectedAt: ''
 };
 
-const verifierReducer = (state, action) => {
+export const verifierReducer = (state, action) => {
   switch (action.type) {
     case 'scanStarting':
       return {
@@ -89,19 +89,19 @@ const verifierReducer = (state, action) => {
         scanning: true,
         error: '',
         result: null,
-        scannerHint: '正在初始化相機...'
+        scannerHint: 'Initializing camera…'
       };
     case 'scanReady':
       return {
         ...state,
         scanning: true,
-        scannerHint: '相機已啟動，等待辨識 QR...'
+        scannerHint: 'Camera ready — waiting for QR code'
       };
     case 'scanStopped':
       return {
         ...state,
         scanning: false,
-        scannerHint: '已停止掃描'
+        scannerHint: 'Scanning stopped'
       };
     case 'scanFailed':
       return {
@@ -111,7 +111,7 @@ const verifierReducer = (state, action) => {
         scannerHint: action.hint
       };
     case 'scanMissed':
-      return { ...state, scannerHint: action.hint || '尚未辨識到 QR，請靠近並保持對焦' };
+      return { ...state, scannerHint: action.hint || 'QR code not detected yet. Move closer and keep focus.' };
     case 'qrDetected':
       return {
         ...state,
@@ -119,7 +119,7 @@ const verifierReducer = (state, action) => {
         error: '',
         lastDetectedText: action.text,
         lastDetectedAt: action.detectedAt,
-        scannerHint: '已辨識到 QR，送出核銷中...'
+        scannerHint: 'QR detected — verifying…'
       };
     case 'scannerMessage':
       return { ...state, scannerHint: action.message };
@@ -128,14 +128,14 @@ const verifierReducer = (state, action) => {
         ...state,
         result: { ok: true, data: action.data },
         error: '',
-        scannerHint: '核銷成功：可入場'
+        scannerHint: 'Verified — entry allowed'
       };
     case 'verifyFailed':
       return {
         ...state,
         result: null,
         error: action.error,
-        scannerHint: '核銷失敗：請查看下方錯誤訊息'
+        scannerHint: 'Verification failed — see error below'
       };
     case 'deviceIdChanged':
       return { ...state, deviceId: action.value };
@@ -208,11 +208,11 @@ export const useVerifierController = () => {
     dispatch({ type: 'qrDetected', text: currentPayload, detectedAt: new Date().toLocaleString() });
     try {
       if (!currentPayload) {
-        throw new Error('請先提供 QR payload。');
+        throw new Error('Provide a QR payload first.');
       }
       const currentDeviceId = String(deviceIdRef.current || '').trim();
       if (!currentDeviceId) {
-        throw new Error('驗票裝置 ID 尚未設定。');
+        throw new Error('Verifier device ID is not set.');
       }
       const res = await apiClient.verifyTicket({ qr_payload: currentPayload, device_id: currentDeviceId });
       dispatch({ type: 'verifySuccess', data: res.data });
@@ -247,16 +247,16 @@ export const useVerifierController = () => {
     if (!window.isSecureContext) {
       dispatch({
         type: 'scanFailed',
-        error: '目前網址不是安全來源（HTTPS/localhost），手機 Chrome 會封鎖相機。',
-        hint: '安全性檢查失敗：目前不是 HTTPS/localhost'
+        error: 'This URL is not a secure origin (HTTPS/localhost). Mobile Chrome blocks the camera.',
+        hint: 'Security check failed: HTTPS or localhost is required'
       });
       return;
     }
     if (!navigator.mediaDevices?.getUserMedia) {
       dispatch({
         type: 'scanFailed',
-        error: '目前瀏覽器不支援相機 API。',
-        hint: '瀏覽器不支援 mediaDevices.getUserMedia'
+        error: 'This browser does not support the camera API.',
+        hint: 'Browser does not support mediaDevices.getUserMedia'
       });
       return;
     }
@@ -289,7 +289,7 @@ export const useVerifierController = () => {
             return;
           }
           if (scanErr) {
-            dispatch({ type: 'scannerMessage', message: `掃描器訊息：${String(scanErr).slice(0, 80)}` });
+            dispatch({ type: 'scannerMessage', message: `Scanner message: ${String(scanErr).slice(0, 80)}` });
           }
         }
       );
@@ -299,8 +299,8 @@ export const useVerifierController = () => {
       releaseScanner();
       dispatch({
         type: 'scanFailed',
-        error: '相機掃碼啟動失敗。',
-        hint: '相機初始化失敗'
+        error: 'Failed to start camera scanning.',
+        hint: 'Camera initialization failed'
       });
     }
   }, [releaseScanner]);

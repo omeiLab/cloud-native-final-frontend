@@ -8,7 +8,7 @@ const polygonCollapsed = (cx, cy, vertexCount) => {
   return `polygon(${pairs})`;
 };
 
-const getThemeTransitionClipPaths = (variant, cx, cy, maxRadius, viewportWidth, viewportHeight) => {
+export const getThemeTransitionClipPaths = (variant, cx, cy, maxRadius, viewportWidth, viewportHeight) => {
   switch (variant) {
     case 'square': {
       const halfW = Math.max(cx, viewportWidth - cx);
@@ -189,7 +189,7 @@ const AnimatedThemeToggler = React.forwardRef(({
       ref={setButtonRef}
       className={className}
       onClick={toggleTheme}
-      aria-label={isDark ? '切換為明亮模式' : '切換為暗黑模式'}
+      aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
       {...props}
     >
       <span className="animated-theme-toggle-icon" aria-hidden="true">

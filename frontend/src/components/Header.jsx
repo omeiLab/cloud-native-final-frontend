@@ -61,7 +61,7 @@ const AppHeader = () => {
     try {
       await startOIDCLogin();
     } catch (error) {
-      message.error(error?.error?.message || '登入失敗，請確認後端服務是否正常');
+      message.error(error?.error?.message || 'Sign-in failed. Verify that backend services are running.');
       setLoginLoading(false);
     }
   };
@@ -72,25 +72,25 @@ const AppHeader = () => {
         {canAccessAdmin ? (
           <Link to="/admin" className="profile-popover-action" onClick={() => setProfilePopoverOpen(false)}>
             <AuditOutlined />
-            <span>管理後台</span>
+            <span>Admin console</span>
           </Link>
         ) : null}
         {canAccessVerifier ? (
           <Link to="/verify" className="profile-popover-action" onClick={() => setProfilePopoverOpen(false)}>
             <QrcodeOutlined />
-            <span>驗票入口</span>
+            <span>Verifier portal</span>
           </Link>
         ) : null}
         {canAccessTicketBox ? (
           <Link to="/me" className="profile-popover-action" onClick={() => setProfilePopoverOpen(false)}>
             <IdcardOutlined />
-            <span>我的票匣</span>
+            <span>My tickets</span>
           </Link>
         ) : null}
         {canAccessNotifications ? (
           <Link to="/notifications" className="profile-popover-action" onClick={() => setProfilePopoverOpen(false)}>
             <BellOutlined />
-            <span>通知中心</span>
+            <span>Notifications</span>
             <Badge count={unreadCount} size="small" />
           </Link>
         ) : null}
@@ -101,7 +101,7 @@ const AppHeader = () => {
           icon={<LogoutOutlined />}
           onClick={handleLogout}
         >
-          登出
+          Sign out
         </Button>
       </div>
     </div>
@@ -114,34 +114,34 @@ const AppHeader = () => {
           type="text"
           className="mobile-menu-trigger"
           icon={<MenuOutlined />}
-          aria-label="開啟功能選單"
+          aria-label="Open navigation menu"
           onClick={() => setMobileMenuOpen(true)}
         />
         <Link to="/" className="logo" onClick={handleGoHome}>
           <img src={LOGO_IMAGE} alt="TSMC logo" className="logo-image" />
           <span>
             <strong className="logo-title">
-              <span className="logo-title-line1">台積電</span>
-              <span className="logo-title-line2">晶彩活動通</span>
+              <span className="logo-title-line1">TSMC</span>
+              <span className="logo-title-line2">CETS Events</span>
             </strong>
-            <small>台積電員工活動平台</small>
+            <small>TSMC employee event platform</small>
           </span>
         </Link>
       </div>
 
       <div className="header-right">
         <Space size="middle" wrap>
-          <Tooltip title={colorMode === 'dark' ? '切換為明亮模式' : '切換為暗黑模式'}>
+          <Tooltip title={colorMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
             <AnimatedThemeToggler className="theme-toggle-btn" variant="circle" duration={520} />
           </Tooltip>
 
-          <Tooltip title={textScale === 'normal' ? '切換為大字版' : textScale === 'large' ? '切換為超大字版' : '切換為標準字體'}>
+          <Tooltip title={textScale === 'normal' ? 'Switch to large text' : textScale === 'large' ? 'Switch to extra-large text' : 'Switch to standard text'}>
             <Button
               className="ghost-btn"
               icon={<FontSizeOutlined />}
               onClick={cycleTextScale}
             >
-              {textScale === 'normal' ? '標準字' : textScale === 'large' ? '大字版' : '超大字'}
+              {textScale === 'normal' ? 'Standard' : textScale === 'large' ? 'Large' : 'Extra large'}
             </Button>
           </Tooltip>
 
@@ -171,17 +171,17 @@ const AppHeader = () => {
               >
                 <Avatar size={32} icon={<UserOutlined />} />
                 <span className="user-name">{user.name}（{labelOr(ROLE_LABELS, user.role)}）</span>
-                <Tooltip title={connected ? '即時通知連線正常' : '即時通知離線中（將自動重連）'}>
+                <Tooltip title={connected ? 'Realtime notifications connected' : 'Realtime notifications offline (reconnecting)'}>
                   <span
                     className={`connection-dot ${connected ? 'connected' : 'offline'}`}
                     role="status"
-                    aria-label={connected ? '即時通知連線正常' : '即時通知離線中'}
+                    aria-label={connected ? 'Realtime notifications connected' : 'Realtime alerts offline'}
                   />
                 </Tooltip>
               </Button>
             </Popover>
           ) : (
-            <Button type="primary" loading={loginLoading} onClick={handleLogin}>登入</Button>
+            <Button type="primary" loading={loginLoading} onClick={handleLogin}>Sign in</Button>
           )}
         </Space>
       </div>
@@ -191,18 +191,18 @@ const AppHeader = () => {
           <Button
             type="text"
             className="user-button mobile-header-profile-trigger"
-            aria-label="開啟帳號功能"
+            aria-label="Open account menu"
             onClick={() => setMobileMenuOpen(true)}
           >
             <Avatar size={28} icon={<UserOutlined />} />
           </Button>
         ) : (
-          <Button type="primary" size="small" loading={loginLoading} onClick={handleLogin}>登入</Button>
+          <Button type="primary" size="small" loading={loginLoading} onClick={handleLogin}>Sign in</Button>
         )}
       </div>
 
       <Drawer
-        title="功能選單"
+        title="Navigation menu"
         placement="left"
         onClose={() => setMobileMenuOpen(false)}
         open={mobileMenuOpen}
@@ -211,15 +211,15 @@ const AppHeader = () => {
       >
         <div className="mobile-drawer-shell">
           <div className="mobile-drawer-main">
-            <Tooltip title={colorMode === 'dark' ? '切換為明亮模式' : '切換為暗黑模式'}>
+            <Tooltip title={colorMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
               <AnimatedThemeToggler
                 className="mobile-drawer-item theme-toggle-mobile"
-                label={colorMode === 'dark' ? '切換為明亮模式' : '切換為暗黑模式'}
+                label={colorMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
                 variant="circle"
                 duration={520}
               />
             </Tooltip>
-            <Tooltip title={textScale === 'normal' ? '切換為大字版' : textScale === 'large' ? '切換為超大字版' : '切換為標準字體'}>
+            <Tooltip title={textScale === 'normal' ? 'Switch to large text' : textScale === 'large' ? 'Switch to extra-large text' : 'Switch to standard text'}>
               <Button
                 block
                 type="text"
@@ -228,7 +228,7 @@ const AppHeader = () => {
               >
                 <span className="mobile-drawer-item-main">
                   <FontSizeOutlined className="mobile-drawer-item-icon" />
-                  字體大小：{textScale === 'normal' ? '標準字' : textScale === 'large' ? '大字版' : '超大字'}
+                  Text size: {textScale === 'normal' ? 'Standard' : textScale === 'large' ? 'Large' : 'Extra large'}
                 </span>
               </Button>
             </Tooltip>
@@ -242,13 +242,13 @@ const AppHeader = () => {
                     {canAccessAdmin ? (
                       <Link to="/admin" className="mobile-drawer-account-link" onClick={() => setMobileMenuOpen(false)}>
                         <AuditOutlined />
-                        <span>管理後台</span>
+                        <span>Admin console</span>
                       </Link>
                     ) : null}
                     {canAccessVerifier ? (
                       <Link to="/verify" className="mobile-drawer-account-link" onClick={() => setMobileMenuOpen(false)}>
                         <QrcodeOutlined />
-                        <span>驗票入口</span>
+                        <span>Verifier portal</span>
                       </Link>
                     ) : null}
                   </div>
@@ -272,20 +272,20 @@ const AppHeader = () => {
                     }}
                   >
                     <LogoutOutlined />
-                    登出
+                    Sign out
                   </Button>
                 </div>
                 <div className="mobile-drawer-account-actions">
                   {canAccessTicketBox ? (
                     <Link to="/me" className="mobile-drawer-account-link" onClick={() => setMobileMenuOpen(false)}>
                       <IdcardOutlined />
-                      <span>我的票匣</span>
+                      <span>My tickets</span>
                     </Link>
                   ) : null}
                   {canAccessNotifications ? (
                     <Link to="/notifications" className="mobile-drawer-account-link" onClick={() => setMobileMenuOpen(false)}>
                       <BellOutlined />
-                      <span>通知中心</span>
+                      <span>Notifications</span>
                       <Badge count={unreadCount} size="small" />
                     </Link>
                   ) : null}
@@ -293,7 +293,7 @@ const AppHeader = () => {
               </>
             ) : (
               <Button type="primary" className="mobile-drawer-login" loading={loginLoading} onClick={handleLogin}>
-                登入
+                Sign in
               </Button>
             )}
           </div>

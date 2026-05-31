@@ -13,20 +13,20 @@ const MobileBottomBar = () => {
   if (!user) return null;
 
   const entries = [
-    { to: '/', label: '首頁', icon: <HomeOutlined /> }
+    { to: '/', label: 'Home', icon: <HomeOutlined /> }
   ];
 
   if (user.role === 'EMPLOYEE') {
-    entries.push({ to: '/notifications', label: '通知', icon: <Badge size="small" count={unreadCount}><BellOutlined /></Badge> });
-    entries.push({ to: '/me', label: '票匣', icon: <IdcardOutlined /> });
+    entries.push({ to: '/notifications', label: 'Alerts', icon: <Badge size="small" count={unreadCount}><BellOutlined /></Badge> });
+    entries.push({ to: '/me', label: 'Tickets', icon: <IdcardOutlined /> });
   }
 
   if (user.role === 'ADMIN' || user.role === 'ADMIN_VIEWER') {
-    entries.push({ to: '/admin', label: '管理', icon: <AuditOutlined /> });
+    entries.push({ to: '/admin', label: 'Admin', icon: <AuditOutlined /> });
   }
 
   if (user.role === 'VERIFIER') {
-    entries.push({ to: '/verify', label: '驗票', icon: <QrcodeOutlined /> });
+    entries.push({ to: '/verify', label: 'Verify', icon: <QrcodeOutlined /> });
   }
 
   return (

@@ -33,7 +33,7 @@ const FullscreenLoader = () => (
   </div>
 );
 
-const ProtectedRoute = ({ children, allowRoles }) => {
+export const ProtectedRoute = ({ children, allowRoles }) => {
   const { user, loading } = useAuth();
 
   if (loading) {
@@ -108,7 +108,7 @@ const AppShell = () => {
           </Routes>
         </Suspense>
       </Content>
-      <Footer className="app-footer">台積電晶彩活動通｜台積電員工活動平台</Footer>
+      <Footer className="app-footer">CETS Events｜TSMC employee event platform</Footer>
       <MobileBottomBar />
       {!hideBackgroundMusic ? <BackgroundMusic /> : null}
     </Layout>

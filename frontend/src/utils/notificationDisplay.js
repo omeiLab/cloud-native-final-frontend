@@ -1,5 +1,6 @@
 /**
- * 後端可把管理員取消原因放在 payload 多種鍵名；通知本文也可能已內嵌原因。
+ * Backend may store admin cancellation reasons under several payload keys.
+ * Notification body text may already embed the reason.
  */
 export const extractCancellationReason = (item) => {
   const payload = item?.payload || {};
@@ -13,13 +14,13 @@ export const extractCancellationReason = (item) => {
   return '';
 };
 
-/** 本文是否已含該取消原因（避免重複段落） */
+/** Whether the body already contains the cancellation reason (avoid duplicate blocks). */
 const bodyIncludesReason = (body, reason) => {
   if (!reason || !body) return false;
   return body.includes(reason);
 };
 
-/** 給列表／預覽用：是否在 UI 上要再額外顯示「取消原因」區塊 */
+/** Whether the UI should show an extra cancellation-reason line in list/preview. */
 export const shouldShowCancellationReasonLine = (item) => {
   if (item?.type !== 'EVENT_CANCELLED') return false;
   const reason = extractCancellationReason(item);

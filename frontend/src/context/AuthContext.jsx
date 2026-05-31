@@ -11,20 +11,20 @@ const appBasePath = import.meta.env.BASE_URL === '/'
   ? ''
   : import.meta.env.BASE_URL.replace(/\/$/, '');
 
-const clearOidcTransientState = () => {
+export const clearOidcTransientState = () => {
   localStorage.removeItem(OIDC_STATE_KEY);
   sessionStorage.removeItem(OIDC_STATE_KEY);
   sessionStorage.removeItem(POST_LOGIN_REDIRECT_KEY);
 };
 
-const storeOidcState = (state) => {
+export const storeOidcState = (state) => {
   sessionStorage.setItem(OIDC_STATE_KEY, state);
   localStorage.removeItem(OIDC_STATE_KEY);
 };
 
-const readOidcState = () => sessionStorage.getItem(OIDC_STATE_KEY) || localStorage.getItem(OIDC_STATE_KEY);
+export const readOidcState = () => sessionStorage.getItem(OIDC_STATE_KEY) || localStorage.getItem(OIDC_STATE_KEY);
 
-const forceInteractiveLogin = (authorizeUrlRaw) => {
+export const forceInteractiveLogin = (authorizeUrlRaw) => {
   try {
     const url = new URL(authorizeUrlRaw, window.location.origin);
     url.searchParams.set('prompt', 'login');

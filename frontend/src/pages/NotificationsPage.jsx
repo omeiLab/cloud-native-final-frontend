@@ -21,19 +21,19 @@ const NotificationsPage = () => {
       <Card>
         <Space style={{ width: '100%', justifyContent: 'space-between' }}>
           <div>
-            <Title level={3} style={{ marginBottom: 0 }}>通知中心</Title>
-            <Paragraph type="secondary">未讀 <Badge count={unreadCount} /></Paragraph>
+            <Title level={3} style={{ marginBottom: 0 }}>Notifications</Title>
+            <Paragraph type="secondary">Unread <Badge count={unreadCount} /></Paragraph>
           </div>
           <Space>
-            <Button onClick={() => refreshList()}>重新整理</Button>
-            <Button type="primary" onClick={markAllRead}>全部已讀</Button>
+            <Button onClick={() => refreshList()}>Refresh</Button>
+            <Button type="primary" onClick={markAllRead}>Mark all read</Button>
           </Space>
         </Space>
       </Card>
 
       <Card style={{ marginTop: 16 }} loading={loading}>
         {items.length === 0 ? (
-          <Empty description="目前沒有通知" />
+          <Empty description="No notifications yet" />
         ) : (
           <List
             dataSource={items}
@@ -43,9 +43,9 @@ const NotificationsPage = () => {
                 <List.Item
                   actions={[
                     item.read_at ? (
-                      <Tag color="default">已讀</Tag>
+                      <Tag color="default">Read</Tag>
                     ) : (
-                      <Button type="link" onClick={() => markRead(item.id)}>標記已讀</Button>
+                      <Button type="link" onClick={() => markRead(item.id)}>Mark read</Button>
                     )
                   ]}
                 >
@@ -61,7 +61,7 @@ const NotificationsPage = () => {
                         <Paragraph style={{ marginBottom: 8 }}>{item.body}</Paragraph>
                         {cancellationReason ? (
                           <Paragraph style={{ marginBottom: 8 }}>
-                            取消原因：{cancellationReason}
+                            Cancellation reason：{cancellationReason}
                           </Paragraph>
                         ) : null}
                         <Paragraph type="secondary" style={{ marginBottom: 0 }}>

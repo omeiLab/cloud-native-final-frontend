@@ -114,7 +114,7 @@ export const NotificationProvider = ({ children }) => {
           if (message.type === 'notification' && message.data) {
             setItems((prev) => [message.data, ...prev].slice(0, 20));
             setUnreadCount((prev) => prev + 1);
-            /** 管理員取消活動常批次寫 DB；WS 可先顯示一則後再同步完整列表避免漏載 */
+            /** Admin event cancellation may batch DB writes; WS may show one item first then sync the full list */
             if (message.data.type === 'EVENT_CANCELLED') {
               globalThis.setTimeout(() => {
                 refreshList({ page: 1, page_size: 30 }).catch(() => {});
@@ -142,7 +142,7 @@ export const NotificationProvider = ({ children }) => {
         if (event.code === 1000) {
           return;
         }
-        // 4001: token 過期/缺少/10 秒內未送 auth；嘗試 refresh 後重連
+        // 4001: token expired/missing/no auth within 10s; refresh then reconnect
         if (event.code === 4001) {
           if (apiClient.getRefreshToken?.()) {
             apiClient.refresh().then(() => {

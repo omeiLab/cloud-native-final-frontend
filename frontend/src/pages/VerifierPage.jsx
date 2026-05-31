@@ -24,18 +24,18 @@ const ScannerSurface = memo(({
     <div className={`scan-state ${statusTone}`}>{scannerHint}</div>
 
     <div className="video-frame">
-      <video ref={videoRef} playsInline muted aria-label="驗票相機畫面" />
+      <video ref={videoRef} playsInline muted aria-label="Verifier camera feed" />
       <div className="scan-guide" />
     </div>
 
     <div className="verifier-scan-actions">
       {!scanning ? (
         <Button type="primary" size="large" icon={<CameraOutlined />} onClick={onStartScan}>
-          開啟相機掃描
+          Start camera scan
         </Button>
       ) : (
         <Button danger size="large" icon={<StopOutlined />} onClick={onStopScan}>
-          停止掃描
+          Stop scanning
         </Button>
       )}
     </div>
@@ -55,18 +55,18 @@ const ManualVerificationPanel = memo(({
     items={[
       {
         key: 'manual',
-        label: '備援核銷',
+        label: 'Manual verification',
         children: (
           <div className="verifier-manual-controls">
             <Input
               value={deviceId}
               onChange={(e) => onDeviceIdChange(e.target.value)}
-              addonBefore="裝置 ID"
+              addonBefore="Device ID"
             />
             <Input.TextArea
               value={manualPayload}
               onChange={(e) => onManualPayloadChange(e.target.value)}
-              placeholder="貼上 qr_payload"
+              placeholder="Paste qr_payload"
               autoSize={{ minRows: 3, maxRows: 6 }}
             />
             <Button
@@ -75,7 +75,7 @@ const ManualVerificationPanel = memo(({
               onClick={onManualVerify}
               disabled={!manualPayload.trim()}
             >
-              核銷
+              Verify
             </Button>
           </div>
         )
@@ -92,13 +92,13 @@ const VerificationResultPanel = memo(({ result, error }) => (
           type="success"
           showIcon
           icon={<CheckCircleOutlined />}
-          message="核銷成功"
+          message="Verification succeeded"
           description={
             <div>
-              <div>票券：{result.data.ticket_id}</div>
-              <div>姓名：{result.data.user_name}</div>
-              <div>核銷時間：{result.data.used_at}</div>
-              <Tag color="green" style={{ marginTop: 8 }}>允許入場</Tag>
+              <div>Ticket: {result.data.ticket_id}</div>
+              <div>Name：{result.data.user_name}</div>
+              <div>Verified at: {result.data.used_at}</div>
+              <Tag color="green" style={{ marginTop: 8 }}>Entry allowed</Tag>
             </div>
           }
         />
@@ -107,7 +107,7 @@ const VerificationResultPanel = memo(({ result, error }) => (
 
     {error ? (
       <div className="result-panel error">
-        <Alert type="error" showIcon icon={<CloseCircleOutlined />} message="核銷失敗" description={error} />
+        <Alert type="error" showIcon icon={<CloseCircleOutlined />} message="Verification failed" description={error} />
       </div>
     ) : null}
   </>
@@ -138,8 +138,8 @@ const VerifierPage = () => {
     <div className="page-wrap verifier-shell fade-in-up">
       <Card className="verifier-card">
         <div className="verifier-header">
-          <Title level={3}>驗票端</Title>
-          <Tag color={scanning ? 'processing' : 'default'}>{scanning ? '掃描中' : '待命'}</Tag>
+          <Title level={3}>Ticket verification</Title>
+          <Tag color={scanning ? 'processing' : 'default'}>{scanning ? 'Scanning' : 'Idle'}</Tag>
         </div>
 
         <ScannerSurface

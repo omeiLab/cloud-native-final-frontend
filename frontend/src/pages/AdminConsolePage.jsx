@@ -63,7 +63,7 @@ const DashboardCharts = lazy(() => loadRecharts().then(({
       <>
         <Row gutter={16} style={{ marginTop: 16 }}>
           <Col xs={24} lg={12}>
-            <Card title="報名趨勢">
+            <Card title="Registration trend">
               <ResponsiveContainer width="100%" height={260}>
                 <LineChart data={registrationTimeline}>
                   <CartesianGrid strokeDasharray="3 3" />
@@ -74,7 +74,7 @@ const DashboardCharts = lazy(() => loadRecharts().then(({
                   <Line
                     type="monotone"
                     dataKey="count"
-                    name="累積報名"
+                    name="Total registrations"
                     stroke="#2b72d9"
                     strokeWidth={2}
                     dot={{ r: 3 }}
@@ -85,7 +85,7 @@ const DashboardCharts = lazy(() => loadRecharts().then(({
             </Card>
           </Col>
           <Col xs={24} lg={12}>
-            <Card title="開放廠區分布（含名稱）">
+            <Card title="Allowed sites distribution">
               <ResponsiveContainer width="100%" height={260}>
                 <PieChart>
                   <Pie
@@ -108,7 +108,7 @@ const DashboardCharts = lazy(() => loadRecharts().then(({
           </Col>
         </Row>
 
-        <Card style={{ marginTop: 16 }} title="票種進度">
+        <Card style={{ marginTop: 16 }} title="Ticket type progress">
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={ticketTypeProgress}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -116,9 +116,9 @@ const DashboardCharts = lazy(() => loadRecharts().then(({
               <YAxis allowDecimals={false} />
               <Tooltip />
               <Legend />
-              <Bar dataKey="quota" name="名額" fill="#2b72d9" isAnimationActive={false} />
-              <Bar dataKey="registered" name="已報名" fill="#f4a261" isAnimationActive={false} />
-              <Bar dataKey="confirmed" name="已確認" fill="#2a9d8f" isAnimationActive={false} />
+              <Bar dataKey="quota" name="Quota" fill="#2b72d9" isAnimationActive={false} />
+              <Bar dataKey="registered" name="Registered" fill="#f4a261" isAnimationActive={false} />
+              <Bar dataKey="confirmed" name="Confirmed" fill="#2a9d8f" isAnimationActive={false} />
             </BarChart>
           </ResponsiveContainer>
           <Table
@@ -127,11 +127,11 @@ const DashboardCharts = lazy(() => loadRecharts().then(({
             dataSource={ticketTypeProgress}
             scroll={{ x: 640 }}
             columns={[
-              { title: '票種', dataIndex: 'name' },
-              { title: '名額', dataIndex: 'quota' },
-              { title: '已報名', dataIndex: 'registered' },
-              { title: '中籤', dataIndex: 'won' },
-              { title: '已確認', dataIndex: 'confirmed' }
+              { title: 'Ticket type', dataIndex: 'name' },
+              { title: 'Quota', dataIndex: 'quota' },
+              { title: 'Registered', dataIndex: 'registered' },
+              { title: 'Won', dataIndex: 'won' },
+              { title: 'Confirmed', dataIndex: 'confirmed' }
             ]}
           />
         </Card>
@@ -142,35 +142,35 @@ const DashboardCharts = lazy(() => loadRecharts().then(({
 
 const SITES = ['HSINCHU', 'TAINAN', 'TAICHUNG', 'TAIPEI', 'OVERSEAS'];
 const SITE_LABELS = {
-  HSINCHU: '新竹 HSINCHU',
-  TAINAN: '台南 TAINAN',
-  TAICHUNG: '台中 TAICHUNG',
-  TAIPEI: '台北 TAIPEI',
-  OVERSEAS: '海外 OVERSEAS'
+  HSINCHU: 'Hsinchu HSINCHU',
+  TAINAN: 'Tainan TAINAN',
+  TAICHUNG: 'Taichung TAICHUNG',
+  TAIPEI: 'Taipei TAIPEI',
+  OVERSEAS: 'Overseas OVERSEAS'
 };
 
 const DISEASE_OPTIONS = [
-  '心臟病／心血管疾病',
-  '高血壓',
-  '糖尿病',
-  '氣喘／慢性呼吸道疾病',
-  '癲癇',
-  '肝炎／肝功能異常',
-  '傳染性疾病（含發燒、流感等）',
-  '近期重大手術或需醫師評估之狀況'
+  'Heart disease / cardiovascular condition',
+  'Hypertension',
+  'Diabetes',
+  'Asthma / chronic respiratory disease',
+  'Epilepsy',
+  'Hepatitis / abnormal liver function',
+  'Infectious disease (fever, flu, etc.)',
+  'Recent major surgery or condition requiring physician clearance'
 ];
 
 const defaultSession = {
   confirmation_deadline_hours: 48,
   ticket_types: [
-    { name: '成人票', quota: 200, sort_order: 0, audience: 'EMPLOYEE' },
-    { name: '兒童票', quota: 100, sort_order: 1, audience: 'DEPENDENT' }
+    { name: 'Adult ticket', quota: 200, sort_order: 0, audience: 'EMPLOYEE' },
+    { name: 'Child ticket', quota: 100, sort_order: 1, audience: 'DEPENDENT' }
   ]
 };
 const PIE_COLORS = ['#2b72d9', '#2a9d8f', '#f4a261', '#9b5de5', '#f28482'];
 
-/** 儀表板 sessions_lottery 列（後端欄位可能用 id 或別名） */
-const normalizeSessionsLotteryRows = (raw) => {
+/** Normalize dashboard sessions_lottery rows (backend may alias id fields). */
+export const normalizeSessionsLotteryRows = (raw) => {
   if (!Array.isArray(raw) || !raw.length) return [];
   return raw.flatMap((row) => {
     const normalized = {
@@ -185,8 +185,8 @@ const normalizeSessionsLotteryRows = (raw) => {
   });
 };
 
-/** GET /admin/.../dashboard 若未附 sessions_lottery，改由 GET /events/{id} 場次補齊，抽籤按鈕才可操作 */
-const mergeDashboardSessionsLottery = (dash, eventDetail) => {
+/** Merge sessions_lottery from GET /events/{id} when dashboard payload is sparse. */
+export const mergeDashboardSessionsLottery = (dash, eventDetail) => {
   const fromDash = normalizeSessionsLotteryRows(dash?.sessions_lottery);
   if (fromDash.length) return fromDash;
   const fromDashSessions = normalizeSessionsLotteryRows(dash?.sessions);
@@ -200,12 +200,12 @@ const mergeDashboardSessionsLottery = (dash, eventDetail) => {
     registered_pending: undefined
   }));
 };
-const createDefaultCreateValues = () => {
+export const createDefaultCreateValues = () => {
   const current = dayjs().second(0).millisecond(0);
   const sessionStartsAt = current.add(14, 'day');
 
   return {
-    title: '2026 春季家庭日',
+    title: '2026 Spring Family Day',
     cover_image_url: EVENT_IMAGES[0],
     registration_mode: 'LIMITED',
     adult_has_limits: false,
@@ -226,8 +226,8 @@ const createDefaultCreateValues = () => {
     session_count: 1,
     sessions: [
       {
-        title: '第 1 場',
-        venue: '新竹園區戶外廣場',
+        title: 'Session 1',
+        venue: 'Hsinchu campus outdoor plaza',
         starts_at: sessionStartsAt,
         ends_at: sessionStartsAt.add(3, 'hour'),
         adult_quota: 120,
@@ -261,7 +261,7 @@ const adminInitialState = {
   autoLotteryRunning: false
 };
 
-const adminStateReducer = (state, action) => {
+export const adminStateReducer = (state, action) => {
   switch (action.type) {
     case 'set': {
       const nextValue = typeof action.value === 'function'
@@ -274,7 +274,7 @@ const adminStateReducer = (state, action) => {
   }
 };
 
-const normalizeCoverImageUrlForBackend = (value) => {
+export const normalizeCoverImageUrlForBackend = (value) => {
   const trimmed = String(value || '').trim();
   return trimmed ? publicRootPath(trimmed) : null;
 };
@@ -282,7 +282,7 @@ const normalizeCoverImageUrlForBackend = (value) => {
 const CETS_ELIGIBILITY_MARKER_PREFIX = '<!--CETS_ELIGIBILITY:';
 const CETS_ELIGIBILITY_MARKER_SUFFIX = '-->';
 
-const stripEligibilityMarkerForBackend = (rawDescription) => {
+export const stripEligibilityMarkerForBackend = (rawDescription) => {
   const description = String(rawDescription || '');
   const startIdx = description.indexOf(CETS_ELIGIBILITY_MARKER_PREFIX);
   if (startIdx < 0) {
@@ -296,18 +296,149 @@ const stripEligibilityMarkerForBackend = (rawDescription) => {
     .trim();
 };
 
-const resolveSessionTicketFields = (session) => {
+export const resolveSessionTicketFields = (session) => {
   const ticketTypes = Array.isArray(session?.ticket_types) ? session.ticket_types : [];
   const adultTicket =
-    ticketTypes.find((t) => String(t?.name || '').includes('成人')) ||
+    ticketTypes.find((t) => String(t?.name || '').includes('Adult')) ||
     ticketTypes.find((t) => t?.audience === 'EMPLOYEE') ||
     ticketTypes[0] ||
     {};
   const childTicket =
-    ticketTypes.find((t) => String(t?.name || '').includes('兒童')) ||
+    ticketTypes.find((t) => String(t?.name || '').includes('Child')) ||
     ticketTypes.find((t) => t?.audience === 'DEPENDENT') ||
     null;
   return { adultTicket, childTicket };
+};
+
+export const getErrorMessage = (error, fallback) => {
+  if (error?.error?.message) return error.error.message;
+  if (typeof error?.detail === 'string') return error.detail;
+  if (Array.isArray(error?.detail)) {
+    const joined = error.detail
+      .flatMap((d) => {
+        const msg = typeof d?.msg === 'string' ? d.msg : JSON.stringify(d);
+        return msg ? [msg] : [];
+      })
+      .join('；');
+    if (joined) return joined;
+  }
+  if (error?.message) return error.message;
+  if (error?.httpStatus === 404) return 'Backend API not found (HTTP 404). The endpoint may not be deployed yet.';
+  return fallback;
+};
+
+export const getEventId = (eventLike) =>
+  eventLike?.data?.id || eventLike?.data?.event_id || eventLike?.id || eventLike?.event_id || '';
+
+export const getSessionId = (sessionLike) =>
+  sessionLike?.data?.id || sessionLike?.data?.session_id || sessionLike?.id || sessionLike?.session_id || '';
+
+export const resolveLimitedLotteryAt = (registrationClosesAt) => {
+  const closesAt = dayjs(registrationClosesAt);
+  if (!closesAt.isValid()) return closesAt;
+  return closesAt.add(1, 'minute');
+};
+
+export const resolveLimitedWaitlistCloseAt = (values, startsAt) => {
+  const manual = values?.waitlist_close_at ? dayjs(values.waitlist_close_at) : null;
+  if (manual?.isValid()) {
+    return manual;
+  }
+  return dayjs(startsAt).subtract(1, 'minute');
+};
+
+export const validateSessionTimeline = (values) => {
+  const registrationMode = values.registration_mode || 'LIMITED';
+  const sessions = Array.isArray(values.sessions) ? values.sessions : [];
+  const startsAtValue = sessions.reduce((min, session) => {
+    const cur = session?.starts_at;
+    if (!cur) return min;
+    if (!min) return cur;
+    const a = dayjs(min);
+    const b = dayjs(cur);
+    if (!a.isValid()) return cur;
+    if (!b.isValid()) return min;
+    return b.isBefore(a) ? cur : min;
+  }, null);
+  const startsAt = startsAtValue ? dayjs(startsAtValue) : null;
+  const registrationOpensAt = values.registration_opens_at ? dayjs(values.registration_opens_at) : null;
+  const registrationClosesAt = values.registration_closes_at ? dayjs(values.registration_closes_at) : null;
+  const lotteryAt = resolveLimitedLotteryAt(registrationClosesAt);
+  const waitlistCloseAt = resolveLimitedWaitlistCloseAt(values, startsAt);
+
+  if (!startsAt || !registrationOpensAt || !registrationClosesAt) {
+    return;
+  }
+  if (!registrationOpensAt.isBefore(registrationClosesAt)) {
+    throw new Error('Registration open time must be before registration close time');
+  }
+  if (!registrationClosesAt.isBefore(startsAt)) {
+    throw new Error('Registration close time must be before event start time');
+  }
+  if (registrationMode === 'LIMITED') {
+    if (!registrationClosesAt.isBefore(lotteryAt)) {
+      throw new Error('Lottery time must be after registration close time');
+    }
+    if (!lotteryAt.isBefore(waitlistCloseAt)) {
+      throw new Error('Waitlist close time must be after lottery time');
+    }
+    if (!waitlistCloseAt.isBefore(startsAt)) {
+      throw new Error('Waitlist close time must be before event start time');
+    }
+  }
+};
+
+export const buildCreatePayload = (values) => {
+  const fallbackNow = dayjs().second(0).millisecond(0);
+  const registrationMode = values.registration_mode || 'LIMITED';
+  const registrationClosesAt = values.registration_closes_at || fallbackNow.add(7, 'day');
+  const isUnlimited = registrationMode === 'UNLIMITED';
+  const lotteryAt = isUnlimited ? dayjs(registrationClosesAt).add(1, 'minute') : resolveLimitedLotteryAt(registrationClosesAt);
+  const sessionsInput = Array.isArray(values.sessions) ? values.sessions : [];
+  const startsAtForWaitlist = sessionsInput?.[0]?.starts_at || fallbackNow.add(14, 'day');
+  const waitlistCloseAt = isUnlimited
+    ? dayjs(startsAtForWaitlist).subtract(1, 'minute')
+    : resolveLimitedWaitlistCloseAt(values, startsAtForWaitlist);
+  const sessions = (sessionsInput || []).map((s) => {
+    const starts = dayjs(s?.starts_at || fallbackNow.add(14, 'day'));
+    const ends = dayjs(s?.ends_at || starts.add(3, 'hour'));
+    const closes = dayjs(registrationClosesAt);
+    const opens = dayjs(values.registration_opens_at || fallbackNow);
+    const lottery = dayjs(lotteryAt);
+    const waitlist = dayjs(waitlistCloseAt);
+    const adultQuota = Math.max(0, Number(s?.adult_quota || 0));
+    const requireChildTicket = Boolean(s?.require_child_ticket);
+    const childQuota = requireChildTicket ? Math.max(0, Number(s?.child_quota || 0)) : 0;
+    const totalQuota = isUnlimited ? 999999 : adultQuota + childQuota;
+    const ticketTypes = isUnlimited
+      ? [{ name: 'General ticket (unlimited)', quota: totalQuota, sort_order: 0, audience: 'EMPLOYEE' }]
+      : requireChildTicket
+        ? [
+          { name: 'Adult ticket', quota: adultQuota, sort_order: 0, audience: 'EMPLOYEE' },
+          { name: 'Child ticket', quota: childQuota, sort_order: 1, audience: 'DEPENDENT' }
+        ]
+        : [{ name: 'Adult ticket', quota: adultQuota, sort_order: 0, audience: 'EMPLOYEE' }];
+    return {
+      ...defaultSession,
+      title: s?.title,
+      venue: s?.venue,
+      starts_at: starts.toISOString(),
+      ends_at: ends.toISOString(),
+      registration_opens_at: opens.toISOString(),
+      registration_closes_at: closes.toISOString(),
+      lottery_at: lottery.toISOString(),
+      waitlist_close_at: waitlist.toISOString(),
+      ticket_types: ticketTypes
+    };
+  });
+
+  return {
+    title: values.title,
+    description: stripEligibilityMarkerForBackend(values.description || ''),
+    cover_image_url: normalizeCoverImageUrlForBackend(values.cover_image_url),
+    allowed_sites: values.allowed_sites || [],
+    sessions
+  };
 };
 
 const useAdminConsoleController = () => {
@@ -371,7 +502,7 @@ const useAdminConsoleController = () => {
       if (!b.isValid()) return m;
       return b.isAfter(a) ? cur : m;
     }, null);
-    return max ? dayjs(max).format('YYYY-MM-DD HH:mm') : '未設定';
+    return max ? dayjs(max).format('YYYY-MM-DD HH:mm') : 'Not set';
   }, [watchedSessions]);
   const anyRequireChildTicket = useMemo(
     () => (watchedSessions || []).some((s) => Boolean(s?.require_child_ticket)),
@@ -381,29 +512,11 @@ const useAdminConsoleController = () => {
   const childHasLimits = Form.useWatch('child_has_limits', createForm);
   const adultHealthUnlimited = Form.useWatch('adult_health_unlimited', createForm);
   const childHealthUnlimited = Form.useWatch('child_health_unlimited', createForm);
-  const getErrorMessage = (error, fallback) => {
-    if (error?.error?.message) return error.error.message;
-    if (typeof error?.detail === 'string') return error.detail;
-    if (Array.isArray(error?.detail)) {
-      const joined = error.detail
-        .flatMap((d) => {
-          const msg = typeof d?.msg === 'string' ? d.msg : JSON.stringify(d);
-          return msg ? [msg] : [];
-        })
-        .join('；');
-      if (joined) return joined;
-    }
-    if (error?.message) return error.message;
-    if (error?.httpStatus === 404) return '後端找不到此 API（HTTP 404），可能尚未部署此端點';
-    return fallback;
-  };
-  const getEventId = (eventLike) => eventLike?.data?.id || eventLike?.data?.event_id || eventLike?.id || eventLike?.event_id || '';
-  const getSessionId = (sessionLike) => sessionLike?.data?.id || sessionLike?.data?.session_id || sessionLike?.id || sessionLike?.session_id || '';
   const selectedEvent = useMemo(() => events.find((e) => e.id === selectedEventId), [events, selectedEventId]);
   const dashboardEventOptions = useMemo(() => {
     return events.map((event) => {
       const statusLabel = labelOr(EVENT_STATUS_LABELS, event.status, event.status);
-      const sitesLabel = event.allowed_sites?.length ? event.allowed_sites.join(', ') : '全廠區';
+      const sitesLabel = event.allowed_sites?.length ? event.allowed_sites.join(', ') : 'All sites';
       return {
         label: `${event.title}（${statusLabel}）`,
         value: event.id,
@@ -413,63 +526,6 @@ const useAdminConsoleController = () => {
   }, [events]);
   const draftEvents = useMemo(() => events.filter((e) => e.status === 'DRAFT'), [events]);
   const isEditing = Boolean(editingEventId);
-
-  const resolveLimitedLotteryAt = (registrationClosesAt) => {
-    const closesAt = dayjs(registrationClosesAt);
-    if (!closesAt.isValid()) return closesAt;
-    // 後端抽籤批次改為「每分鐘掃描可抽籤場次」，前端以「報名截止後 + 1 分鐘」作為 lottery_at，
-    // 讓測試流程可在幾分鐘內完成。
-    return closesAt.add(1, 'minute');
-  };
-
-  const resolveLimitedWaitlistCloseAt = (values, startsAt) => {
-    const manual = values?.waitlist_close_at ? dayjs(values.waitlist_close_at) : null;
-    if (manual?.isValid()) {
-      return manual;
-    }
-    return dayjs(startsAt).subtract(1, 'minute');
-  };
-
-  const validateSessionTimeline = (values) => {
-    const registrationMode = values.registration_mode || 'LIMITED';
-    const sessions = Array.isArray(values.sessions) ? values.sessions : [];
-    const startsAtValue = sessions.reduce((min, session) => {
-        const cur = session?.starts_at;
-        if (!cur) return min;
-        if (!min) return cur;
-        const a = dayjs(min);
-        const b = dayjs(cur);
-        if (!a.isValid()) return cur;
-        if (!b.isValid()) return min;
-        return b.isBefore(a) ? cur : min;
-      }, null);
-    const startsAt = startsAtValue ? dayjs(startsAtValue) : null;
-    const registrationOpensAt = values.registration_opens_at ? dayjs(values.registration_opens_at) : null;
-    const registrationClosesAt = values.registration_closes_at ? dayjs(values.registration_closes_at) : null;
-    const lotteryAt = resolveLimitedLotteryAt(registrationClosesAt);
-    const waitlistCloseAt = resolveLimitedWaitlistCloseAt(values, startsAt);
-
-    if (!startsAt || !registrationOpensAt || !registrationClosesAt) {
-      return;
-    }
-    if (!registrationOpensAt.isBefore(registrationClosesAt)) {
-      throw new Error('報名開放時間必須早於報名截止時間');
-    }
-    if (!registrationClosesAt.isBefore(startsAt)) {
-      throw new Error('報名截止時間必須早於活動開始時間');
-    }
-    if (registrationMode === 'LIMITED') {
-      if (!registrationClosesAt.isBefore(lotteryAt)) {
-        throw new Error('抽籤時間必須晚於報名截止時間');
-      }
-      if (!lotteryAt.isBefore(waitlistCloseAt)) {
-        throw new Error('候補截止時間必須晚於抽籤時間');
-      }
-      if (!waitlistCloseAt.isBefore(startsAt)) {
-        throw new Error('候補截止時間必須早於活動開始時間');
-      }
-    }
-  };
 
   const loadEvents = useCallback(async () => {
     const res = isAdminFull
@@ -517,62 +573,9 @@ const useAdminConsoleController = () => {
     loadDashboard(selectedEventId).catch(() => {});
   }, [loadDashboard, selectedEventId]);
 
-  const buildCreatePayload = (values) => {
-    const fallbackNow = dayjs().second(0).millisecond(0);
-    const registrationMode = values.registration_mode || 'LIMITED';
-    const registrationClosesAt = values.registration_closes_at || fallbackNow.add(7, 'day');
-    const isUnlimited = registrationMode === 'UNLIMITED';
-    const lotteryAt = isUnlimited ? dayjs(registrationClosesAt).add(1, 'minute') : resolveLimitedLotteryAt(registrationClosesAt);
-    const sessionsInput = Array.isArray(values.sessions) ? values.sessions : [];
-    const startsAtForWaitlist = sessionsInput?.[0]?.starts_at || fallbackNow.add(14, 'day');
-    const waitlistCloseAt = isUnlimited
-      ? dayjs(startsAtForWaitlist).subtract(1, 'minute')
-      : resolveLimitedWaitlistCloseAt(values, startsAtForWaitlist);
-    const sessions = (sessionsInput || []).map((s) => {
-      const starts = dayjs(s?.starts_at || fallbackNow.add(14, 'day'));
-      const ends = dayjs(s?.ends_at || starts.add(3, 'hour'));
-      const closes = dayjs(registrationClosesAt);
-      const opens = dayjs(values.registration_opens_at || fallbackNow);
-      const lottery = dayjs(lotteryAt);
-      const waitlist = dayjs(waitlistCloseAt);
-      const adultQuota = Math.max(0, Number(s?.adult_quota || 0));
-      const requireChildTicket = Boolean(s?.require_child_ticket);
-      const childQuota = requireChildTicket ? Math.max(0, Number(s?.child_quota || 0)) : 0;
-      const totalQuota = isUnlimited ? 999999 : adultQuota + childQuota;
-      const ticketTypes = isUnlimited
-        ? [{ name: '一般票（不限額）', quota: totalQuota, sort_order: 0, audience: 'EMPLOYEE' }]
-        : requireChildTicket
-          ? [
-            { name: '成人票', quota: adultQuota, sort_order: 0, audience: 'EMPLOYEE' },
-            { name: '兒童票', quota: childQuota, sort_order: 1, audience: 'DEPENDENT' }
-          ]
-          : [{ name: '成人票', quota: adultQuota, sort_order: 0, audience: 'EMPLOYEE' }];
-      return {
-        ...defaultSession,
-        title: s?.title,
-        venue: s?.venue,
-        starts_at: starts.toISOString(),
-        ends_at: ends.toISOString(),
-        registration_opens_at: opens.toISOString(),
-        registration_closes_at: closes.toISOString(),
-        lottery_at: lottery.toISOString(),
-        waitlist_close_at: waitlist.toISOString(),
-        ticket_types: ticketTypes
-      };
-    });
-
-    return {
-      title: values.title,
-      description: stripEligibilityMarkerForBackend(values.description || ''),
-      cover_image_url: normalizeCoverImageUrlForBackend(values.cover_image_url),
-      allowed_sites: values.allowed_sites || [],
-      sessions
-    };
-  };
-
   const createEvent = async (publishAfterCreate) => {
     if (!isAdminFull) {
-      message.warning('你目前是唯讀管理員（ADMIN_VIEWER），無法建立或發布活動');
+      message.warning('You are a read-only admin (ADMIN_VIEWER) and cannot create or publish events');
       return;
     }
     setCreating(true);
@@ -585,18 +588,18 @@ const useAdminConsoleController = () => {
       const createdEventId = getEventId(created);
       const createdEvent = created?.data && typeof created.data === 'object' ? created.data : null;
       if (!createdEventId) {
-        throw new Error('後端未回傳新活動 ID，請稍後在儀表板確認是否已建立');
+        throw new Error('Backend did not return a new event ID. Refresh the dashboard to confirm creation.');
       }
-      // 相容兩種後端：
-      // 1) 建活動時就會把 sessions/ticket_types 一起建立
-      // 2) 只建 event(DRAFT)，需再呼叫 /admin/events/{id}/sessions 與 /admin/sessions/{id}/ticket-types
+      // Support two backend modes:
+      // 1) sessions/ticket_types created with the event
+      // 2) event-only draft requires follow-up session/ticket-type APIs
       if ((createdEvent?.sessions?.length || 0) === 0) {
         await Promise.all(sessions.map(async (sessionPayload) => {
           const { ticket_types: ticketTypes, ...sessionBody } = sessionPayload;
           const createdSession = await apiClient.adminCreateSession(createdEventId, sessionBody);
           const createdSessionId = getSessionId(createdSession);
           if (!createdSessionId) {
-            throw new Error('建立場次成功但未取得 session_id，請稍後重新整理後檢查');
+            throw new Error('Session was created but session_id is missing. Refresh and verify.');
           }
           await Promise.all((ticketTypes || []).map((tt) => apiClient.adminCreateTicketType(createdSessionId, tt)));
         }));
@@ -604,24 +607,24 @@ const useAdminConsoleController = () => {
       if (publishAfterCreate) {
         try {
           await apiClient.adminPublishEvent(createdEventId);
-          message.success('活動建立並發布成功');
+          message.success('Event created and published');
         } catch (publishError) {
           const code = publishError?.error?.code;
           if (code === 'INVALID_STATE_TRANSITION') {
-            message.warning('活動已建立為草稿；目前後端回覆「發布前必須至少有一個場次」。請先補齊場次後再發布。');
+            message.warning('Event saved as draft. Backend requires at least one session before publish. Add sessions first.');
           } else {
             throw publishError;
           }
         }
       } else {
-        message.success('草稿活動建立成功');
+        message.success('Draft event created');
       }
       resetCreateFormToDefaults();
       await loadEvents();
       setSelectedEventId(createdEventId);
       await loadDashboard(createdEventId);
     } catch (error) {
-      message.error(getErrorMessage(error, '建立活動失敗，請檢查欄位與權限'));
+      message.error(getErrorMessage(error, 'Failed to create event. Check fields and permissions.'));
     } finally {
       setCreating(false);
     }
@@ -645,7 +648,7 @@ const useAdminConsoleController = () => {
     const { adultTicket, childTicket } = resolveSessionTicketFields(firstSession);
     const cleanDescription = stripEligibilityMarkerForBackend(detail?.description || '');
     const isUnlimitedMode = String(detail?.registration_mode || '').toUpperCase() === 'UNLIMITED'
-      || String(adultTicket?.name || '').includes('不限');
+      || String(adultTicket?.name || '').includes('unlimited');
 
     return {
       ...defaults,
@@ -684,7 +687,7 @@ const useAdminConsoleController = () => {
   const enterEditMode = async (eventId) => {
     if (!eventId) return;
     if (!isAdminFull) {
-      message.warning('你目前是唯讀管理員（ADMIN_VIEWER），無法編輯活動');
+      message.warning('You are a read-only admin (ADMIN_VIEWER) and cannot edit events');
       return;
     }
     setEditLoading(true);
@@ -695,9 +698,9 @@ const useAdminConsoleController = () => {
       setEditingEventId(eventId);
       setSelectedEventId(eventId);
       setActiveTabKey('event-create');
-      message.success('已載入活動資料，可完整編輯所有欄位');
+      message.success('Event loaded. All fields are editable.');
     } catch (error) {
-      message.error(getErrorMessage(error, '載入活動資料失敗'));
+      message.error(getErrorMessage(error, 'Failed to load event data'));
     } finally {
       setEditLoading(false);
     }
@@ -706,17 +709,17 @@ const useAdminConsoleController = () => {
   const handlePublish = async () => {
     if (!selectedEventId) return;
     if (!isAdminFull) {
-      message.warning('你目前是唯讀管理員（ADMIN_VIEWER），無法發布活動');
+      message.warning('You are a read-only admin (ADMIN_VIEWER) and cannot publish events');
       return;
     }
     setPublishing(true);
     try {
       await apiClient.adminPublishEvent(selectedEventId);
-      message.success('活動已發布');
+      message.success('Event published');
       await loadEvents();
       await loadDashboard(selectedEventId);
     } catch (error) {
-      message.error(getErrorMessage(error, '發布活動失敗'));
+      message.error(getErrorMessage(error, 'Failed to publish event'));
     } finally {
       setPublishing(false);
     }
@@ -725,7 +728,7 @@ const useAdminConsoleController = () => {
   const updateEvent = async (publishAfterSave) => {
     if (!editingEventId) return;
     if (!isAdminFull) {
-      message.warning('你目前是唯讀管理員（ADMIN_VIEWER），無法編輯或發布活動');
+      message.warning('You are a read-only admin (ADMIN_VIEWER) and cannot edit or publish events');
       return;
     }
     setCreating(true);
@@ -747,9 +750,9 @@ const useAdminConsoleController = () => {
       await apiClient.adminPatchEvent(editingEventId, payload);
       if (publishAfterSave) {
         await apiClient.adminPublishEvent(editingEventId);
-        message.success('活動已更新並發布');
+        message.success('Event updated and published');
       } else {
-        message.success('活動更新成功');
+        message.success('Event updated');
       }
       await loadEvents();
       await loadDashboard(editingEventId);
@@ -757,7 +760,7 @@ const useAdminConsoleController = () => {
       resetEditMode();
       setActiveTabKey('dashboard');
     } catch (error) {
-      message.error(getErrorMessage(error, '更新活動失敗，請確認後端是否支援完整欄位更新'));
+      message.error(getErrorMessage(error, 'Failed to update event. Confirm backend supports full field updates.'));
     } finally {
       setCreating(false);
     }
@@ -766,23 +769,23 @@ const useAdminConsoleController = () => {
   const handleCancel = async () => {
     if (!selectedEventId) return;
     if (!isAdminFull) {
-      message.warning('你目前是唯讀管理員（ADMIN_VIEWER），無法取消活動');
+      message.warning('You are a read-only admin (ADMIN_VIEWER) and cannot cancel events');
       return;
     }
     const reason = await new Promise((resolve) => {
       let input = '';
       Modal.confirm({
-        title: '刪除活動（後端聯動取消）',
+        title: 'Delete event (backend cascades cancellation)',
         content: (
           <Input.TextArea
             rows={3}
-            placeholder="刪除／取消原因（將寫入受影響員工的通知內容，請後端連同 WebSocket 一併推送）"
+            placeholder="Deletion/cancellation reason (included in employee notifications via WebSocket)"
             onChange={(e) => {
               input = e.target.value;
             }}
           />
         ),
-        onOk: () => resolve(input || '臨時取消'),
+        onOk: () => resolve(input || 'Temporary cancellation'),
         onCancel: () => resolve('')
       });
     });
@@ -792,13 +795,13 @@ const useAdminConsoleController = () => {
     try {
       await apiClient.adminCancelEvent(selectedEventId, reason);
       message.success(
-        '活動已取消。已向所有曾報名此活動的員工發送通知（原因會顯示在通知內）；若未收到請確認後端已實作推播與原因欄位。'
+        'Event cancelled. Notifications were sent to all registrants with the reason. Confirm backend push delivery if missing.'
       );
       await loadEvents();
       await loadDashboard(selectedEventId);
       refreshList({ page_size: 30 }).catch(() => {});
     } catch (error) {
-      message.error(getErrorMessage(error, '取消活動失敗'));
+      message.error(getErrorMessage(error, 'Failed to cancel event'));
     } finally {
       setCancelling(false);
     }
@@ -807,23 +810,23 @@ const useAdminConsoleController = () => {
   const handleDeleteDraft = (eventRecord) => {
     if (!eventRecord?.id) return;
     if (!isAdminFull) {
-      message.warning('你目前是唯讀管理員（ADMIN_VIEWER），無法刪除草稿');
+      message.warning('You are a read-only admin (ADMIN_VIEWER) and cannot delete drafts');
       return;
     }
     Modal.confirm({
-      title: '刪除草稿',
-      content: `確定要刪除「${eventRecord.title || '未命名草稿'}」嗎？此動作無法復原。`,
-      okText: '刪除',
+      title: 'DeleteDraft',
+      content: `Delete "${eventRecord.title || 'Untitled draft'}"? This action cannot be undone.`,
+      okText: 'Delete',
       okButtonProps: { danger: true },
-      cancelText: '取消',
+      cancelText: 'Cancel',
       onOk: async () => {
         setDeletingDraftId(eventRecord.id);
         try {
-          await apiClient.adminCancelEvent(eventRecord.id, '刪除草稿');
+          await apiClient.adminCancelEvent(eventRecord.id, 'DeleteDraft');
           if (editingEventId === eventRecord.id) {
             resetEditMode();
           }
-          message.success('草稿已刪除');
+          message.success('Draft deleted');
           const nextEvents = await loadEvents();
           const nextSelectedEventId = selectedEventId === eventRecord.id
             ? nextEvents.find((event) => event.id !== eventRecord.id)?.id || ''
@@ -831,7 +834,7 @@ const useAdminConsoleController = () => {
           setSelectedEventId(nextSelectedEventId);
           await loadDashboard(nextSelectedEventId);
         } catch (error) {
-          message.error(getErrorMessage(error, '刪除草稿失敗'));
+          message.error(getErrorMessage(error, 'Failed to delete draft'));
           throw error;
         } finally {
           setDeletingDraftId('');
@@ -843,7 +846,7 @@ const useAdminConsoleController = () => {
   const handlePublishDraft = async (eventRecord) => {
     if (!eventRecord?.id) return;
     if (!isAdminFull) {
-      message.warning('你目前是唯讀管理員（ADMIN_VIEWER），無法發佈草稿');
+      message.warning('You are a read-only admin (ADMIN_VIEWER) and cannot publish drafts');
       return;
     }
     setPublishingDraftId(eventRecord.id);
@@ -852,13 +855,13 @@ const useAdminConsoleController = () => {
       if (editingEventId === eventRecord.id) {
         resetEditMode();
       }
-      message.success('草稿已發佈');
+      message.success('Draft published');
       await loadEvents();
       const nextSelectedEventId = selectedEventId || eventRecord.id;
       setSelectedEventId(nextSelectedEventId);
       await loadDashboard(nextSelectedEventId);
     } catch (error) {
-      message.error(getErrorMessage(error, '發佈草稿失敗'));
+      message.error(getErrorMessage(error, 'Failed to publish draft'));
     } finally {
       setPublishingDraftId('');
     }
@@ -876,7 +879,7 @@ const useAdminConsoleController = () => {
       a.click();
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      message.error(getErrorMessage(error, '同步匯出失敗'));
+      message.error(getErrorMessage(error, 'Failed to export synchronously'));
     } finally {
       setExportingSync(false);
     }
@@ -885,17 +888,17 @@ const useAdminConsoleController = () => {
   const handleRunLottery = (sessionId, sessionTitle) => {
     if (!selectedEventId) return;
     Modal.confirm({
-      title: `執行抽籤：${sessionTitle}`,
-      content: '將對該場次所有「已報名(REGISTERED)」名單洗牌並分配中籤(WON)與候補(LOST)。每個場次僅能執行一次。',
-      okText: '開始抽籤',
-      cancelText: '取消',
+      title: `Run lottery：${sessionTitle}`,
+      content: 'Shuffle all REGISTERED entries for this session into WON and LOST outcomes. Each session can run once.',
+      okText: 'Start lottery',
+      cancelText: 'Cancel',
       onOk: async () => {
         try {
           const res = await apiClient.adminRunLottery(sessionId);
-          message.success(`抽籤完成：中籤 ${res.data?.winners_count ?? 0} 人 / 報名 ${res.data?.total_candidates ?? 0} 人`);
+          message.success(`Lottery complete: won ${res.data?.winners_count ?? 0} winners / registered ${res.data?.total_candidates ?? 0} people`);
           await loadDashboard(selectedEventId);
         } catch (error) {
-          message.error(getErrorMessage(error, '抽籤失敗'));
+          message.error(getErrorMessage(error, 'Lottery failed'));
           throw error;
         }
       }
@@ -905,28 +908,28 @@ const useAdminConsoleController = () => {
   const runInstantLotteryForSelectedEvent = async () => {
     if (!selectedEventId) return;
     if (!isAdminFull) {
-      message.warning('你目前是唯讀管理員（ADMIN_VIEWER），無法執行抽籤');
+      message.warning('You are a read-only admin (ADMIN_VIEWER) and cannot run lotteries');
       return;
     }
     const rows = dashboard?.sessions_lottery || [];
     const pending = rows.filter((r) => r?.session_id && !r?.lottery_executed_at);
     if (!pending.length) {
-      message.info('目前沒有尚未執行抽籤的場次');
+      message.info('No sessions pending lottery');
       return;
     }
     Modal.confirm({
-      title: '即時抽籤（未執行場次）',
-      content: `將對此活動 ${pending.length} 個尚未抽籤的場次立即執行抽籤。抽籤完成後，員工需至活動頁面「確認參加並領票」才會發行票券（發票）。`,
-      okText: '開始即時抽籤',
-      cancelText: '取消',
+      title: 'Run lottery now (pending sessions)',
+      content: `This will immediately run lottery for ${pending.length} pending session(s). Employees must confirm attendance on the event page to receive tickets.`,
+      okText: 'Start instant lottery',
+      cancelText: 'Cancel',
       onOk: async () => {
         setAutoLotteryRunning(true);
         try {
           await Promise.all(pending.map((row) => apiClient.adminRunLottery(row.session_id)));
-          message.success(`即時抽籤完成：${pending.length}/${pending.length}`);
+          message.success(`Instant lottery complete: ${pending.length}/${pending.length}`);
           await loadDashboard(selectedEventId);
         } catch (e) {
-          message.error(getErrorMessage(e, '即時抽籤失敗'));
+          message.error(getErrorMessage(e, 'Instant lottery failed'));
           throw e;
         } finally {
           setAutoLotteryRunning(false);
@@ -1000,24 +1003,24 @@ const AdminConsoleHero = ({ loading, isAdminViewer }) => (
   <Card loading={loading} className="admin-console-hero">
     <div className="admin-console-hero-main">
       <div>
-        <Text className="admin-console-kicker">管理後台</Text>
-        <Title level={3}>主控台</Title>
-        <Paragraph>建立活動、查看報名、抽籤與報表集中在同一個工作區。</Paragraph>
+        <Text className="admin-console-kicker">Admin console</Text>
+        <Title level={3}>Control panel</Title>
+        <Paragraph>Create events, review registrations, run lotteries, and export reports in one workspace.</Paragraph>
       </div>
     </div>
     {isAdminViewer ? (
       <Alert
         type="warning"
         showIcon
-        message="你目前是 ADMIN_VIEWER（唯讀）"
-        description="可查看儀表板與報名資料，但不能建立、發布、取消活動或執行抽籤。"
+        message="You are signed in as ADMIN_VIEWER (read-only)"
+        description="You can view the dashboard and registrations, but cannot create, publish, cancel events, or run lotteries."
       />
     ) : null}
   </Card>
 );
 
 const AdminConsoleTabs = ({ controller }) => {
-  const draftTabLabel = '草稿活動' + (controller.draftEvents.length ? ' (' + controller.draftEvents.length + ')' : '');
+  const draftTabLabel = 'Draft events' + (controller.draftEvents.length ? ' (' + controller.draftEvents.length + ')' : '');
 
   return (
     <Tabs
@@ -1029,7 +1032,7 @@ const AdminConsoleTabs = ({ controller }) => {
       items={[
         {
           key: 'event-create',
-          label: controller.isEditing ? '編輯活動' : '建立活動',
+          label: controller.isEditing ? 'Edit event' : 'Create event',
           children: <EventCreateTab controller={controller} />
         },
         {
@@ -1039,7 +1042,7 @@ const AdminConsoleTabs = ({ controller }) => {
         },
         {
           key: 'dashboard',
-          label: '儀表板',
+          label: 'Dashboard',
           children: <DashboardTab controller={controller} />
         }
       ]}
@@ -1067,29 +1070,29 @@ const EventCreateTab = ({ controller }) => (
 
 const EventBasicFields = () => (
   <>
-    <Divider orientation="left" style={{ marginTop: 0 }}>基本資料</Divider>
+    <Divider orientation="left" style={{ marginTop: 0 }}>Basic info</Divider>
     <Row gutter={16}>
       <Col xs={24} lg={14}>
-        <Form.Item name="title" label="活動標題" rules={[{ required: true }]}>
+        <Form.Item name="title" label="Event title" rules={[{ required: true }]}>
           <Input />
         </Form.Item>
       </Col>
       <Col xs={24} lg={10}>
         <Form.Item
           name="registration_mode"
-          label="報名模式"
-          rules={[{ required: true, message: '請選擇報名模式' }]}
+          label="Registration mode"
+          rules={[{ required: true, message: 'Please select Registration mode' }]}
         >
           <Select
             options={[
-              { value: 'UNLIMITED', label: '無人數限制（前端自動帶入抽籤/候補時間）' },
-              { value: 'LIMITED', label: '有人數限制（需設定名額、抽籤、候補）' }
+              { value: 'UNLIMITED', label: 'Unlimited capacity (lottery/waitlist times auto-filled)' },
+              { value: 'LIMITED', label: 'Limited capacity (quota, lottery, waitlist required)' }
             ]}
           />
         </Form.Item>
       </Col>
       <Col xs={24}>
-        <Form.Item name="description" label="活動描述（選填）">
+        <Form.Item name="description" label="Event description (optional)">
           <Input.TextArea rows={3} />
         </Form.Item>
       </Col>
@@ -1113,30 +1116,30 @@ const TicketRestrictionFields = ({ controller }) => {
         type="info"
         showIcon
         style={{ marginBottom: 16 }}
-        message="無人數限制模式"
-        description="使用者報名後不受名額限制。因後端 API 目前仍要求抽籤/候補欄位，前端會自動填入系統時間參數，你不需要手動填寫。"
+        message="Unlimited capacity mode"
+        description="Registrations are unlimited. Backend still requires lottery/waitlist timestamps, so the frontend fills them automatically."
       />
     );
   }
 
   return (
     <>
-      <Divider style={{ marginTop: 6 }}>報名資格限制</Divider>
+      <Divider style={{ marginTop: 6 }}>Registration eligibility restrictions</Divider>
 
-      <Card type="inner" title="成人票限制" style={{ marginBottom: 12 }}>
+      <Card type="inner" title="Adult ticket restrictions" style={{ marginBottom: 12 }}>
         <Form.Item name="adult_has_limits" valuePropName="checked" style={{ marginBottom: 10 }}>
-          <Checkbox>有限制（勾選後展開設定）</Checkbox>
+          <Checkbox>Restricted (expand settings when checked)</Checkbox>
         </Form.Item>
         {adultHasLimits ? (
           <>
             <Row gutter={12}>
               <Col xs={24} md={16}>
-                <Form.Item name="adult_gender" label="性別限制" initialValue="ANY">
+                <Form.Item name="adult_gender" label="Gender restriction" initialValue="ANY">
                   <Select
                     options={[
-                      { value: 'ANY', label: '不限' },
-                      { value: 'M', label: '限男性' },
-                      { value: 'F', label: '限女性' }
+                      { value: 'ANY', label: 'Any' },
+                      { value: 'M', label: 'Male only' },
+                      { value: 'F', label: 'Female only' }
                     ]}
                   />
                 </Form.Item>
@@ -1144,34 +1147,34 @@ const TicketRestrictionFields = ({ controller }) => {
             </Row>
             <Row gutter={12}>
               <Col xs={12} md={6}>
-                <Form.Item name="adult_height_min_cm" label="身高下限(cm)">
+                <Form.Item name="adult_height_min_cm" label="Minimum height (cm)">
                   <InputNumber min={0} max={250} style={{ width: '100%' }} />
                 </Form.Item>
               </Col>
               <Col xs={12} md={6}>
-                <Form.Item name="adult_height_max_cm" label="身高上限(cm)">
+                <Form.Item name="adult_height_max_cm" label="Maximum height (cm)">
                   <InputNumber min={0} max={250} style={{ width: '100%' }} />
                 </Form.Item>
               </Col>
               <Col xs={12} md={6}>
-                <Form.Item name="adult_age_min" label="年齡下限">
+                <Form.Item name="adult_age_min" label="Minimum age">
                   <InputNumber min={0} max={120} style={{ width: '100%' }} />
                 </Form.Item>
               </Col>
               <Col xs={12} md={6}>
-                <Form.Item name="adult_age_max" label="年齡上限">
+                <Form.Item name="adult_age_max" label="Maximum age">
                   <InputNumber min={0} max={120} style={{ width: '100%' }} />
                 </Form.Item>
               </Col>
             </Row>
             <Row gutter={12}>
               <Col xs={24} md={8}>
-                <Form.Item name="adult_health_unlimited" valuePropName="checked" label="健康狀態限制">
-                  <Checkbox>無限制</Checkbox>
+                <Form.Item name="adult_health_unlimited" valuePropName="checked" label="Health restrictions">
+                  <Checkbox>No restrictions</Checkbox>
                 </Form.Item>
               </Col>
               <Col xs={24} md={16}>
-                <Form.Item name="adult_health_no_diseases" label="可勾選：需符合「無以下疾病」">
+                <Form.Item name="adult_health_no_diseases" label="Selectable: must confirm no listed conditions">
                   <Checkbox.Group
                     disabled={adultHealthUnlimited}
                     options={DISEASE_OPTIONS}
@@ -1181,43 +1184,43 @@ const TicketRestrictionFields = ({ controller }) => {
             </Row>
           </>
         ) : (
-          <Paragraph type="secondary" style={{ marginBottom: 0 }}>目前設定：無限制</Paragraph>
+          <Paragraph type="secondary" style={{ marginBottom: 0 }}>Current setting: no restrictions</Paragraph>
         )}
         <Form.Item
           name="adult_other_restrictions"
-          label="其他注意事項(選填)"
+          label="Other notes (optional)"
         >
-          <Input.TextArea rows={2} placeholder="每行一則" />
+          <Input.TextArea rows={2} placeholder="One note per line" />
         </Form.Item>
       </Card>
 
       {anyRequireChildTicket ? (
-        <Card type="inner" title="兒童票限制">
+        <Card type="inner" title="Child ticket restrictions">
           <Form.Item name="child_has_limits" valuePropName="checked" style={{ marginBottom: 10 }}>
-            <Checkbox>有限制（勾選後展開設定）</Checkbox>
+            <Checkbox>Restricted (expand settings when checked)</Checkbox>
           </Form.Item>
           {childHasLimits ? (
             <>
               <Row gutter={12}>
                 <Col xs={12} md={8}>
-                  <Form.Item name="child_age_min" label="兒童年齡下限">
+                  <Form.Item name="child_age_min" label="Child minimum age">
                     <InputNumber min={0} max={120} style={{ width: '100%' }} />
                   </Form.Item>
                 </Col>
                 <Col xs={12} md={8}>
-                  <Form.Item name="child_age_max" label="兒童年齡上限">
+                  <Form.Item name="child_age_max" label="Child maximum age">
                     <InputNumber min={0} max={120} style={{ width: '100%' }} />
                   </Form.Item>
                 </Col>
               </Row>
               <Row gutter={12}>
                 <Col xs={24} md={8}>
-                  <Form.Item name="child_health_unlimited" valuePropName="checked" label="健康狀態限制">
-                    <Checkbox>無限制</Checkbox>
+                  <Form.Item name="child_health_unlimited" valuePropName="checked" label="Health restrictions">
+                    <Checkbox>No restrictions</Checkbox>
                   </Form.Item>
                 </Col>
                 <Col xs={24} md={16}>
-                  <Form.Item name="child_health_no_diseases" label="可勾選：需符合「無以下疾病」">
+                  <Form.Item name="child_health_no_diseases" label="Selectable: must confirm no listed conditions">
                     <Checkbox.Group
                       disabled={childHealthUnlimited}
                       options={DISEASE_OPTIONS}
@@ -1227,13 +1230,13 @@ const TicketRestrictionFields = ({ controller }) => {
               </Row>
             </>
           ) : (
-            <Paragraph type="secondary" style={{ marginBottom: 0 }}>目前設定：無限制</Paragraph>
+            <Paragraph type="secondary" style={{ marginBottom: 0 }}>Current setting: no restrictions</Paragraph>
           )}
           <Form.Item
             name="child_other_restrictions"
-            label="兒童票其他注意事項(選填)"
+            label="Child ticketOther notes (optional)"
           >
-            <Input.TextArea rows={2} placeholder="每行一則" />
+            <Input.TextArea rows={2} placeholder="One note per line" />
           </Form.Item>
         </Card>
       ) : null}
@@ -1246,19 +1249,19 @@ const CoverAndSiteFields = ({ controller }) => {
 
   return (
     <>
-      <Divider orientation="left">圖片與廠區</Divider>
-      <Form.Item label="活動圖片" required>
+      <Divider orientation="left">Cover image and sites</Divider>
+      <Form.Item label="Event cover" required>
         <Form.Item name="cover_image_url" noStyle>
           <Input type="hidden" />
         </Form.Item>
         <fieldset className="admin-cover-choice">
-          <legend className="sr-only">活動圖片</legend>
+          <legend className="sr-only">Event cover</legend>
           {EVENT_IMAGES.map((src, idx) => (
             <button
               key={src}
               type="button"
               className={'admin-cover-option' + (selectedCoverImage === src ? ' is-selected' : '')}
-              aria-label={`選擇活動圖片 ${idx + 1}`}
+              aria-label={`Select event cover ${idx + 1}`}
               aria-pressed={selectedCoverImage === src}
               onClick={() => handleSelectCoverImage(src)}
             >
@@ -1267,7 +1270,7 @@ const CoverAndSiteFields = ({ controller }) => {
           ))}
         </fieldset>
       </Form.Item>
-      <Form.Item name="allowed_sites" label="開放廠區" rules={[{ required: true, message: '請至少選擇一個開放廠區' }]}>
+      <Form.Item name="allowed_sites" label="Allowed sites" rules={[{ required: true, message: 'Select at least one allowed site' }]}>
         <Checkbox.Group options={SITES} />
       </Form.Item>
     </>
@@ -1279,7 +1282,7 @@ const SessionsFields = ({ controller }) => {
 
   return (
     <>
-      <Divider style={{ marginTop: 6 }}>場次設定</Divider>
+      <Divider style={{ marginTop: 6 }}>Session settings</Divider>
 
       <Form.List name="sessions">
         {(fields, { add, remove }) => (
@@ -1290,16 +1293,16 @@ const SessionsFields = ({ controller }) => {
                 <Card
                   key={key}
                   type="inner"
-                  title={'場次 ' + (idx + 1)}
-                  extra={fields.length > 1 ? <Button danger onClick={() => remove(field.name)}>刪除</Button> : null}
+                  title={'Session ' + (idx + 1)}
+                  extra={fields.length > 1 ? <Button danger onClick={() => remove(field.name)}>Delete</Button> : null}
                 >
                   <Row gutter={12}>
                     <Col xs={24} md={8}>
                       <Form.Item
                         {...fieldProps}
                         name={[field.name, 'title']}
-                        label="場次名稱"
-                        rules={[{ required: true, message: '請填寫場次名稱' }]}
+                        label="Session title"
+                        rules={[{ required: true, message: 'Please enter Session title' }]}
                       >
                         <Input />
                       </Form.Item>
@@ -1308,8 +1311,8 @@ const SessionsFields = ({ controller }) => {
                       <Form.Item
                         {...fieldProps}
                         name={[field.name, 'venue']}
-                        label="場次地點"
-                        rules={[{ required: true, message: '請填寫場次地點' }]}
+                        label="Session venue"
+                        rules={[{ required: true, message: 'Please enter Session venue' }]}
                       >
                         <Input />
                       </Form.Item>
@@ -1322,8 +1325,8 @@ const SessionsFields = ({ controller }) => {
                           <Form.Item
                             {...fieldProps}
                             name={[field.name, 'adult_quota']}
-                            label="成人票數量（本場次）"
-                            rules={[{ required: true, message: '請輸入成人票數量' }]}
+                            label="Adult ticket quota (this session)"
+                            rules={[{ required: true, message: 'Enter adult ticket quota' }]}
                           >
                             <InputNumber min={0} max={999999} style={{ width: '100%' }} />
                           </Form.Item>
@@ -1334,10 +1337,10 @@ const SessionsFields = ({ controller }) => {
                           <Form.Item
                             {...fieldProps}
                             name={[field.name, 'require_child_ticket']}
-                            label="是否需要兒童票（本場次）"
+                            label="Require child tickets (this session)"
                             valuePropName="checked"
                           >
-                            <Checkbox>需要兒童票</Checkbox>
+                            <Checkbox>Child tickets required</Checkbox>
                           </Form.Item>
                         </Col>
                       </Row>
@@ -1354,8 +1357,8 @@ const SessionsFields = ({ controller }) => {
                                 <Form.Item
                                   {...fieldProps}
                                   name={[field.name, 'child_quota']}
-                                  label="兒童票數量（本場次）"
-                                  rules={[{ required: true, message: '請輸入兒童票數量' }]}
+                                  label="Child ticket quota (this session)"
+                                  rules={[{ required: true, message: 'Enter child ticket quota' }]}
                                 >
                                   <InputNumber min={0} max={999999} style={{ width: '100%' }} />
                                 </Form.Item>
@@ -1371,8 +1374,8 @@ const SessionsFields = ({ controller }) => {
                       <Form.Item
                         {...fieldProps}
                         name={[field.name, 'starts_at']}
-                        label="開始時間"
-                        rules={[{ required: true, message: '請選擇開始時間' }]}
+                        label="Start time"
+                        rules={[{ required: true, message: 'Please select Start time' }]}
                       >
                         <DatePicker showTime style={{ width: '100%' }} />
                       </Form.Item>
@@ -1381,10 +1384,10 @@ const SessionsFields = ({ controller }) => {
                       <Form.Item
                         {...fieldProps}
                         name={[field.name, 'ends_at']}
-                        label="結束時間"
+                        label="End time"
                         dependencies={[['sessions', field.name, 'starts_at']]}
                         rules={[
-                          { required: true, message: '請選擇結束時間' },
+                          { required: true, message: 'Please select End time' },
                           ({ getFieldValue }) => ({
                             validator(_, value) {
                               const start = getFieldValue(['sessions', field.name, 'starts_at']);
@@ -1393,7 +1396,7 @@ const SessionsFields = ({ controller }) => {
                               const b = dayjs(value);
                               if (!a.isValid() || !b.isValid()) return Promise.resolve();
                               if (b.isAfter(a)) return Promise.resolve();
-                              return Promise.reject(new Error('結束時間必須晚於開始時間'));
+                              return Promise.reject(new Error('End time must be after start time'));
                             }
                           })
                         ]}
@@ -1418,11 +1421,11 @@ const SessionsFields = ({ controller }) => {
                   child_quota: null
                 })}
               >
-                新增場次
+                Add session
               </Button>
               <div className="admin-session-summary" aria-live="polite">
-                <span className="admin-session-summary-label">活動結束</span>
-                <span className="admin-session-summary-note">取所有場次最晚結束</span>
+                <span className="admin-session-summary-label">Event ends</span>
+                <span className="admin-session-summary-note">Latest session end time</span>
                 <strong>{latestSessionEndLabel}</strong>
               </div>
             </Space>
@@ -1435,15 +1438,15 @@ const SessionsFields = ({ controller }) => {
 
 const RegistrationTimelineFields = ({ createRegistrationMode }) => (
   <>
-    <Divider orientation="left">報名時間</Divider>
+    <Divider orientation="left">Registration schedule</Divider>
     <Row gutter={12}>
       <Col xs={24} md={createRegistrationMode === 'LIMITED' ? 8 : 12}>
-        <Form.Item name="registration_opens_at" label="報名開放時間（所有場次共用）" rules={[{ required: true, message: '請選擇報名開放時間' }]}>
+        <Form.Item name="registration_opens_at" label="Registration opens (shared by all sessions)" rules={[{ required: true, message: 'Select registration open time' }]}>
           <DatePicker showTime style={{ width: '100%' }} />
         </Form.Item>
       </Col>
       <Col xs={24} md={createRegistrationMode === 'LIMITED' ? 8 : 12}>
-        <Form.Item name="registration_closes_at" label="報名截止時間（所有場次共用）" rules={[{ required: true, message: '請選擇報名截止時間' }]}>
+        <Form.Item name="registration_closes_at" label="Registration closes (shared by all sessions)" rules={[{ required: true, message: 'Select registration close time' }]}>
           <DatePicker showTime style={{ width: '100%' }} />
         </Form.Item>
       </Col>
@@ -1451,8 +1454,8 @@ const RegistrationTimelineFields = ({ createRegistrationMode }) => (
         <Col xs={24} md={8}>
           <Form.Item
             name="waitlist_close_at"
-            label="候補截止時間（所有場次共用）"
-            rules={[{ required: true, message: '請選擇候補截止時間' }]}
+            label="Waitlist closes (shared by all sessions)"
+            rules={[{ required: true, message: 'Select waitlist close time' }]}
           >
             <DatePicker showTime style={{ width: '100%' }} />
           </Form.Item>
@@ -1482,10 +1485,10 @@ const EventCreateActions = ({ controller }) => {
         {isEditing ? (
           <>
             <Button type="primary" onClick={() => updateEvent(true)} loading={creating} disabled={!isAdminFull}>
-              發佈
+              Publish
             </Button>
             <Button onClick={() => updateEvent(false)} loading={creating} disabled={!isAdminFull}>
-              儲存成草稿
+              Save as draft
             </Button>
             <Button
               className="admin-create-cancel"
@@ -1494,14 +1497,14 @@ const EventCreateActions = ({ controller }) => {
                 setActiveTabKey('dashboard');
               }}
             >
-              取消編輯
+              Cancel edit
             </Button>
           </>
         ) : (
           <>
-            <Button type="primary" onClick={handleCreate} loading={creating} disabled={!isAdminFull}>發佈</Button>
-            <Button onClick={handleCreateDraft} loading={creating} disabled={!isAdminFull}>儲存成草稿</Button>
-            <Button className="admin-create-cancel" onClick={resetCreateFormToDefaults}>取消編輯</Button>
+            <Button type="primary" onClick={handleCreate} loading={creating} disabled={!isAdminFull}>Publish</Button>
+            <Button onClick={handleCreateDraft} loading={creating} disabled={!isAdminFull}>Save as draft</Button>
+            <Button className="admin-create-cancel" onClick={resetCreateFormToDefaults}>Cancel edit</Button>
           </>
         )}
       </div>
@@ -1526,10 +1529,10 @@ const DraftsTab = ({ controller }) => {
     <Card className="admin-draft-card">
       <div className="admin-draft-header">
         <div>
-          <Text className="admin-dashboard-section-label">草稿活動</Text>
-          <Title level={4}>未發布活動管理</Title>
+          <Text className="admin-dashboard-section-label">Draft events</Text>
+          <Title level={4}>Unpublished event management</Title>
           <Paragraph type="secondary">
-            載入草稿後可回到表單修改欄位，再儲存或發佈。
+            Load a draft to edit fields, then save or publish.
           </Paragraph>
         </div>
       </div>
@@ -1537,35 +1540,35 @@ const DraftsTab = ({ controller }) => {
         rowKey="id"
         dataSource={draftEvents}
         pagination={false}
-        locale={{ emptyText: '目前沒有草稿活動' }}
+        locale={{ emptyText: 'No draft events' }}
         columns={[
           {
-            title: '活動名稱',
+            title: 'Event name',
             dataIndex: 'title',
             key: 'title',
             render: (title, record) => (
               <Space direction="vertical" size={2}>
                 <Text strong>{title}</Text>
                 <Text type="secondary">
-                  {record.allowed_sites?.length ? record.allowed_sites.join(', ') : '全廠區'}
+                  {record.allowed_sites?.length ? record.allowed_sites.join(', ') : 'All sites'}
                 </Text>
               </Space>
             )
           },
           {
-            title: '狀態',
+            title: 'Status',
             dataIndex: 'status',
             key: 'status',
             render: (status) => <Tag>{labelOr(EVENT_STATUS_LABELS, status, status)}</Tag>
           },
           {
-            title: '建立時間',
+            title: 'Created at',
             dataIndex: 'created_at',
             key: 'created_at',
             render: (value) => (value ? dayjs(value).format('YYYY-MM-DD HH:mm') : '-')
           },
           {
-            title: '操作',
+            title: 'Actions',
             key: 'action',
             render: (_, record) => (
               <Space wrap>
@@ -1574,7 +1577,7 @@ const DraftsTab = ({ controller }) => {
                   disabled={!isAdminFull || deletingDraftId === record.id || publishingDraftId === record.id}
                   onClick={() => enterEditMode(record.id)}
                 >
-                  載入編輯
+                  Load for edit
                 </Button>
                 <Button
                   type="primary"
@@ -1582,7 +1585,7 @@ const DraftsTab = ({ controller }) => {
                   disabled={!isAdminFull || editLoading || deletingDraftId === record.id}
                   onClick={() => handlePublishDraft(record)}
                 >
-                  立即發佈
+                  Publish now
                 </Button>
                 <Button
                   danger
@@ -1590,7 +1593,7 @@ const DraftsTab = ({ controller }) => {
                   disabled={!isAdminFull || editLoading || publishingDraftId === record.id}
                   onClick={() => handleDeleteDraft(record)}
                 >
-                  刪除
+                  Delete
                 </Button>
               </Space>
             )
@@ -1635,11 +1638,11 @@ const DashboardTab = ({ controller }) => {
       <Card className="admin-dashboard-toolbar">
         <div className="admin-dashboard-toolbar-grid">
           <section className="admin-dashboard-picker">
-            <Text className="admin-dashboard-section-label">儀表板活動</Text>
+            <Text className="admin-dashboard-section-label">Dashboard event</Text>
             <div className="admin-dashboard-select-row">
               <Select
                 className="admin-event-select"
-                placeholder="搜尋並選擇活動"
+                placeholder="Search and select an event"
                 value={selectedEventId || undefined}
                 onChange={setSelectedEventId}
                 options={dashboardEventOptions}
@@ -1653,21 +1656,21 @@ const DashboardTab = ({ controller }) => {
 
           <section className="admin-dashboard-action-panel">
             <div className="admin-dashboard-action-block">
-              <Text className="admin-dashboard-section-label">活動管理</Text>
+              <Text className="admin-dashboard-section-label">Event management</Text>
               <Space wrap className="admin-dashboard-actions">
                 <Button type="primary" onClick={handlePublish} loading={publishing} disabled={!isAdminFull || !selectedEvent || selectedEvent.status !== 'DRAFT'}>
-                  發布活動
+                  Publish event
                 </Button>
                 <Button onClick={() => enterEditMode(selectedEventId)} loading={editLoading} disabled={!isAdminFull || !selectedEvent}>
-                  編輯活動
+                  Edit event
                 </Button>
                 <Button danger onClick={handleCancel} loading={cancelling} disabled={!isAdminFull || !selectedEvent}>
-                  刪除活動
+                  Delete event
                 </Button>
               </Space>
             </div>
             <div className="admin-dashboard-action-block">
-              <Text className="admin-dashboard-section-label">抽籤與報表</Text>
+              <Text className="admin-dashboard-section-label">Lottery and reports</Text>
               <Space wrap className="admin-dashboard-actions">
                 <Button
                   type="primary"
@@ -1675,10 +1678,10 @@ const DashboardTab = ({ controller }) => {
                   loading={autoLotteryRunning}
                   disabled={!isAdminFull || !selectedEventId}
                 >
-                  即時抽籤
+                  Run lottery now
                 </Button>
                 <Button onClick={handleExportSync} loading={exportingSync} disabled={!selectedEventId}>
-                  匯出 CSV
+                  Export CSV
                 </Button>
               </Space>
             </div>
@@ -1689,17 +1692,17 @@ const DashboardTab = ({ controller }) => {
       <Row gutter={16} style={{ marginTop: 16 }}>
         <Col xs={24} md={8}>
           <Card>
-            <Statistic title="已報名" value={registeredTotal} />
+            <Statistic title="Registered" value={registeredTotal} />
           </Card>
         </Col>
         <Col xs={24} md={8}>
           <Card>
-            <Statistic title="已確認" value={dashboard?.attendance?.total_confirmed || 0} />
+            <Statistic title="Confirmed" value={dashboard?.attendance?.total_confirmed || 0} />
           </Card>
         </Col>
         <Col xs={24} md={8}>
           <Card>
-            <Statistic title="已入場" value={dashboard?.attendance?.checked_in || 0} />
+            <Statistic title="Checked in" value={dashboard?.attendance?.checked_in || 0} />
           </Card>
         </Col>
       </Row>
@@ -1712,19 +1715,19 @@ const DashboardTab = ({ controller }) => {
         />
       </Suspense>
 
-      <Card style={{ marginTop: 16 }} title="報名清單">
+      <Card style={{ marginTop: 16 }} title="Registration list">
         <Table
           rowKey="id"
           dataSource={registrations}
           scroll={{ x: 860 }}
           columns={[
-            { title: '員工編號', dataIndex: ['user', 'employee_id'] },
-            { title: '姓名', dataIndex: ['user', 'name'] },
-            { title: '部門', dataIndex: ['user', 'department'] },
-            { title: '場次', dataIndex: 'session_title' },
-            { title: '票種', dataIndex: 'ticket_type_name' },
+            { title: 'Employee ID', dataIndex: ['user', 'employee_id'] },
+            { title: 'Name', dataIndex: ['user', 'name'] },
+            { title: 'Department', dataIndex: ['user', 'department'] },
+            { title: 'Session', dataIndex: 'session_title' },
+            { title: 'Ticket type', dataIndex: 'ticket_type_name' },
             {
-              title: '狀態',
+              title: 'Status',
               dataIndex: 'status',
               render: (v) => (
                 <Tag
@@ -1746,32 +1749,32 @@ const DashboardTab = ({ controller }) => {
         />
       </Card>
 
-      <Card style={{ marginTop: 16 }} title="抽籤執行（依場次）">
+      <Card style={{ marginTop: 16 }} title="Lottery by session">
         <Table
           rowKey="session_id"
           pagination={false}
           dataSource={dashboard?.sessions_lottery || []}
           scroll={{ x: 760 }}
           columns={[
-            { title: '場次', dataIndex: 'title' },
-            { title: '抽籤時間', dataIndex: 'lottery_at' },
+            { title: 'Session', dataIndex: 'title' },
+            { title: 'Lottery time', dataIndex: 'lottery_at' },
             {
-              title: '狀態',
+              title: 'Status',
               key: 'st',
               render: (_, row) =>
                 row.lottery_executed_at ? (
-                  <Tag color="green">已執行 ({row.lottery_executed_at})</Tag>
+                  <Tag color="green">Completed ({row.lottery_executed_at})</Tag>
                 ) : (
-                  <Tag color="orange">待執行</Tag>
+                  <Tag color="orange">Pending</Tag>
                 )
             },
             {
-              title: '待抽籤人數（已報名）',
+              title: 'Pending lottery (registered)',
               dataIndex: 'registered_pending',
               render: (v) => (v == null ? '—' : v)
             },
             {
-              title: '操作',
+              title: 'Actions',
               key: 'act',
               render: (_, row) => (
                 <Button
@@ -1779,7 +1782,7 @@ const DashboardTab = ({ controller }) => {
                   disabled={!isAdminFull || !!row.lottery_executed_at || !selectedEventId}
                   onClick={() => handleRunLottery(row.session_id, row.title)}
                 >
-                  執行抽籤
+                  Run lottery
                 </Button>
               )
             }

@@ -41,10 +41,10 @@ const BackgroundMusic = () => {
   };
 
   const tip = autoplayBlocked
-    ? '瀏覽器阻擋自動播放，請點此啟用背景音樂'
+    ? 'Autoplay blocked. Click to enable background music.'
     : enabled
-      ? '關閉背景音樂'
-      : '開啟背景音樂';
+      ? 'CloseBackground music'
+      : 'Enable background music';
 
   return (
     <div className="bgm-control">

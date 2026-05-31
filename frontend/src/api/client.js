@@ -1,7 +1,16 @@
 import axios from 'axios';
 
+const trimTrailingSlashes = (value) => {
+  const text = String(value || '').trim();
+  let end = text.length;
+  while (end > 0 && text[end - 1] === '/') {
+    end -= 1;
+  }
+  return end === text.length ? text : text.slice(0, end);
+};
+
 const normalizeApiBase = (rawUrl) => {
-  const trimmed = String(rawUrl || '').trim().replace(/\/+$/, '');
+  const trimmed = trimTrailingSlashes(rawUrl);
   if (!trimmed) {
     return '';
   }
@@ -17,7 +26,7 @@ const resolveDefaultApiBase = () => {
 
 const resolveWsBase = (apiBaseUrl) => {
   if (import.meta.env.VITE_WS_BASE_URL) {
-    return String(import.meta.env.VITE_WS_BASE_URL).trim().replace(/\/+$/, '');
+    return trimTrailingSlashes(import.meta.env.VITE_WS_BASE_URL);
   }
   try {
     const api = new URL(apiBaseUrl);
@@ -61,14 +70,14 @@ const normalizeError = (error) => {
     return {
       error: {
         code: 'NETWORK_ERROR',
-        message: '連線失敗，請確認前後端服務與網路設定'
+        message: 'Connection failed. Check frontend/backend services and network settings.'
       }
     };
   }
   return {
     error: {
       code: 'UNKNOWN_ERROR',
-      message: error?.message || '發生未知錯誤'
+      message: error?.message || 'An unknown error occurred'
     }
   };
 };
@@ -238,7 +247,7 @@ class APIClient {
         httpStatus: 401,
         error: {
           code: 'REFRESH_TOKEN_INVALID',
-          message: 'Refresh token 無效或已撤銷',
+          message: 'Refresh token is invalid or revoked',
           details: {}
         }
       };
@@ -287,12 +296,12 @@ class APIClient {
     return this.client.post('/registrations', payload);
   }
 
-  /** 後端若支援：將已取消／棄權之報名改回有效並更新票種 */
+  /** Backend optional: resume cancelled/forfeited registration with new ticket type */
   async patchRegistration(registrationId, payload) {
     return this.client.patch(`/registrations/${registrationId}`, payload);
   }
 
-  /** 後端若支援：同上，部分部署使用 subresource */
+  /** Backend optional: same behavior via subresource on some deployments */
   async resumeRegistration(registrationId, payload) {
     return this.client.post(`/registrations/${registrationId}/resume`, payload);
   }
@@ -369,7 +378,7 @@ class APIClient {
     return this.client.post(`/admin/events/${eventId}/publish`);
   }
 
-  /** 手動抽籤主路徑與 lottery-runner 使用同一套後端邏輯。 */
+  /** Manual lottery uses the same backend logic as lottery-runner. */
   async adminRunLottery(sessionId) {
     return this.client.post(`/admin/sessions/${sessionId}/run-lottery`);
   }

@@ -23,7 +23,7 @@ const OIDCCallbackPage = () => {
     const state = search.get('state');
 
     if (!code || !state) {
-      setError('缺少 OIDC callback 參數 code/state。');
+      setError('Missing OIDC callback parameters code/state.');
       return;
     }
 
@@ -35,7 +35,7 @@ const OIDCCallbackPage = () => {
         navigate(getPostLoginRedirectPath(loggedInUser, redirectPath), { replace: true });
       })
       .catch((e) => {
-        setError(e?.error?.message || e?.message || 'OIDC 登入失敗，請重新登入');
+        setError(e?.error?.message || e?.message || 'OIDC sign-in failed. Please sign in again.');
       });
   }, [search, finishOIDCLogin, navigate]);
 
@@ -43,11 +43,11 @@ const OIDCCallbackPage = () => {
     <div className="page-wrap centered-page">
       <Card>
         {error ? (
-          <Alert type="error" message="登入失敗" description={error} />
+          <Alert type="error" message="Sign-in failed" description={error} />
         ) : (
           <div style={{ textAlign: 'center' }}>
             <Spin size="large" />
-            <Paragraph style={{ marginTop: 16 }}>正在完成登入，請稍候...</Paragraph>
+            <Paragraph style={{ marginTop: 16 }}>Completing sign-in, please wait…</Paragraph>
           </div>
         )}
       </Card>

@@ -7,7 +7,7 @@ const { Title, Paragraph, Text } = Typography;
 
 const ENDPOINT_GROUPS = [
   {
-    title: 'Auth / 身分驗證',
+    title: 'Auth / identity',
     items: [
       'GET /auth/oidc/authorize-url',
       'POST /auth/oidc/callback',
@@ -17,13 +17,13 @@ const ENDPOINT_GROUPS = [
     ]
   },
   {
-    title: '員工端',
+    title: 'Employee APIs',
     items: [
       'GET /events',
       'GET /events/{event_id}',
       'POST /registrations',
-      'PATCH /registrations/{id}（可選：取消後復原報名）',
-      'POST /registrations/{id}/resume（可選：同上）',
+      'PATCH /registrations/{id} (optional resume after cancel)',
+      'POST /registrations/{id}/resume (optional, same as above)',
       'DELETE /registrations/{id}',
       'POST /registrations/{id}/forfeit',
       'POST /registrations/{id}/confirm',
@@ -33,23 +33,23 @@ const ENDPOINT_GROUPS = [
     ]
   },
   {
-    title: '驗票端',
+    title: 'Ticket verification',
     items: [
       'POST /verify/ticket'
     ]
   },
   {
-    title: '通知與即時',
+    title: 'Notifications and realtime',
     items: [
       'GET /notifications',
       'GET /notifications/unread-count',
       'POST /notifications/{id}/read',
       'POST /notifications/mark-all-read',
-      'WS /ws (auth / ping / pong / 重連補拉)'
+      'WS /ws (auth / ping / pong / reconnect catch-up)'
     ]
   },
   {
-    title: '管理員',
+    title: 'Admin APIs',
     items: [
       'POST /admin/events',
       'PATCH /admin/events/{id}',
@@ -106,7 +106,7 @@ const ApiExplorerPage = () => {
         };
         const timer = globalThis.setTimeout(() => {
           ws.close();
-          finish({ ok: false, detail: '逾時（10 秒內未收到 auth_ok）' });
+          finish({ ok: false, detail: 'Timed out (no auth_ok within 10 seconds)' });
         }, 10000);
 
         ws.onopen = () => {
@@ -118,7 +118,7 @@ const ApiExplorerPage = () => {
           if (msg.type === 'auth_ok') {
             ws.close();
             globalThis.clearTimeout(timer);
-            finish({ ok: true, detail: '收到 auth_ok' });
+            finish({ ok: true, detail: 'Received auth_ok' });
           } else if (msg.type === 'ping') {
             ws.send(JSON.stringify({ type: 'pong' }));
           }
@@ -126,7 +126,7 @@ const ApiExplorerPage = () => {
 
         ws.onerror = () => {
           globalThis.clearTimeout(timer);
-          finish({ ok: false, detail: '連線錯誤' });
+          finish({ ok: false, detail: 'Connection error' });
         };
       });
 
@@ -142,7 +142,7 @@ const ApiExplorerPage = () => {
         wsResult
       });
     } catch (e) {
-      setError(e?.error?.message || '檢查失敗，請確認已登入且後端已啟動');
+      setError(e?.error?.message || 'Checks failed. Sign in and ensure the backend is running.');
       setReport(null);
     } finally {
       setChecking(false);
@@ -161,44 +161,44 @@ const ApiExplorerPage = () => {
       if (isAdmin) {
         try {
           const site = await apiClient.adminGetSiteEmployeeCount(['HSINCHU', 'TAINAN']);
-          next.siteEmployeeCount = { ok: true, detail: `總數 ${site?.data?.total ?? 0}` };
+          next.siteEmployeeCount = { ok: true, detail: `Total ${site?.data?.total ?? 0}` };
         } catch (e) {
-          next.siteEmployeeCount = { ok: false, detail: e?.error?.message || '失敗' };
+          next.siteEmployeeCount = { ok: false, detail: e?.error?.message || 'Failed' };
         }
 
         try {
           const events = await apiClient.getEvents({ scope: 'all', page: 1, page_size: 5 });
           const firstId = events?.data?.items?.[0]?.id;
           if (!firstId) {
-            next.adminDashboard = { ok: false, detail: '沒有可測試的活動' };
-            next.adminRegistrations = { ok: false, detail: '沒有可測試的活動' };
+            next.adminDashboard = { ok: false, detail: 'No testable events' };
+            next.adminRegistrations = { ok: false, detail: 'No testable events' };
           } else {
             const [dashboard, regs] = await Promise.all([
               apiClient.adminGetDashboard(firstId),
               apiClient.adminGetRegistrations(firstId, { page: 1, page_size: 5, mask_pii: true })
             ]);
-            next.adminDashboard = { ok: true, detail: `活動 ${firstId}，場次 ${dashboard?.data?.sessions_lottery?.length || 0}` };
-            next.adminRegistrations = { ok: true, detail: `取回 ${(regs?.data?.items || []).length} 筆` };
+            next.adminDashboard = { ok: true, detail: `Event ${firstId}, sessions ${dashboard?.data?.sessions_lottery?.length || 0}` };
+            next.adminRegistrations = { ok: true, detail: `Fetched ${(regs?.data?.items || []).length} records` };
           }
         } catch (e) {
-          next.adminDashboard = { ok: false, detail: e?.error?.message || '失敗' };
-          next.adminRegistrations = { ok: false, detail: e?.error?.message || '失敗' };
+          next.adminDashboard = { ok: false, detail: e?.error?.message || 'Failed' };
+          next.adminRegistrations = { ok: false, detail: e?.error?.message || 'Failed' };
         }
       }
 
       if (isVerifier) {
         try {
           await apiClient.verifyTicket({ qr_payload: 'debug-invalid-payload', device_id: 'API_EXPLORER' });
-          next.verifyTicket = { ok: true, detail: '驗票 API 可呼叫' };
+          next.verifyTicket = { ok: true, detail: 'Verify API reachable' };
         } catch (e) {
-          const msg = e?.error?.message || '回應錯誤';
-          next.verifyTicket = { ok: true, detail: `API 可達（預期錯誤：${msg}）` };
+          const msg = e?.error?.message || 'Response error';
+          next.verifyTicket = { ok: true, detail: `API reachable (expected error: ${msg}）` };
         }
       }
 
       setAdvancedReport(next);
     } catch (e) {
-      setError(e?.error?.message || '進階檢查失敗');
+      setError(e?.error?.message || 'Advanced checks failed');
       setAdvancedReport(null);
     } finally {
       setAdvancedChecking(false);
@@ -208,19 +208,19 @@ const ApiExplorerPage = () => {
   return (
     <div className="page-wrap">
       <Card className="hero-card">
-        <Title level={2}>後端 API 完整探索與整合驗證</Title>
+        <Title level={2}>Backend API explorer and integration checks</Title>
         <Paragraph>
-          此頁依 `frontend-api.md` 對照目前前端實作，並提供一鍵健康檢查（`/auth/me` + WebSocket + OpenAPI）。
+          This page maps frontend-api.md to the current frontend and provides one-click health checks (/auth/me, WebSocket, OpenAPI).
         </Paragraph>
         <Space wrap>
           <Button type="primary" onClick={runChecks} loading={checking} disabled={!user}>
-            一鍵執行整合檢查
+            Run integration checks
           </Button>
           <Button onClick={runAdvancedChecks} loading={advancedChecking} disabled={!user}>
-            進階 API 檢查
+            Run advanced API checks
           </Button>
           <Tag color={user ? 'green' : 'orange'}>
-            {user ? `目前角色：${user.role}` : '請先登入後再檢查'}
+            {user ? `Current role: ${user.role}` : 'Sign in before running checks'}
           </Tag>
         </Space>
       </Card>
@@ -229,30 +229,30 @@ const ApiExplorerPage = () => {
 
       {report ? (
         <Card style={{ marginTop: 16 }}>
-          <Descriptions title="檢查結果" bordered column={1}>
+          <Descriptions title="Check results" bordered column={1}>
             <Descriptions.Item label="/auth/me">
-              <Tag color="green">成功</Tag> {report.me.name}（{report.me.role}）
+              <Tag color="green">Success</Tag> {report.me.name}（{report.me.role}）
             </Descriptions.Item>
             <Descriptions.Item label="/events?scope=all">
-              <Text>總數 {report.eventsTotal}、本頁取回 {report.eventsVisible}</Text>
+              <Text>Total {report.eventsTotal}, fetched on page {report.eventsVisible}</Text>
             </Descriptions.Item>
             <Descriptions.Item label="/notifications/unread-count">
-              <Text>未讀 {report.unread}</Text>
+              <Text>Unread {report.unread}</Text>
             </Descriptions.Item>
             <Descriptions.Item label="/notifications">
-              <Text>取回 {report.notificationsFetched} 筆</Text>
+              <Text>Fetched {report.notificationsFetched} records</Text>
             </Descriptions.Item>
             <Descriptions.Item label="/me/registrations">
-              <Text>取回 {report.myRegsFetched} 筆</Text>
+              <Text>Fetched {report.myRegsFetched} records</Text>
             </Descriptions.Item>
             <Descriptions.Item label="/me/tickets">
-              <Text>取回 {report.myTicketsFetched} 筆</Text>
+              <Text>Fetched {report.myTicketsFetched} records</Text>
             </Descriptions.Item>
             <Descriptions.Item label="WebSocket">
-              <Tag color={report.wsResult.ok ? 'green' : 'red'}>{report.wsResult.ok ? '成功' : '失敗'}</Tag> {report.wsResult.detail}
+              <Tag color={report.wsResult.ok ? 'green' : 'red'}>{report.wsResult.ok ? 'Success' : 'Failed'}</Tag> {report.wsResult.detail}
             </Descriptions.Item>
             <Descriptions.Item label="/api/openapi.json">
-              <Tag color={report.openapiOk ? 'green' : 'orange'}>{report.openapiOk ? '可存取' : '不可存取'}</Tag>
+              <Tag color={report.openapiOk ? 'green' : 'orange'}>{report.openapiOk ? 'Available' : 'Unavailable'}</Tag>
             </Descriptions.Item>
           </Descriptions>
         </Card>
@@ -260,10 +260,10 @@ const ApiExplorerPage = () => {
 
       {advancedReport ? (
         <Card style={{ marginTop: 16 }}>
-          <Descriptions title="進階檢查結果" bordered column={1}>
+          <Descriptions title="Advanced check results" bordered column={1}>
             {Object.entries(advancedReport).map(([key, value]) => (
               <Descriptions.Item key={key} label={key}>
-                <Tag color={value.ok ? 'green' : 'orange'}>{value.ok ? '成功' : '注意'}</Tag> {value.detail}
+                <Tag color={value.ok ? 'green' : 'orange'}>{value.ok ? 'Success' : 'Attention'}</Tag> {value.detail}
               </Descriptions.Item>
             ))}
           </Descriptions>
@@ -280,7 +280,7 @@ const ApiExplorerPage = () => {
                 renderItem={(item) => (
                   <List.Item>
                     <Space>
-                      <Tag color="blue">已串接</Tag>
+                      <Tag color="blue">Integrated</Tag>
                       <Text code>{item}</Text>
                     </Space>
                   </List.Item>

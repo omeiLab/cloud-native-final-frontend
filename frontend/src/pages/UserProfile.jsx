@@ -14,38 +14,38 @@ const { Title, Paragraph, Text } = Typography;
 const TICKET_QR_IMAGE_SIZE = 640;
 const TICKET_QR_MARGIN_MODULES = 4;
 
-const normalizeTicketTypeLabel = (name, fallbackId = '') => {
+export const normalizeTicketTypeLabel = (name, fallbackId = '') => {
   const text = String(name || '');
-  if (/成人/.test(text)) return '成人';
-  if (/兒童/.test(text)) return '兒童';
+  if (/Adult/.test(text)) return 'Adult';
+  if (/Child/.test(text)) return 'Child';
   return text || fallbackId || '-';
 };
 
-const buildFallbackEventTitle = (reg) => {
+export const buildFallbackEventTitle = (reg) => {
   if (reg?.event_id) {
-    return `活動 ${reg.event_id}`;
+    return `Event ${reg.event_id}`;
   }
   if (reg?.session_id) {
-    return `活動（場次 ${reg.session_id}）`;
+    return `Event (session ${reg.session_id})`;
   }
-  return '活動資訊待同步';
+  return 'Event details pending sync';
 };
 
-const getQrSecondsRemaining = (expiresAt) => {
+export const getQrSecondsRemaining = (expiresAt) => {
   if (!expiresAt) return null;
   return Math.max(dayjs(expiresAt).diff(dayjs(), 'second'), 0);
 };
 
-const formatQrCountdown = (seconds) => {
-  if (seconds === null) return '倒數計算中';
-  if (seconds <= 0) return '更新中';
+export const formatQrCountdown = (seconds) => {
+  if (seconds === null) return 'Calculating countdown';
+  if (seconds <= 0) return 'Refreshing';
   const minutes = Math.floor(seconds / 60);
   const remainingSeconds = String(seconds % 60).padStart(2, '0');
-  return `剩餘 ${minutes}:${remainingSeconds}`;
+  return `Remaining ${minutes}:${remainingSeconds}`;
 };
 
-/** 通知 title 常為「前綴 — 活動名」；payload.event_title 若有則優先 */
-const eventTitleFromNotification = (item) => {
+/** Prefer payload.event_title; notification titles often use "prefix — event name". */
+export const eventTitleFromNotification = (item) => {
   const p = item?.payload || {};
   const direct = typeof p.event_title === 'string' ? p.event_title.trim() : '';
   if (direct) return direct;
@@ -60,9 +60,9 @@ const eventTitleFromNotification = (item) => {
 };
 
 /**
- * 活動已從列表消失（例如管理員取消）時，getEvents 無法補全；用通知 payload 對齊 registration_id / session_id。
+ * When an event disappears from the list (for example after admin cancellation), getEvents cannot backfill titles; align via notification payload registration_id / session_id.
  */
-const enrichRegistrationsFromNotifications = (regs, notificationItems) => {
+export const enrichRegistrationsFromNotifications = (regs, notificationItems) => {
   if (!regs.length || !notificationItems.length) return regs;
   const byRegistrationId = new Map();
   const bySessionId = new Map();
@@ -114,7 +114,7 @@ const initialTicketQrModalState = {
   copyingPayload: false
 };
 
-const ticketQrModalReducer = (state, action) => {
+export const ticketQrModalReducer = (state, action) => {
   switch (action.type) {
     case 'loaded':
       return {
@@ -176,7 +176,7 @@ const TicketQrModal = memo(({ ticketId, onClose }) => {
         }
       } catch (e) {
         if (!cancelled) {
-          message.warning(e?.error?.message || '此票券目前無法產生 QR');
+          message.warning(e?.error?.message || 'This ticket cannot generate a QR code right now');
           dispatch({ type: 'reset' });
           onClose();
         }
@@ -211,7 +211,7 @@ const TicketQrModal = memo(({ ticketId, onClose }) => {
   const copyQrPayload = useCallback(async () => {
     const payload = qrData?.qr_payload;
     if (!payload) {
-      message.warning('尚未取得 QR payload');
+      message.warning('QR payload is not available yet');
       return;
     }
     dispatch({ type: 'copyingUpdated', copyingPayload: true });
@@ -228,9 +228,9 @@ const TicketQrModal = memo(({ ticketId, onClose }) => {
         document.execCommand('copy');
         document.body.removeChild(el);
       }
-      message.success('已複製 QR payload，可貼到「驗票端」備援核銷');
+      message.success('QR payload copied. Paste it into manual verification on the verifier portal.');
     } catch {
-      message.error('複製失敗，請手動長按選取或改用電腦瀏覽器');
+      message.error('Copy failed. Select manually or use a desktop browser.');
     } finally {
       dispatch({ type: 'copyingUpdated', copyingPayload: false });
     }
@@ -238,7 +238,7 @@ const TicketQrModal = memo(({ ticketId, onClose }) => {
 
   return (
     <Modal
-      title="票券詳情"
+      title="Ticket details"
       open={open}
       onCancel={handleClose}
       footer={null}
@@ -256,7 +256,7 @@ const TicketQrModal = memo(({ ticketId, onClose }) => {
                   icon={fullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
                   onClick={() => dispatch({ type: 'fullscreenToggled' })}
                 >
-                  {fullscreen ? '退出全螢幕' : '全螢幕展示'}
+                  {fullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
                 </Button>
                 <Button
                   type="primary"
@@ -264,13 +264,13 @@ const TicketQrModal = memo(({ ticketId, onClose }) => {
                   loading={copyingPayload}
                   onClick={copyQrPayload}
                 >
-                  複製 QR payload
+                  Copy QR payload
                 </Button>
               </div>
               <div className="ticket-summary-panel">
                 <QrcodeOutlined className="ticket-summary-icon" />
                 <div className="ticket-summary-copy">
-                  <Text className="ticket-summary-label">QR 倒數</Text>
+                  <Text className="ticket-summary-label">QR countdown</Text>
                   <Text strong className="ticket-summary-countdown">
                     {formatQrCountdown(qrSecondsRemaining)}
                   </Text>
@@ -299,7 +299,7 @@ const TicketCard = memo(({ ticket, registration, onOpenTicket, onForfeitTicket }
 
   const handleOpen = useCallback(() => {
     if (!canShowQr) {
-      message.warning(`票券狀態為 ${ticket.status}，無法產生 QR`);
+      message.warning(`Ticket status is ${ticket.status}, cannot generate QR code`);
       return;
     }
     onOpenTicket(ticket.id);
@@ -317,24 +317,24 @@ const TicketCard = memo(({ ticket, registration, onOpenTicket, onForfeitTicket }
       </Paragraph>
       <Paragraph type="secondary" style={{ marginBottom: 8 }}>
         {(registration?.session_title || ticket.session_title)
-          ? `場次：${registration?.session_title || ticket.session_title}`
+          ? `Session：${registration?.session_title || ticket.session_title}`
           : null}
         {(registration?.ticket_type_name || ticket.ticket_type_name || registration?.ticket_type_id || ticket.ticket_type_id)
-          ? `　票種：${normalizeTicketTypeLabel(
+          ? `　Ticket type：${normalizeTicketTypeLabel(
             registration?.ticket_type_name || ticket.ticket_type_name,
             registration?.ticket_type_id || ticket.ticket_type_id
           )}`
           : null}
       </Paragraph>
       <Paragraph>
-        狀態：
+        Status：
         <Tag color={ticket.status === 'ISSUED' ? 'green' : 'default'}>
           {labelOr(TICKET_STATUS_LABELS, ticket.status, ticket.status)}
         </Tag>
       </Paragraph>
-      <Paragraph type="secondary">發行時間: {dayjs(ticket.issued_at).format('YYYY-MM-DD HH:mm')}</Paragraph>
+      <Paragraph type="secondary">Issued at:  {dayjs(ticket.issued_at).format('YYYY-MM-DD HH:mm')}</Paragraph>
       <Button danger size="small" onClick={handleForfeit} disabled={!canForfeit}>
-        放棄票券
+        Forfeit ticket
       </Button>
     </Card>
   );
@@ -345,7 +345,7 @@ const TicketsPanel = memo(({ loading, tickets, registrationById, onOpenTicket, o
     {loading ? (
       <TabsLoading />
     ) : !tickets.length ? (
-      <Empty description="暫無票券" />
+      <Empty description="No tickets yet" />
     ) : (
       <Row gutter={[16, 16]}>
         {tickets.map((ticket) => (
@@ -368,7 +368,7 @@ const RegistrationsPanel = memo(({ loading, registrations }) => (
     {loading ? (
       <TabsLoading />
     ) : registrations.length === 0 ? (
-      <Empty description="暫無報名記錄" />
+      <Empty description="No registration records yet" />
     ) : (
       <List
         dataSource={registrations}
@@ -384,9 +384,9 @@ const RegistrationsPanel = memo(({ loading, registrations }) => (
               title={reg.event_title || buildFallbackEventTitle(reg)}
               description={
                 <Space direction="vertical" size={0}>
-                  <span>場次：{reg.session_title || reg.session_id}</span>
-                  <span>票種：{normalizeTicketTypeLabel(reg.ticket_type_name, reg.ticket_type_id)}</span>
-                  <span>建立時間: {dayjs(reg.created_at).format('YYYY-MM-DD HH:mm')}</span>
+                  <span>Session：{reg.session_title || reg.session_id}</span>
+                  <span>Ticket type：{normalizeTicketTypeLabel(reg.ticket_type_name, reg.ticket_type_id)}</span>
+                  <span>Created at: {dayjs(reg.created_at).format('YYYY-MM-DD HH:mm')}</span>
                 </Space>
               }
             />
@@ -409,16 +409,16 @@ const ProfileHeader = memo(({ user, ticketCount, onLogout }) => (
         <Tag>{user?.role}</Tag>
         <br />
         <Button type="primary" danger style={{ marginTop: 16 }} onClick={onLogout}>
-          登出
+          Sign out
         </Button>
       </Col>
       <Col xs={24} md={16}>
-        <Descriptions title="員工資訊" column={1}>
-          <Descriptions.Item label="員工編號">{user?.employee_id}</Descriptions.Item>
-          <Descriptions.Item label="部門">{user?.department || '-'}</Descriptions.Item>
-          <Descriptions.Item label="廠區">{user?.site}</Descriptions.Item>
-          <Descriptions.Item label="帳號狀態">{user?.status}</Descriptions.Item>
-          <Descriptions.Item label="可用票券">{ticketCount}</Descriptions.Item>
+        <Descriptions title="Employee info" column={1}>
+          <Descriptions.Item label="Employee ID">{user?.employee_id}</Descriptions.Item>
+          <Descriptions.Item label="Department">{user?.department || '-'}</Descriptions.Item>
+          <Descriptions.Item label="Site">{user?.site}</Descriptions.Item>
+          <Descriptions.Item label="Account status">{user?.status}</Descriptions.Item>
+          <Descriptions.Item label="Available tickets">{ticketCount}</Descriptions.Item>
         </Descriptions>
       </Col>
     </Row>
@@ -516,7 +516,7 @@ const UserProfile = () => {
             };
           });
 
-          // 票券列表可能比報名列表更完整（例如分頁/舊資料），用 session_id / ticket_type_id 補齊顯示資訊。
+          // Ticket list may be more complete than registrations; enrich display via session_id / ticket_type_id.
           enrichedTickets = ticketItems.map((t) => {
             const sessionMeta = sessionMap.get(t.session_id);
             const inferredTicketTypeName = ticketTypeMap.get(t.ticket_type_id);
@@ -548,7 +548,7 @@ const UserProfile = () => {
       setRegistrations(enrichedRegistrations);
       setTickets(enrichedTickets);
     } catch (err) {
-      message.error(err?.error?.message || '載入個人資料失敗');
+      message.error(err?.error?.message || 'Failed to load profile data');
     } finally {
       setLoading(false);
     }
@@ -567,22 +567,22 @@ const UserProfile = () => {
   const handleForfeitTicket = useCallback((ticket) => {
     const registrationId = ticket?.registration_id;
     if (!registrationId) {
-      message.warning('此票券缺少 registration_id，暫時無法放棄');
+      message.warning('This ticket is missing registration_id and cannot be forfeited yet');
       return;
     }
     Modal.confirm({
-      title: '確認放棄票券',
-      content: '放棄後名額會回流；若尚未超過候補截止時間，系統會嘗試遞補候補者。確定要放棄嗎？',
-      okText: '確認放棄',
-      cancelText: '取消',
+      title: 'Confirm ticket forfeit',
+      content: 'Forfeiting releases quota. If waitlist is still open, the system may promote waitlisted users. Continue?',
+      okText: 'Confirm forfeit',
+      cancelText: 'Cancel',
       okButtonProps: { danger: true },
       onOk: async () => {
         try {
           await apiClient.forfeitRegistration(registrationId);
-          message.success('已放棄票券，名額已回流');
+          message.success('Ticket forfeited and quota released');
           await loadData();
         } catch (e) {
-          message.error(e?.error?.message || '目前狀態不可放棄，請聯繫管理員');
+          message.error(e?.error?.message || 'Ticket cannot be forfeited in this status. Contact an admin.');
         }
       }
     });
@@ -601,7 +601,7 @@ const UserProfile = () => {
       key: 'tickets',
       label: (
         <span>
-          <QrcodeOutlined /> 我的票匣
+          <QrcodeOutlined /> My tickets
         </span>
       ),
       children: (
@@ -618,7 +618,7 @@ const UserProfile = () => {
       key: 'registrations',
       label: (
         <span>
-          <CheckCircleOutlined /> 我的報名
+          <CheckCircleOutlined /> My registrations
         </span>
       ),
       children: <RegistrationsPanel loading={loading} registrations={registrations} />

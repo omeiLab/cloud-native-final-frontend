@@ -15,24 +15,24 @@ import { useAuth } from '../context/AuthContext';
 import { pickEventImage, resolvePublicAssetUrl } from '../assets/media';
 import '../styles/EventsList.css';
 
-const LOGIN_ERROR_MESSAGE = '登入失敗，請確認後端服務是否正常';
+const LOGIN_ERROR_MESSAGE = 'Sign-in failed. Verify that backend services are running.';
 const { Title, Paragraph } = Typography;
 
 const ALL_FILTER_VALUE = 'all';
 
 const STATUS_FILTER_OPTIONS = [
-  { label: '全部活動', value: ALL_FILTER_VALUE },
-  { label: '可報名', value: 'open' },
-  { label: '未開放/已截止', value: 'closed' },
-  { label: '不符合資格', value: 'ineligible' },
-  { label: '已取消', value: 'cancelled' }
+  { label: 'All events', value: ALL_FILTER_VALUE },
+  { label: 'Open for registration', value: 'open' },
+  { label: 'Not open / closed', value: 'closed' },
+  { label: 'Ineligible', value: 'ineligible' },
+  { label: 'Cancelled', value: 'cancelled' }
 ];
 
 const DATE_FILTER_OPTIONS = [
-  { label: '所有日期', value: ALL_FILTER_VALUE },
-  { label: '一週內', value: 'week' },
-  { label: '一個月內', value: 'month' },
-  { label: '三個月內', value: 'quarter' }
+  { label: 'All dates', value: ALL_FILTER_VALUE },
+  { label: 'Within one week', value: 'week' },
+  { label: 'Within one month', value: 'month' },
+  { label: 'Within three months', value: 'quarter' }
 ];
 
 const SKELETON_CARD_KEYS = [
@@ -55,19 +55,19 @@ const getEventSearchText = (event) => (
     .toLowerCase()
 );
 
-const isDateInRange = (date, rangeStart, rangeEnd) => (
+export const isDateInRange = (date, rangeStart, rangeEnd) => (
   (date.isAfter(rangeStart) || date.isSame(rangeStart))
   && (date.isBefore(rangeEnd) || date.isSame(rangeEnd))
 );
 
-const resolveDateWindow = (dateWindow) => {
+export const resolveDateWindow = (dateWindow) => {
   if (dateWindow === 'week') return [dayjs().startOf('day'), dayjs().add(7, 'day').endOf('day')];
   if (dateWindow === 'month') return [dayjs().startOf('day'), dayjs().add(1, 'month').endOf('day')];
   if (dateWindow === 'quarter') return [dayjs().startOf('day'), dayjs().add(3, 'month').endOf('day')];
   return null;
 };
 
-const isEventWithinDateWindow = (event, dateWindow) => {
+export const isEventWithinDateWindow = (event, dateWindow) => {
   const range = resolveDateWindow(dateWindow);
   if (!range) return true;
   const [rangeStart, rangeEnd] = range;
@@ -79,6 +79,58 @@ const isEventWithinDateWindow = (event, dateWindow) => {
     || isDateInRange(resolvedEnd, rangeStart, rangeEnd)
     || (eventStart.isBefore(rangeStart) && resolvedEnd.isAfter(rangeEnd));
 };
+
+export const canRegisterEventForRole = (event, role) => {
+  const roleCanRegister = role === 'EMPLOYEE';
+  const isPublished = event.status === 'PUBLISHED';
+  const isRegistrationOpen = Boolean(event.is_registration_open);
+  return roleCanRegister && isPublished && isRegistrationOpen && Boolean(event.is_eligible);
+};
+
+export const getPrimaryEventStatus = (event, role) => {
+  const isPublished = event.status === 'PUBLISHED';
+  const isRegistrationOpen = Boolean(event.is_registration_open);
+  if (event.status === 'CANCELLED') return { label: 'Cancelled', color: 'red' };
+  if (!isPublished) return { label: 'Event not published', color: 'default' };
+  if (role !== 'EMPLOYEE') return { label: 'This role cannot register', color: 'warning' };
+  if (!isRegistrationOpen) return { label: 'Closed / not open', color: 'default' };
+  if (!event.is_eligible) return { label: 'Ineligible', color: 'default' };
+  return { label: 'Open for registration', color: 'success' };
+};
+
+export const getEventStatusFilterValue = (event, role) => {
+  if (event.status === 'CANCELLED') return 'cancelled';
+  if (!event.is_eligible) return 'ineligible';
+  if (canRegisterEventForRole(event, role)) return 'open';
+  return 'closed';
+};
+
+export const filterVisibleEvents = (events, filters, role) => {
+  const term = filters.keyword.trim().toLowerCase();
+  return events.filter((event) => {
+    if (term && !getEventSearchText(event).includes(term)) return false;
+    if (!isEventWithinDateWindow(event, filters.dateWindow)) return false;
+    if (filters.statusFilter !== ALL_FILTER_VALUE && getEventStatusFilterValue(event, role) !== filters.statusFilter) {
+      return false;
+    }
+    return true;
+  });
+};
+
+export const sortVisibleEvents = (events, role) => events.slice().sort((a, b) => {
+  const aCanRegister = canRegisterEventForRole(a, role);
+  const bCanRegister = canRegisterEventForRole(b, role);
+  if (aCanRegister !== bCanRegister) {
+    return bCanRegister - aCanRegister;
+  }
+  const aCreated = dayjs(a.created_at || a.createdAt || 0).valueOf();
+  const bCreated = dayjs(b.created_at || b.createdAt || 0).valueOf();
+  if (aCreated !== bCreated) return bCreated - aCreated;
+  const aUpdated = dayjs(a.updated_at || a.updatedAt || 0).valueOf();
+  const bUpdated = dayjs(b.updated_at || b.updatedAt || 0).valueOf();
+  if (aUpdated !== bUpdated) return bUpdated - aUpdated;
+  return String(a.id || '').localeCompare(String(b.id || ''));
+});
 
 const EventCard = ({ event, primaryStatus, onOpen }) => {
   const startDate = dayjs(event.starts_at);
@@ -112,37 +164,37 @@ const EventCard = ({ event, primaryStatus, onOpen }) => {
         </div>
 
         <Paragraph className="event-description" ellipsis={{ rows: 2 }}>
-          開放廠區：{event.allowed_sites?.length ? event.allowed_sites.join(', ') : '全廠區'}
+          Allowed sites：{event.allowed_sites?.length ? event.allowed_sites.join(', ') : 'All sites'}
         </Paragraph>
 
         <div className="event-details">
           <div className="detail-item">
             <CalendarOutlined />
-            <span>活動時間：{startDate.format('YYYY-MM-DD HH:mm')}</span>
+            <span>Event starts: {startDate.format('YYYY-MM-DD HH:mm')}</span>
           </div>
           <div className="detail-item">
             <ClockCircleOutlined />
-            <span>活動結束：{event.ends_at ? dayjs(event.ends_at).format('YYYY-MM-DD HH:mm') : '未設定'}</span>
+            <span>Event ends: {event.ends_at ? dayjs(event.ends_at).format('YYYY-MM-DD HH:mm') : 'Not set'}</span>
           </div>
           <div className="detail-item">
             <EnvironmentOutlined />
-            <span>{event.venue || '依場次公告'}</span>
+            <span>{event.venue || 'See session announcement'}</span>
           </div>
           <div className="detail-item">
             <TeamOutlined />
-            <span>場次 {event.session_count}</span>
+            <span>Session {event.session_count}</span>
           </div>
         </div>
 
         <div className="event-footer">
           <span className="event-footer-note">
-            報名截止：{event.registration_closes_at ? dayjs(event.registration_closes_at).format('MM/DD HH:mm') : '未設定'}
+            Registration closes：{event.registration_closes_at ? dayjs(event.registration_closes_at).format('MM/DD HH:mm') : 'Not set'}
           </span>
           <Button type="primary" onClick={(e) => {
             e.stopPropagation();
             onOpen(event.id);
           }}>
-            查看詳情
+            View details
           </Button>
         </div>
       </div>
@@ -223,11 +275,11 @@ const EventsList = () => {
         return {
           ...item,
           registration_closes_at: registrationClosesAt,
-          venue: item.venue || firstSession?.venue || '依場次公告',
+          venue: item.venue || firstSession?.venue || 'See session announcement',
           ends_at: item.ends_at || derivedEndsAt || null,
           remaining_quota: Number.isFinite(remainingQuota) ? remainingQuota : 0,
           is_registration_open: item.is_registration_open ?? derivedIsOpen,
-          // is_eligible 以後端 /events 為準；僅在缺值時才用場次狀態推導做保守兜底
+          // Prefer backend is_eligible; derive from session status only when missing
           is_eligible: resolvedIsEligible
         };
       });
@@ -239,9 +291,9 @@ const EventsList = () => {
         || err?.detail
         || '';
       if (/401|unauth|not authenticated|token/i.test(msg)) {
-        setError('尚未登入或登入已過期，請點右上角「登入」後重試。');
+        setError('You are not signed in or your session expired. Sign in and try again.');
       } else {
-        setError(msg || '無法載入活動列表');
+        setError(msg || 'Failed to load event list');
       }
       setEvents([]);
     } finally {
@@ -254,55 +306,24 @@ const EventsList = () => {
     fetchEvents();
   }, [fetchEvents, user]);
 
-  const canRegisterEvent = useCallback((event) => {
-    const roleCanRegister = user?.role === 'EMPLOYEE';
-    const isPublished = event.status === 'PUBLISHED';
-    const isRegistrationOpen = Boolean(event.is_registration_open);
-    return roleCanRegister && isPublished && isRegistrationOpen && Boolean(event.is_eligible);
-  }, [user?.role]);
+  const canRegisterEvent = useCallback((event) => canRegisterEventForRole(event, user?.role), [user?.role]);
 
-  const getPrimaryStatus = useCallback((event) => {
-    const isPublished = event.status === 'PUBLISHED';
-    const isRegistrationOpen = Boolean(event.is_registration_open);
-    if (event.status === 'CANCELLED') return { label: '已取消', color: 'red' };
-    if (!isPublished) return { label: '活動未發布', color: 'default' };
-    if (user?.role !== 'EMPLOYEE') return { label: '此身分不可報名', color: 'warning' };
-    if (!isRegistrationOpen) return { label: '已截止/未開放', color: 'default' };
-    if (!event.is_eligible) return { label: '不符合資格', color: 'default' };
-    return { label: '可報名', color: 'success' };
-  }, [user?.role]);
+  const getPrimaryStatus = useCallback((event) => getPrimaryEventStatus(event, user?.role), [user?.role]);
 
-  const getStatusFilterValue = useCallback((event) => {
-    if (event.status === 'CANCELLED') return 'cancelled';
-    if (!event.is_eligible) return 'ineligible';
-    if (canRegisterEvent(event)) return 'open';
-    return 'closed';
-  }, [canRegisterEvent]);
+  const getStatusFilterValue = useCallback(
+    (event) => getEventStatusFilterValue(event, user?.role),
+    [user?.role]
+  );
 
-  const visibleEvents = useMemo(() => {
-    const term = keyword.trim().toLowerCase();
-    return events.filter((event) => {
-      if (term && !getEventSearchText(event).includes(term)) return false;
-      if (!isEventWithinDateWindow(event, dateWindow)) return false;
-      if (statusFilter !== ALL_FILTER_VALUE && getStatusFilterValue(event) !== statusFilter) return false;
-      return true;
-    });
-  }, [dateWindow, events, getStatusFilterValue, keyword, statusFilter]);
+  const visibleEvents = useMemo(
+    () => filterVisibleEvents(events, filters, user?.role),
+    [events, filters, user?.role]
+  );
 
-  const sortedVisibleEvents = useMemo(() => visibleEvents.slice().sort((a, b) => {
-    const aCanRegister = canRegisterEvent(a);
-    const bCanRegister = canRegisterEvent(b);
-    if (aCanRegister !== bCanRegister) {
-      return bCanRegister - aCanRegister;
-    }
-    const aCreated = dayjs(a.created_at || a.createdAt || 0).valueOf();
-    const bCreated = dayjs(b.created_at || b.createdAt || 0).valueOf();
-    if (aCreated !== bCreated) return bCreated - aCreated;
-    const aUpdated = dayjs(a.updated_at || a.updatedAt || 0).valueOf();
-    const bUpdated = dayjs(b.updated_at || b.updatedAt || 0).valueOf();
-    if (aUpdated !== bUpdated) return bUpdated - aUpdated;
-    return String(b.id || '').localeCompare(String(a.id || ''));
-  }), [canRegisterEvent, visibleEvents]);
+  const sortedVisibleEvents = useMemo(
+    () => sortVisibleEvents(visibleEvents, user?.role),
+    [user?.role, visibleEvents]
+  );
 
   const eligibleCount = useMemo(
     () => events.filter((event) => canRegisterEvent(event)).length,
@@ -355,25 +376,25 @@ const EventsList = () => {
         </Card>
       ) : !user ? (
         <Card className="events-hero hero-card guest-hero">
-          <Title level={2}>台積電晶彩活動通</Title>
+          <Title level={2}>CETS Events</Title>
           <Button
             type="primary"
             size="large"
             className="guest-login-button"
             onClick={handleLogin}
           >
-            登入
+            Sign in
           </Button>
         </Card>
       ) : (
         <Card className="events-hero hero-card">
-          <Title level={2}>活動目錄</Title>
+          <Title level={2}>Event catalog</Title>
           <Paragraph>
-            以公平抽籤、即時通知與電子票券串起員工活動流程。選擇合適場次後即可進入報名與票券狀態追蹤。
+            Fair lotteries, realtime notifications, and digital tickets for employee events. Pick a session to register and track ticket status.
           </Paragraph>
           <div className="hero-stats">
-            <div><strong>{events.length}</strong><span>活動總數</span></div>
-            <div><strong>{eligibleCount}</strong><span>符合資格</span></div>
+            <div><strong>{events.length}</strong><span>Total events</span></div>
+            <div><strong>{eligibleCount}</strong><span>Eligible</span></div>
           </div>
         </Card>
       )}
@@ -384,23 +405,23 @@ const EventsList = () => {
             <div className="events-filter-row">
               <Input
                 className="events-search"
-                aria-label="搜尋活動、地點、廠區"
+                aria-label="Search events, venue, or site"
                 allowClear
                 prefix={<SearchOutlined />}
-                placeholder="搜尋活動、地點、廠區"
+                placeholder="Search events, venue, or site"
                 value={keyword}
                 onChange={handleKeywordChange}
               />
               <Select
                 className="events-date-filter"
-                aria-label="活動日期"
+                aria-label="Event date"
                 value={dateWindow}
                 options={DATE_FILTER_OPTIONS}
                 onChange={handleDateWindowChange}
               />
               <Select
                 className="events-status-filter"
-                aria-label="報名狀態"
+                aria-label="Registration status"
                 options={STATUS_FILTER_OPTIONS}
                 value={statusFilter}
                 onChange={handleStatusFilterChange}
@@ -411,7 +432,7 @@ const EventsList = () => {
                 loading={loading}
                 onClick={() => fetchEvents()}
               >
-                <span className="events-refresh-text">重新整理</span>
+                <span className="events-refresh-text">Refresh</span>
               </Button>
             </div>
           </div>
@@ -431,7 +452,7 @@ const EventsList = () => {
               </Row>
             </div>
           ) : !sortedVisibleEvents.length ? (
-            <Empty description={hasActiveFilters ? '沒有符合篩選條件的活動' : '暫無活動'} />
+            <Empty description={hasActiveFilters ? 'No events match the filters' : 'No events yet'} />
           ) : (
             <Row gutter={[24, 24]}>
               {sortedVisibleEvents.map((event) => (

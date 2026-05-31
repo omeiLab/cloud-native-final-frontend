@@ -11,7 +11,7 @@ describe('verifier scanner decode errors', () => {
   });
 
   it('uses a helpful hint when a QR-like image cannot be decoded yet', () => {
-    expect(getScannerMissHint(FormatException.getFormatInstance())).toBe('偵測到 QR 但畫面不完整或模糊，請對準完整 QR');
-    expect(getScannerMissHint(NotFoundException.getNotFoundInstance())).toBe('尚未辨識到 QR，請靠近並保持對焦');
+    expect(getScannerMissHint(FormatException.getFormatInstance())).toBe('QR detected but frame is incomplete or blurry. Center the full code.');
+    expect(getScannerMissHint(NotFoundException.getNotFoundInstance())).toBe('QR code not detected yet. Move closer and keep focus.');
   });
 });

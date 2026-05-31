@@ -1,6 +1,8 @@
 # Dependencies & build artifacts
 frontend/node_modules/
 frontend/dist/
+frontend/coverage/
+frontend/.scannerwork/
 
 # Env with possible secrets / local overrides
 frontend/.env.local

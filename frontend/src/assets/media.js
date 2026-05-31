@@ -24,7 +24,7 @@ export const pickEventImage = (seed) => {
 
 export const pickAvatarImage = (seed) => {
   const lowered = String(seed || '').toLowerCase();
-  const isFemale = /(f|woman|female|女|小姐|ms|mrs)/i.test(lowered);
+  const isFemale = /(f|woman|female|ms|mrs)/i.test(lowered);
   return isFemale ? AVATAR_IMAGES.female : AVATAR_IMAGES.male;
 };
 
