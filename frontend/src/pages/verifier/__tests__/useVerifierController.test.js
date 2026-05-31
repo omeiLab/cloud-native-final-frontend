@@ -69,7 +69,7 @@ describe('verifierReducer', () => {
     const detected = verifierReducer(initialState, {
       type: 'qrDetected',
       text: 'qr-1',
-      detectedAt: '2026-01-01',
+      detectedAt: '2026-05-31T12:00:00',
       hint: v.qrDetected
     });
     expect(detected.scannerHint).toBe(v.qrDetected);

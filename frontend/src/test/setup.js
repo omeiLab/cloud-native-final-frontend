@@ -2,7 +2,7 @@ import { vi } from 'vitest';
 import '@testing-library/jest-dom';
 
 try {
-  localStorage.setItem('cets_locale', 'en');
+  localStorage.setItem('cets_locale_v2', 'en');
 } catch {
   // ignore
 }

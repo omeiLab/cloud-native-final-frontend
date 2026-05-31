@@ -6,7 +6,7 @@ const UiPreferencesContext = createContext(null);
 const STORAGE_KEYS = {
   colorMode: 'cets_color_mode',
   textScale: 'cets_text_scale',
-  locale: 'cets_locale'
+  locale: 'cets_locale_v2'
 };
 
 const readStored = (key, fallback) => {

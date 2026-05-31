@@ -86,9 +86,9 @@ export const messages = {
     zhTW: '繁體中文'
   },
   header: {
-    brandLine1: 'TSMC',
-    brandLine2: 'CETS 活動',
-    brandTagline: '台積電員工活動平台',
+    brandLine1: '台積電晶彩活動通',
+    brandLine2: '',
+    brandTagline: '員工活動平台',
     adminConsole: '管理後台',
     verifierPortal: '驗票入口',
     myTickets: '我的票券',
@@ -109,7 +109,7 @@ export const messages = {
     switchToStandardText: '切換至標準字級'
   },
   footer: {
-    text: 'CETS 活動｜台積電員工活動平台'
+    text: '台積電晶彩活動通｜員工活動平台'
   },
   mobileNav: {
     home: '首頁',
@@ -124,7 +124,7 @@ export const messages = {
     enable: '啟用背景音樂'
   },
   eventsList: {
-    title: 'CETS 活動',
+    title: '台積電晶彩活動通',
     catalogTitle: '活動總覽',
     catalogDesc: '公平抽籤、即時通知與電子票券，協助員工報名並追蹤活動票券狀態。',
     totalEvents: '活動總數',
@@ -154,8 +154,8 @@ export const messages = {
     loadFailed: '載入活動列表失敗'
   },
   login: {
-    kicker: 'CETS 活動',
-    title: '台積電員工活動平台',
+    kicker: '台積電晶彩活動通',
+    title: '員工活動平台',
     desc: '請使用公司 SSO 登入以存取活動。中籤後請於期限內完成確認，入場時出示 QR Code 即可。',
     corporateSignIn: '公司帳號登入',
     helpTitle: '登入說明',

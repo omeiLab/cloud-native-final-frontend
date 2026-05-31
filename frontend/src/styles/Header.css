@@ -58,7 +58,7 @@
 
 .logo-title {
   color: var(--ds-header-text);
-  font-size: 17px;
+  font-size: calc(17px * var(--page-font-scale, 1));
   font-weight: 800;
   line-height: 1.15;
 }
@@ -68,9 +68,18 @@
   display: inline;
 }
 
+.logo-title-line1:only-child,
+.logo-title--single-line .logo-title-line1 {
+  display: block;
+}
+
+.logo-title-line2:not(:empty)::before {
+  content: ' ';
+}
+
 .logo small {
   color: var(--ds-muted);
-  font-size: 11px;
+  font-size: calc(11px * var(--page-font-scale, 1));
   font-weight: 600;
 }
 

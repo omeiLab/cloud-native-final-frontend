@@ -119,6 +119,10 @@ html[data-magicui-theme-vt="active"]::view-transition-group(root) {
   --page-font-scale: 1.28;
 }
 
+:root.text-xlarge .guest-hero h2.ant-typography,
+:root.text-xlarge .events-hero h2.ant-typography,
+:root.text-xlarge .logo-title,
+:root.text-xlarge .logo small,
 :root.text-xlarge .ant-typography,
 :root.text-xlarge .ant-typography p,
 :root.text-xlarge .ant-card-body,

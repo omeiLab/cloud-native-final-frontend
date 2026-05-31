@@ -25,7 +25,7 @@
 
 .guest-hero h2.ant-typography {
   margin-bottom: var(--ds-space-sm);
-  font-size: 44px;
+  font-size: calc(44px * var(--page-font-scale, 1));
   line-height: 1.14;
 }
 
@@ -33,7 +33,7 @@
   max-width: 620px;
   margin-bottom: var(--ds-space-xs);
   color: var(--ds-muted);
-  font-size: 16px;
+  font-size: calc(16px * var(--page-font-scale, 1));
 }
 
 .guest-hero .ant-space {
@@ -268,13 +268,13 @@
 
   .events-hero h2.ant-typography {
     margin-bottom: 8px;
-    font-size: 28px;
+    font-size: calc(28px * var(--page-font-scale, 1));
     line-height: 1.2;
   }
 
   .events-hero .ant-typography {
     margin-bottom: 10px;
-    font-size: 13px;
+    font-size: calc(13px * var(--page-font-scale, 1));
     line-height: 1.55;
   }
 
@@ -305,11 +305,11 @@
   }
 
   .guest-hero h2.ant-typography {
-    font-size: 30px;
+    font-size: calc(30px * var(--page-font-scale, 1));
   }
 
   .guest-hero .ant-typography {
-    font-size: 15px;
+    font-size: calc(15px * var(--page-font-scale, 1));
   }
 
   .guest-hero .ant-space,

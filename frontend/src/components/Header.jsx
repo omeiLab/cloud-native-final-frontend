@@ -137,9 +137,9 @@ const AppHeader = () => {
         <Link to="/" className="logo" onClick={handleGoHome}>
           <img src={LOGO_IMAGE} alt="TSMC logo" className="logo-image" />
           <span>
-            <strong className="logo-title">
+            <strong className={`logo-title${m.header.brandLine2 ? '' : ' logo-title--single-line'}`}>
               <span className="logo-title-line1">{m.header.brandLine1}</span>
-              <span className="logo-title-line2">{m.header.brandLine2}</span>
+              {m.header.brandLine2 ? <span className="logo-title-line2">{m.header.brandLine2}</span> : null}
             </strong>
             <small>{m.header.brandTagline}</small>
           </span>
