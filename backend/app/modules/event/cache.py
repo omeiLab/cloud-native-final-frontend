@@ -65,11 +65,11 @@ async def evict_event(event_id: str) -> None:
     redis = get_redis()
     keys: list[str] = [_EVENT_DETAIL_KEY.format(event_id=event_id)]
     # 列表類:SCAN 全清
-    : int = 0
+    cursor: int = 0
     while True:
-        , found = await redis.scan(=, match="events:list:*", count=100)
+        cursor, found = await redis.scan(cursor=cursor, match="events:list:*", count=100)
         keys.extend(found)
-        if == 0:
+        if cursor == 0:
             break
     if keys:
         await redis.delete(*keys)

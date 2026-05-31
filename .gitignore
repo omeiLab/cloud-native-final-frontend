@@ -24,3 +24,6 @@ backend/.mypy_cache/
 backend/.ruff_cache/
 backend/.venv/
 backend/*.pyc
+backend/.coverage
+backend/coverage.xml
+backend/.scannerwork/

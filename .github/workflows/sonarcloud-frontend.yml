@@ -1,4 +1,4 @@
-name: SonarCloud
+name: SonarCloud Frontend
 
 on:
   push:
@@ -7,19 +7,19 @@ on:
       - master
     paths:
       - frontend/**
-      - .github/workflows/sonarcloud.yml
+      - .github/workflows/sonarcloud-frontend.yml
   pull_request:
     branches:
       - main
       - master
     paths:
       - frontend/**
-      - .github/workflows/sonarcloud.yml
+      - .github/workflows/sonarcloud-frontend.yml
   workflow_dispatch:
 
 jobs:
-  sonar:
-    name: Analyze frontend on SonarCloud
+  sonar-frontend:
+    name: Analyze frontend
     runs-on: ubuntu-latest
     defaults:
       run:
