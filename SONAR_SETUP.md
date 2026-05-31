@@ -7,13 +7,13 @@ Organization：`elaine17016`
 
 | 组件 | Project Key | 配置文件 | CI Workflow |
 |------|-------------|----------|-------------|
-| 前端 | `elaine17016_cets-frontend` | `frontend/sonar-project.properties` | `.github/workflows/sonarcloud-frontend.yml` |
-| 后端 | `elaine17016_cets-backend` | `backend/sonar-project.properties` | `.github/workflows/sonarcloud-backend.yml` |
+| 前端 | `elaine17016_cets_frontend` | `frontend/sonar-project.properties` | `.github/workflows/sonarcloud-frontend.yml` |
+| 后端 | `elaine17016_cets_backend` | `backend/sonar-project.properties` | `.github/workflows/sonarcloud-backend.yml` |
 
 仪表板链接（需在 SonarCloud 先建立对应项目）：
 
-- 前端：https://sonarcloud.io/project/overview?id=elaine17016_cets-frontend
-- 后端：https://sonarcloud.io/project/overview?id=elaine17016_cets-backend
+- 前端：https://sonarcloud.io/project/overview?id=elaine17016_cets_frontend
+- 后端：https://sonarcloud.io/project/overview?id=elaine17016_cets_backend
 
 ## 一次性手动步骤
 
