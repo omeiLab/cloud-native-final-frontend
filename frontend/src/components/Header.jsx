@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
 import { useUiPreferences } from '../context/UiPreferencesContext';
 import useI18n from '../hooks/useI18n';
+import { useOidcLoginLoading } from '../hooks/useOidcLoginLoading';
 import { LOGO_IMAGE } from '../assets/media';
 import AnimatedThemeToggler from './AnimatedThemeToggler';
 import LanguageToggle from './LanguageToggle';
@@ -47,7 +48,7 @@ const AppHeader = () => {
 
   const themeTooltip = colorMode === 'dark' ? m.header.switchToLight : m.header.switchToDark;
 
-  const [loginLoading, setLoginLoading] = useState(false);
+  const { loginLoading, runLogin: runOidcLogin } = useOidcLoginLoading(startOIDCLogin, !!user);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profilePopoverOpen, setProfilePopoverOpen] = useState(false);
   const canAccessTicketBox = user?.role === 'EMPLOYEE';
@@ -74,12 +75,10 @@ const AppHeader = () => {
 
   const handleLogin = async () => {
     setMobileMenuOpen(false);
-    setLoginLoading(true);
     try {
-      await startOIDCLogin();
+      await runOidcLogin();
     } catch (error) {
       message.error(error?.error?.message || m.common.loginError);
-      setLoginLoading(false);
     }
   };
 

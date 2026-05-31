@@ -1,24 +1,23 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Alert, Button, Card, Col, Row, Typography, message } from 'antd';
 import { LoginOutlined, SafetyOutlined } from '@ant-design/icons';
 import { useAuth } from '../context/AuthContext';
 import useI18n from '../hooks/useI18n';
+import { useOidcLoginLoading } from '../hooks/useOidcLoginLoading';
 import '../styles/LoginPage.css';
 
 const { Title, Paragraph } = Typography;
 
 const LoginPage = () => {
-  const { startOIDCLogin } = useAuth();
+  const { startOIDCLogin, user } = useAuth();
   const { m } = useI18n();
-  const [loading, setLoading] = useState(false);
+  const { loginLoading: loading, runLogin: runOidcLogin } = useOidcLoginLoading(startOIDCLogin, !!user);
 
   const handleOIDCLogin = async () => {
-    setLoading(true);
     try {
-      await startOIDCLogin();
+      await runOidcLogin();
     } catch (error) {
       message.error(error?.error?.message || m.common.loginError);
-      setLoading(false);
     }
   };
 
