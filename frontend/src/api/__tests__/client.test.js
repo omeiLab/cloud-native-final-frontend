@@ -45,6 +45,9 @@ vi.mock('axios', () => ({
 const loadClientModule = async (env = {}) => {
   vi.resetModules();
   vi.unstubAllEnvs();
+  vi.stubEnv('VITE_API_BASE_URL', '');
+  vi.stubEnv('VITE_WS_BASE_URL', '');
+  vi.stubEnv('VITE_BASE_PATH', '');
   Object.entries(env).forEach(([key, value]) => vi.stubEnv(key, value));
   vi.stubGlobal('localStorage', storageMock);
   vi.stubGlobal('sessionStorage', storageMock);
