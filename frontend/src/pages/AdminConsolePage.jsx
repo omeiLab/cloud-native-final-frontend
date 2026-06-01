@@ -53,6 +53,9 @@ const DashboardCharts = lazy(() => loadRecharts().then(({
     siteDistribution,
     ticketTypeProgress
   }) {
+    const { m } = useI18n();
+    const t = m.admin;
+
     const siteChartData = siteDistribution.map((siteItem) => ({
       name: SITE_LABELS[siteItem.site] || siteItem.site,
       value: siteItem.count,
@@ -63,7 +66,7 @@ const DashboardCharts = lazy(() => loadRecharts().then(({
       <>
         <Row gutter={16} style={{ marginTop: 16 }}>
           <Col xs={24} lg={12}>
-            <Card title="Registration trend">
+            <Card title={t.registrationTrend}>
               <ResponsiveContainer width="100%" height={260}>
                 <LineChart data={registrationTimeline}>
                   <CartesianGrid strokeDasharray="3 3" />
@@ -74,7 +77,7 @@ const DashboardCharts = lazy(() => loadRecharts().then(({
                   <Line
                     type="monotone"
                     dataKey="count"
-                    name="Total registrations"
+                    name={t.totalRegistrations}
                     stroke="#2b72d9"
                     strokeWidth={2}
                     dot={{ r: 3 }}
@@ -85,7 +88,7 @@ const DashboardCharts = lazy(() => loadRecharts().then(({
             </Card>
           </Col>
           <Col xs={24} lg={12}>
-            <Card title="Allowed sites distribution">
+            <Card title={t.sitesDistribution}>
               <ResponsiveContainer width="100%" height={260}>
                 <PieChart>
                   <Pie
@@ -108,7 +111,7 @@ const DashboardCharts = lazy(() => loadRecharts().then(({
           </Col>
         </Row>
 
-        <Card style={{ marginTop: 16 }} title="Ticket type progress">
+        <Card style={{ marginTop: 16 }} title={t.ticketProgress}>
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={ticketTypeProgress}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -116,9 +119,9 @@ const DashboardCharts = lazy(() => loadRecharts().then(({
               <YAxis allowDecimals={false} />
               <Tooltip />
               <Legend />
-              <Bar dataKey="quota" name="Quota" fill="#2b72d9" isAnimationActive={false} />
-              <Bar dataKey="registered" name="Registered" fill="#f4a261" isAnimationActive={false} />
-              <Bar dataKey="confirmed" name="Confirmed" fill="#2a9d8f" isAnimationActive={false} />
+              <Bar dataKey="quota" name={t.quota} fill="#2b72d9" isAnimationActive={false} />
+              <Bar dataKey="registered" name={t.registered} fill="#f4a261" isAnimationActive={false} />
+              <Bar dataKey="confirmed" name={t.confirmed} fill="#2a9d8f" isAnimationActive={false} />
             </BarChart>
           </ResponsiveContainer>
           <Table
@@ -127,11 +130,11 @@ const DashboardCharts = lazy(() => loadRecharts().then(({
             dataSource={ticketTypeProgress}
             scroll={{ x: 640 }}
             columns={[
-              { title: 'Ticket type', dataIndex: 'name' },
-              { title: 'Quota', dataIndex: 'quota' },
-              { title: 'Registered', dataIndex: 'registered' },
-              { title: 'Won', dataIndex: 'won' },
-              { title: 'Confirmed', dataIndex: 'confirmed' }
+              { title: t.ticketType, dataIndex: 'name' },
+              { title: t.quota, dataIndex: 'quota' },
+              { title: t.registered, dataIndex: 'registered' },
+              { title: t.won || 'Won', dataIndex: 'won' },
+              { title: t.confirmed, dataIndex: 'confirmed' }
             ]}
           />
         </Card>
@@ -1074,39 +1077,47 @@ const EventCreateTab = ({ controller }) => (
   </Card>
 );
 
-const EventBasicFields = () => (
-  <>
-    <Divider orientation="left" style={{ marginTop: 0 }}>Basic info</Divider>
-    <Row gutter={16}>
-      <Col xs={24} lg={14}>
-        <Form.Item name="title" label="Event title" rules={[{ required: true }]}>
-          <Input />
-        </Form.Item>
-      </Col>
-      <Col xs={24} lg={10}>
-        <Form.Item
-          name="registration_mode"
-          label="Registration mode"
-          rules={[{ required: true, message: 'Please select Registration mode' }]}
-        >
-          <Select
-            options={[
-              { value: 'UNLIMITED', label: 'Unlimited capacity (lottery/waitlist times auto-filled)' },
-              { value: 'LIMITED', label: 'Limited capacity (quota, lottery, waitlist required)' }
-            ]}
-          />
-        </Form.Item>
-      </Col>
-      <Col xs={24}>
-        <Form.Item name="description" label="Event description (optional)">
-          <Input.TextArea rows={3} />
-        </Form.Item>
-      </Col>
-    </Row>
-  </>
-);
+const EventBasicFields = () => {
+  const { m } = useI18n();
+  const t = m.admin;
+
+  return (
+    <>
+      <Divider orientation="left" style={{ marginTop: 0 }}>{t.basicInfo}</Divider>
+      <Row gutter={16}>
+        <Col xs={24} lg={14}>
+          <Form.Item name="title" label={t.eventTitle} rules={[{ required: true }]}>
+            <Input />
+          </Form.Item>
+        </Col>
+        <Col xs={24} lg={10}>
+          <Form.Item
+            name="registration_mode"
+            label={t.registrationMode}
+            rules={[{ required: true, message: t.selectRegistrationMode }]}
+          >
+            <Select
+              options={[
+                { value: 'UNLIMITED', label: t.unlimitedMode },
+                { value: 'LIMITED', label: t.limitedMode }
+              ]}
+            />
+          </Form.Item>
+        </Col>
+        <Col xs={24}>
+          <Form.Item name="description" label={t.eventDescription}>
+            <Input.TextArea rows={3} />
+          </Form.Item>
+        </Col>
+      </Row>
+    </>
+  );
+};
 
 const TicketRestrictionFields = ({ controller }) => {
+  const { m } = useI18n();
+  const t = m.admin;
+
   const {
     createRegistrationMode,
     anyRequireChildTicket,
@@ -1122,30 +1133,30 @@ const TicketRestrictionFields = ({ controller }) => {
         type="info"
         showIcon
         style={{ marginBottom: 16 }}
-        message="Unlimited capacity mode"
-        description="Registrations are unlimited. Backend still requires lottery/waitlist timestamps, so the frontend fills them automatically."
+        message={t.unlimitedMode}
+        description={t.desc}
       />
     );
   }
 
   return (
     <>
-      <Divider style={{ marginTop: 6 }}>Registration eligibility restrictions</Divider>
+      <Divider style={{ marginTop: 6 }}>{t.eligibilityRestrictions}</Divider>
 
-      <Card type="inner" title="Adult ticket restrictions" style={{ marginBottom: 12 }}>
+      <Card type="inner" title={`${t.adultTicketRestriction}`} style={{ marginBottom: 12 }}>
         <Form.Item name="adult_has_limits" valuePropName="checked" style={{ marginBottom: 10 }}>
-          <Checkbox>Restricted (expand settings when checked)</Checkbox>
+          <Checkbox>{t.expandSettings}</Checkbox>
         </Form.Item>
         {adultHasLimits ? (
           <>
             <Row gutter={12}>
               <Col xs={24} md={16}>
-                <Form.Item name="adult_gender" label="Gender restriction" initialValue="ANY">
+                <Form.Item name="adult_gender" label={t.genderRestriction} initialValue="ANY">
                   <Select
                     options={[
-                      { value: 'ANY', label: 'Any' },
-                      { value: 'M', label: 'Male only' },
-                      { value: 'F', label: 'Female only' }
+                      { value: 'ANY', label: t.genderAny },
+                      { value: 'M', label: t.genderMale },
+                      { value: 'F', label: t.genderFemale }
                     ]}
                   />
                 </Form.Item>
@@ -1153,34 +1164,34 @@ const TicketRestrictionFields = ({ controller }) => {
             </Row>
             <Row gutter={12}>
               <Col xs={12} md={6}>
-                <Form.Item name="adult_height_min_cm" label="Minimum height (cm)">
+                <Form.Item name="adult_height_min_cm" label={t.minHeight}>
                   <InputNumber min={0} max={250} style={{ width: '100%' }} />
                 </Form.Item>
               </Col>
               <Col xs={12} md={6}>
-                <Form.Item name="adult_height_max_cm" label="Maximum height (cm)">
+                <Form.Item name="adult_height_max_cm" label={t.maxHeight}>
                   <InputNumber min={0} max={250} style={{ width: '100%' }} />
                 </Form.Item>
               </Col>
               <Col xs={12} md={6}>
-                <Form.Item name="adult_age_min" label="Minimum age">
+                <Form.Item name="adult_age_min" label={t.minAge}>
                   <InputNumber min={0} max={120} style={{ width: '100%' }} />
                 </Form.Item>
               </Col>
               <Col xs={12} md={6}>
-                <Form.Item name="adult_age_max" label="Maximum age">
+                <Form.Item name="adult_age_max" label={t.maxAge}>
                   <InputNumber min={0} max={120} style={{ width: '100%' }} />
                 </Form.Item>
               </Col>
             </Row>
             <Row gutter={12}>
               <Col xs={24} md={8}>
-                <Form.Item name="adult_health_unlimited" valuePropName="checked" label="Health restrictions">
-                  <Checkbox>No restrictions</Checkbox>
+                <Form.Item name="adult_health_unlimited" valuePropName="checked" label={t.healthRestrictions}>
+                  <Checkbox>{t.noHealthRestrictions}</Checkbox>
                 </Form.Item>
               </Col>
               <Col xs={24} md={16}>
-                <Form.Item name="adult_health_no_diseases" label="Selectable: must confirm no listed conditions">
+                <Form.Item name="adult_health_no_diseases" label={t.healthCheckHint}>
                   <Checkbox.Group
                     disabled={adultHealthUnlimited}
                     options={DISEASE_OPTIONS}
@@ -1190,43 +1201,40 @@ const TicketRestrictionFields = ({ controller }) => {
             </Row>
           </>
         ) : (
-          <Paragraph type="secondary" style={{ marginBottom: 0 }}>Current setting: no restrictions</Paragraph>
+          <Paragraph type="secondary" style={{ marginBottom: 0 }}>{t.noRestrictions}</Paragraph>
         )}
-        <Form.Item
-          name="adult_other_restrictions"
-          label="Other notes (optional)"
-        >
-          <Input.TextArea rows={2} placeholder="One note per line" />
+        <Form.Item name="adult_other_restrictions" label={t.otherNotes}>
+          <Input.TextArea rows={2} placeholder={t.oneNotePerLine} />
         </Form.Item>
       </Card>
 
       {anyRequireChildTicket ? (
-        <Card type="inner" title="Child ticket restrictions">
+        <Card type="inner" title={`${t.childTicketRestriction}`}>
           <Form.Item name="child_has_limits" valuePropName="checked" style={{ marginBottom: 10 }}>
-            <Checkbox>Restricted (expand settings when checked)</Checkbox>
+            <Checkbox>{t.expandSettings}</Checkbox>
           </Form.Item>
           {childHasLimits ? (
             <>
               <Row gutter={12}>
                 <Col xs={12} md={8}>
-                  <Form.Item name="child_age_min" label="Child minimum age">
+                  <Form.Item name="child_age_min" label={t.minAge}>
                     <InputNumber min={0} max={120} style={{ width: '100%' }} />
                   </Form.Item>
                 </Col>
                 <Col xs={12} md={8}>
-                  <Form.Item name="child_age_max" label="Child maximum age">
+                  <Form.Item name="child_age_max" label={t.maxAge}>
                     <InputNumber min={0} max={120} style={{ width: '100%' }} />
                   </Form.Item>
                 </Col>
               </Row>
               <Row gutter={12}>
                 <Col xs={24} md={8}>
-                  <Form.Item name="child_health_unlimited" valuePropName="checked" label="Health restrictions">
-                    <Checkbox>No restrictions</Checkbox>
+                  <Form.Item name="child_health_unlimited" valuePropName="checked" label={t.healthRestrictions}>
+                    <Checkbox>{t.noHealthRestrictions}</Checkbox>
                   </Form.Item>
                 </Col>
                 <Col xs={24} md={16}>
-                  <Form.Item name="child_health_no_diseases" label="Selectable: must confirm no listed conditions">
+                  <Form.Item name="child_health_no_diseases" label={t.healthCheckHint}>
                     <Checkbox.Group
                       disabled={childHealthUnlimited}
                       options={DISEASE_OPTIONS}
@@ -1236,13 +1244,10 @@ const TicketRestrictionFields = ({ controller }) => {
               </Row>
             </>
           ) : (
-            <Paragraph type="secondary" style={{ marginBottom: 0 }}>Current setting: no restrictions</Paragraph>
+            <Paragraph type="secondary" style={{ marginBottom: 0 }}>{t.noRestrictions}</Paragraph>
           )}
-          <Form.Item
-            name="child_other_restrictions"
-            label="Child ticketOther notes (optional)"
-          >
-            <Input.TextArea rows={2} placeholder="One note per line" />
+          <Form.Item name="child_other_restrictions" label={t.otherNotes}>
+            <Input.TextArea rows={2} placeholder={t.oneNotePerLine} />
           </Form.Item>
         </Card>
       ) : null}
@@ -1251,23 +1256,25 @@ const TicketRestrictionFields = ({ controller }) => {
 };
 
 const CoverAndSiteFields = ({ controller }) => {
+  const { m } = useI18n();
+  const t = m.admin;
   const { selectedCoverImage, handleSelectCoverImage } = controller;
 
   return (
     <>
-      <Divider orientation="left">Cover image and sites</Divider>
-      <Form.Item label="Event cover" required>
+      <Divider orientation="left">{t.sitesDistribution}</Divider>
+      <Form.Item label="活動封面" required>
         <Form.Item name="cover_image_url" noStyle>
           <Input type="hidden" />
         </Form.Item>
         <fieldset className="admin-cover-choice">
-          <legend className="sr-only">Event cover</legend>
+          <legend className="sr-only">活動封面</legend>
           {EVENT_IMAGES.map((src, idx) => (
             <button
               key={src}
               type="button"
               className={'admin-cover-option' + (selectedCoverImage === src ? ' is-selected' : '')}
-              aria-label={`Select event cover ${idx + 1}`}
+              aria-label={`選擇活動封面 ${idx + 1}`}
               aria-pressed={selectedCoverImage === src}
               onClick={() => handleSelectCoverImage(src)}
             >
@@ -1276,7 +1283,7 @@ const CoverAndSiteFields = ({ controller }) => {
           ))}
         </fieldset>
       </Form.Item>
-      <Form.Item name="allowed_sites" label="Allowed sites" rules={[{ required: true, message: 'Select at least one allowed site' }]}>
+      <Form.Item name="allowed_sites" label={t.allSites} rules={[{ required: true, message: '請至少選擇一個開放廠區' }]}>
         <Checkbox.Group options={SITES} />
       </Form.Item>
     </>
@@ -1284,11 +1291,13 @@ const CoverAndSiteFields = ({ controller }) => {
 };
 
 const SessionsFields = ({ controller }) => {
+  const { m } = useI18n();
+  const t = m.admin;
   const { createRegistrationMode, latestSessionEndLabel } = controller;
 
   return (
     <>
-      <Divider style={{ marginTop: 6 }}>Session settings</Divider>
+      <Divider style={{ marginTop: 6 }}>{t.lotteryBySession}</Divider>
 
       <Form.List name="sessions">
         {(fields, { add, remove }) => (
@@ -1299,16 +1308,16 @@ const SessionsFields = ({ controller }) => {
                 <Card
                   key={key}
                   type="inner"
-                  title={'Session ' + (idx + 1)}
-                  extra={fields.length > 1 ? <Button danger onClick={() => remove(field.name)}>Delete</Button> : null}
+                  title={`${m.eventsList.session} ${idx + 1}`}
+                  extra={fields.length > 1 ? <Button danger onClick={() => remove(field.name)}>{t.delete}</Button> : null}
                 >
                   <Row gutter={12}>
                     <Col xs={24} md={8}>
                       <Form.Item
                         {...fieldProps}
                         name={[field.name, 'title']}
-                        label="Session title"
-                        rules={[{ required: true, message: 'Please enter Session title' }]}
+                        label={t.sessionTitle}
+                        rules={[{ required: true, message: t.sessionTitle }]}
                       >
                         <Input />
                       </Form.Item>
@@ -1317,8 +1326,8 @@ const SessionsFields = ({ controller }) => {
                       <Form.Item
                         {...fieldProps}
                         name={[field.name, 'venue']}
-                        label="Session venue"
-                        rules={[{ required: true, message: 'Please enter Session venue' }]}
+                        label={t.sessionVenue}
+                        rules={[{ required: true, message: t.sessionVenue }]}
                       >
                         <Input />
                       </Form.Item>
@@ -1331,8 +1340,8 @@ const SessionsFields = ({ controller }) => {
                           <Form.Item
                             {...fieldProps}
                             name={[field.name, 'adult_quota']}
-                            label="Adult ticket quota (this session)"
-                            rules={[{ required: true, message: 'Enter adult ticket quota' }]}
+                            label={t.adultQuotaLabel}
+                            rules={[{ required: true, message: t.adultQuotaLabel }]}
                           >
                             <InputNumber min={0} max={999999} style={{ width: '100%' }} />
                           </Form.Item>
@@ -1343,10 +1352,10 @@ const SessionsFields = ({ controller }) => {
                           <Form.Item
                             {...fieldProps}
                             name={[field.name, 'require_child_ticket']}
-                            label="Require child tickets (this session)"
+                            label={t.requireChildTicket}
                             valuePropName="checked"
                           >
-                            <Checkbox>Child tickets required</Checkbox>
+                            <Checkbox>{t.childTicketsRequired}</Checkbox>
                           </Form.Item>
                         </Col>
                       </Row>
@@ -1363,8 +1372,8 @@ const SessionsFields = ({ controller }) => {
                                 <Form.Item
                                   {...fieldProps}
                                   name={[field.name, 'child_quota']}
-                                  label="Child ticket quota (this session)"
-                                  rules={[{ required: true, message: 'Enter child ticket quota' }]}
+                                  label={t.childQuotaLabel}
+                                  rules={[{ required: true, message: t.childQuotaLabel }]}
                                 >
                                   <InputNumber min={0} max={999999} style={{ width: '100%' }} />
                                 </Form.Item>
@@ -1380,8 +1389,8 @@ const SessionsFields = ({ controller }) => {
                       <Form.Item
                         {...fieldProps}
                         name={[field.name, 'starts_at']}
-                        label="Start time"
-                        rules={[{ required: true, message: 'Please select Start time' }]}
+                        label={t.startTime}
+                        rules={[{ required: true, message: t.startTime }]}
                       >
                         <DatePicker showTime style={{ width: '100%' }} />
                       </Form.Item>
@@ -1390,10 +1399,10 @@ const SessionsFields = ({ controller }) => {
                       <Form.Item
                         {...fieldProps}
                         name={[field.name, 'ends_at']}
-                        label="End time"
+                        label={t.endTime}
                         dependencies={[['sessions', field.name, 'starts_at']]}
                         rules={[
-                          { required: true, message: 'Please select End time' },
+                          { required: true, message: t.endTime },
                           ({ getFieldValue }) => ({
                             validator(_, value) {
                               const start = getFieldValue(['sessions', field.name, 'starts_at']);
@@ -1402,7 +1411,7 @@ const SessionsFields = ({ controller }) => {
                               const b = dayjs(value);
                               if (!a.isValid() || !b.isValid()) return Promise.resolve();
                               if (b.isAfter(a)) return Promise.resolve();
-                              return Promise.reject(new Error('End time must be after start time'));
+                              return Promise.reject(new Error(t.endTimeValidation));
                             }
                           })
                         ]}
@@ -1427,11 +1436,11 @@ const SessionsFields = ({ controller }) => {
                   child_quota: null
                 })}
               >
-                Add session
+                {t.addSession}
               </Button>
               <div className="admin-session-summary" aria-live="polite">
-                <span className="admin-session-summary-label">Event ends</span>
-                <span className="admin-session-summary-note">Latest session end time</span>
+                <span className="admin-session-summary-label">{t.eventEndsAt} </span>
+                <span className="admin-session-summary-note">{t.latestSessionEndNote} </span>
                 <strong>{latestSessionEndLabel}</strong>
               </div>
             </Space>
@@ -1442,34 +1451,39 @@ const SessionsFields = ({ controller }) => {
   );
 };
 
-const RegistrationTimelineFields = ({ createRegistrationMode }) => (
-  <>
-    <Divider orientation="left">Registration schedule</Divider>
-    <Row gutter={12}>
-      <Col xs={24} md={createRegistrationMode === 'LIMITED' ? 8 : 12}>
-        <Form.Item name="registration_opens_at" label="Registration opens (shared by all sessions)" rules={[{ required: true, message: 'Select registration open time' }]}>
-          <DatePicker showTime style={{ width: '100%' }} />
-        </Form.Item>
-      </Col>
-      <Col xs={24} md={createRegistrationMode === 'LIMITED' ? 8 : 12}>
-        <Form.Item name="registration_closes_at" label="Registration closes (shared by all sessions)" rules={[{ required: true, message: 'Select registration close time' }]}>
-          <DatePicker showTime style={{ width: '100%' }} />
-        </Form.Item>
-      </Col>
-      {createRegistrationMode === 'LIMITED' ? (
-        <Col xs={24} md={8}>
-          <Form.Item
-            name="waitlist_close_at"
-            label="Waitlist closes (shared by all sessions)"
-            rules={[{ required: true, message: 'Select waitlist close time' }]}
-          >
+const RegistrationTimelineFields = ({ createRegistrationMode }) => {
+  const { m } = useI18n();
+  const t = m.admin;
+
+  return (
+    <>
+      <Divider orientation="left">{t.registrationSchedule}</Divider>
+      <Row gutter={12}>
+        <Col xs={24} md={createRegistrationMode === 'LIMITED' ? 8 : 12}>
+          <Form.Item name="registration_opens_at" label={t.regOpensShared} rules={[{ required: true, message: 'Select registration open time' }]}>
             <DatePicker showTime style={{ width: '100%' }} />
           </Form.Item>
         </Col>
-      ) : null}
-    </Row>
-  </>
-);
+        <Col xs={24} md={createRegistrationMode === 'LIMITED' ? 8 : 12}>
+          <Form.Item name="registration_closes_at" label={t.regClosesShared} rules={[{ required: true, message: 'Select registration close time' }]}>
+            <DatePicker showTime style={{ width: '100%' }} />
+          </Form.Item>
+        </Col>
+        {createRegistrationMode === 'LIMITED' ? (
+          <Col xs={24} md={8}>
+            <Form.Item
+              name="waitlist_close_at"
+              label={t.waitlistClosesShared}
+              rules={[{ required: true, message: 'Select waitlist close time' }]}
+            >
+              <DatePicker showTime style={{ width: '100%' }} />
+            </Form.Item>
+          </Col>
+        ) : null}
+      </Row>
+    </>
+  );
+};
 
 const EventCreateActions = ({ controller }) => {
   const {
@@ -1519,6 +1533,10 @@ const EventCreateActions = ({ controller }) => {
 };
 
 const DraftsTab = ({ controller }) => {
+  const { m } = useI18n();
+  const t = m.admin;
+  const c = m.common;
+
   const {
     draftEvents,
     editLoading,
@@ -1535,10 +1553,10 @@ const DraftsTab = ({ controller }) => {
     <Card className="admin-draft-card">
       <div className="admin-draft-header">
         <div>
-          <Text className="admin-dashboard-section-label">Draft events</Text>
-          <Title level={4}>Unpublished event management</Title>
+          <Text className="admin-dashboard-section-label">{t.draftEvents}</Text>
+          <Title level={4}>{t.draftManagement}</Title>
           <Paragraph type="secondary">
-            Load a draft to edit fields, then save or publish.
+            {t.draftManagementDesc}
           </Paragraph>
         </div>
       </div>
@@ -1546,35 +1564,35 @@ const DraftsTab = ({ controller }) => {
         rowKey="id"
         dataSource={draftEvents}
         pagination={false}
-        locale={{ emptyText: 'No draft events' }}
+        locale={{ emptyText: t.noMatch || 'No draft events' }}
         columns={[
           {
-            title: 'Event name',
+            title: t.eventName,
             dataIndex: 'title',
             key: 'title',
             render: (title, record) => (
               <Space direction="vertical" size={2}>
                 <Text strong>{title}</Text>
                 <Text type="secondary">
-                  {record.allowed_sites?.length ? record.allowed_sites.join(', ') : 'All sites'}
+                  {record.allowed_sites?.length ? record.allowed_sites.join(', ') : t.allSites}
                 </Text>
               </Space>
             )
           },
           {
-            title: 'Status',
+            title: t.draftStatus || 'Status',
             dataIndex: 'status',
             key: 'status',
             render: (status) => <Tag>{labelOr(EVENT_STATUS_LABELS, status, status)}</Tag>
           },
           {
-            title: 'Created at',
+            title: m.eventDetail.createdAt,
             dataIndex: 'created_at',
             key: 'created_at',
             render: (value) => (value ? dayjs(value).format('YYYY-MM-DD HH:mm') : '-')
           },
           {
-            title: 'Actions',
+            title: t.actions,
             key: 'action',
             render: (_, record) => (
               <Space wrap>
@@ -1583,7 +1601,7 @@ const DraftsTab = ({ controller }) => {
                   disabled={!isAdminFull || deletingDraftId === record.id || publishingDraftId === record.id}
                   onClick={() => enterEditMode(record.id)}
                 >
-                  Load for edit
+                  {t.loadForEdit}
                 </Button>
                 <Button
                   type="primary"
@@ -1591,7 +1609,7 @@ const DraftsTab = ({ controller }) => {
                   disabled={!isAdminFull || editLoading || deletingDraftId === record.id}
                   onClick={() => handlePublishDraft(record)}
                 >
-                  Publish now
+                  {t.publishDraft}
                 </Button>
                 <Button
                   danger
@@ -1599,7 +1617,7 @@ const DraftsTab = ({ controller }) => {
                   disabled={!isAdminFull || editLoading || publishingDraftId === record.id}
                   onClick={() => handleDeleteDraft(record)}
                 >
-                  Delete
+                  {c.delete}
                 </Button>
               </Space>
             )
@@ -1611,6 +1629,8 @@ const DraftsTab = ({ controller }) => {
 };
 
 const DashboardTab = ({ controller }) => {
+  const { m } = useI18n();
+  const t = m.admin;
   const {
     selectedEventId,
     setSelectedEventId,
@@ -1631,6 +1651,7 @@ const DashboardTab = ({ controller }) => {
     handleExportSync,
     handleRunLottery
   } = controller;
+
   const registrationTimeline = dashboard?.registration_timeline || EMPTY_ARRAY;
   const siteDistribution = dashboard?.site_distribution || EMPTY_ARRAY;
   const ticketTypeProgress = dashboard?.ticket_type_progress || EMPTY_ARRAY;
@@ -1644,11 +1665,11 @@ const DashboardTab = ({ controller }) => {
       <Card className="admin-dashboard-toolbar">
         <div className="admin-dashboard-toolbar-grid">
           <section className="admin-dashboard-picker">
-            <Text className="admin-dashboard-section-label">Dashboard event</Text>
+            <Text className="admin-dashboard-section-label">{t.dashboard} {m.eventDetail.sessionLabel}</Text>
             <div className="admin-dashboard-select-row">
               <Select
                 className="admin-event-select"
-                placeholder="Search and select an event"
+                placeholder={t.selectRegistrationMode}
                 value={selectedEventId || undefined}
                 onChange={setSelectedEventId}
                 options={dashboardEventOptions}
@@ -1662,21 +1683,21 @@ const DashboardTab = ({ controller }) => {
 
           <section className="admin-dashboard-action-panel">
             <div className="admin-dashboard-action-block">
-              <Text className="admin-dashboard-section-label">Event management</Text>
+              <Text className="admin-dashboard-section-label">{t.eventManagement}</Text>
               <Space wrap className="admin-dashboard-actions">
                 <Button type="primary" onClick={handlePublish} loading={publishing} disabled={!isAdminFull || !selectedEvent || selectedEvent.status !== 'DRAFT'}>
-                  Publish event
+                  {t.publishDraft}
                 </Button>
                 <Button onClick={() => enterEditMode(selectedEventId)} loading={editLoading} disabled={!isAdminFull || !selectedEvent}>
-                  Edit event
+                  {t.editEvent}
                 </Button>
                 <Button danger onClick={handleCancel} loading={cancelling} disabled={!isAdminFull || !selectedEvent}>
-                  Delete event
+                  {t.deleteDraft}
                 </Button>
               </Space>
             </div>
             <div className="admin-dashboard-action-block">
-              <Text className="admin-dashboard-section-label">Lottery and reports</Text>
+              <Text className="admin-dashboard-section-label">{t.lotteryAndReports}</Text>
               <Space wrap className="admin-dashboard-actions">
                 <Button
                   type="primary"
@@ -1684,10 +1705,10 @@ const DashboardTab = ({ controller }) => {
                   loading={autoLotteryRunning}
                   disabled={!isAdminFull || !selectedEventId}
                 >
-                  Run lottery now
+                  {t.runLotteryNow}
                 </Button>
                 <Button onClick={handleExportSync} loading={exportingSync} disabled={!selectedEventId}>
-                  Export CSV
+                  {t.exportCsv}
                 </Button>
               </Space>
             </div>
@@ -1698,17 +1719,17 @@ const DashboardTab = ({ controller }) => {
       <Row gutter={16} style={{ marginTop: 16 }}>
         <Col xs={24} md={8}>
           <Card>
-            <Statistic title="Registered" value={registeredTotal} />
+            <Statistic title={t.registered} value={registeredTotal} />
           </Card>
         </Col>
         <Col xs={24} md={8}>
           <Card>
-            <Statistic title="Confirmed" value={dashboard?.attendance?.total_confirmed || 0} />
+            <Statistic title={t.confirmed} value={dashboard?.attendance?.total_confirmed || 0} />
           </Card>
         </Col>
         <Col xs={24} md={8}>
           <Card>
-            <Statistic title="Checked in" value={dashboard?.attendance?.checked_in || 0} />
+            <Statistic title={t.checkedIn} value={dashboard?.attendance?.checked_in || 0} />
           </Card>
         </Col>
       </Row>
@@ -1721,19 +1742,19 @@ const DashboardTab = ({ controller }) => {
         />
       </Suspense>
 
-      <Card style={{ marginTop: 16 }} title="Registration list">
+      <Card style={{ marginTop: 16 }} title={t.registrationList}>
         <Table
           rowKey="id"
           dataSource={registrations}
           scroll={{ x: 860 }}
           columns={[
-            { title: 'Employee ID', dataIndex: ['user', 'employee_id'] },
-            { title: 'Name', dataIndex: ['user', 'name'] },
-            { title: 'Department', dataIndex: ['user', 'department'] },
-            { title: 'Session', dataIndex: 'session_title' },
-            { title: 'Ticket type', dataIndex: 'ticket_type_name' },
+            { title: m.profile.employeeId, dataIndex: ['user', 'employee_id'] },
+            { title: m.verifier.name, dataIndex: ['user', 'name'] },
+            { title: m.profile.department, dataIndex: ['user', 'department'] },
+            { title: m.profile.session, dataIndex: 'session_title' },
+            { title: m.profile.ticketType, dataIndex: 'ticket_type_name' },
             {
-              title: 'Status',
+              title: m.profile.status,
               dataIndex: 'status',
               render: (v) => (
                 <Tag
@@ -1755,32 +1776,32 @@ const DashboardTab = ({ controller }) => {
         />
       </Card>
 
-      <Card style={{ marginTop: 16 }} title="Lottery by session">
+      <Card style={{ marginTop: 16 }} title={t.lotteryBySession}>
         <Table
           rowKey="session_id"
           pagination={false}
           dataSource={dashboard?.sessions_lottery || []}
           scroll={{ x: 760 }}
           columns={[
-            { title: 'Session', dataIndex: 'title' },
-            { title: 'Lottery time', dataIndex: 'lottery_at' },
+            { title: m.profile.session, dataIndex: 'title' },
+            { title: t.lotteryTime, dataIndex: 'lottery_at' },
             {
-              title: 'Status',
+              title: m.profile.status,
               key: 'st',
               render: (_, row) =>
                 row.lottery_executed_at ? (
-                  <Tag color="green">Completed ({row.lottery_executed_at})</Tag>
+                  <Tag color="green">{t.completed} ({row.lottery_executed_at})</Tag>
                 ) : (
-                  <Tag color="orange">Pending</Tag>
+                  <Tag color="orange">{t.pending}</Tag>
                 )
             },
             {
-              title: 'Pending lottery (registered)',
+              title: `${t.pending}${t.runLottery} (${t.registered})`,
               dataIndex: 'registered_pending',
               render: (v) => (v == null ? '—' : v)
             },
             {
-              title: 'Actions',
+              title: t.actions,
               key: 'act',
               render: (_, row) => (
                 <Button
@@ -1788,7 +1809,7 @@ const DashboardTab = ({ controller }) => {
                   disabled={!isAdminFull || !!row.lottery_executed_at || !selectedEventId}
                   onClick={() => handleRunLottery(row.session_id, row.title)}
                 >
-                  Run lottery
+                  {t.runLottery}
                 </Button>
               )
             }
