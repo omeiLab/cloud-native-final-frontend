@@ -51,10 +51,9 @@ const DashboardCharts = lazy(() => loadRecharts().then(({
   default: function DashboardCharts({
     registrationTimeline,
     siteDistribution,
-    ticketTypeProgress
+    ticketTypeProgress,
+    t
   }) {
-    const { m } = useI18n();
-    const t = m.admin;
 
     const siteChartData = siteDistribution.map((siteItem) => ({
       name: SITE_LABELS[siteItem.site] || siteItem.site,
@@ -1297,7 +1296,7 @@ const SessionsFields = ({ controller }) => {
 
   return (
     <>
-      <Divider style={{ marginTop: 6 }}>{t.lotteryBySession}</Divider>
+      <Divider style={{ marginTop: 6 }}>{t.sessionSettings}</Divider>
 
       <Form.List name="sessions">
         {(fields, { add, remove }) => (
@@ -1486,6 +1485,9 @@ const RegistrationTimelineFields = ({ createRegistrationMode }) => {
 };
 
 const EventCreateActions = ({ controller }) => {
+  const { m } = useI18n();
+  const t = m.admin; // 引入語系檔
+  
   const {
     isEditing,
     creating,
@@ -1505,10 +1507,10 @@ const EventCreateActions = ({ controller }) => {
         {isEditing ? (
           <>
             <Button type="primary" onClick={() => updateEvent(true)} loading={creating} disabled={!isAdminFull}>
-              Publish
+              {t.publish || 'Publish'}
             </Button>
             <Button onClick={() => updateEvent(false)} loading={creating} disabled={!isAdminFull}>
-              Save as draft
+              {t.saveDraft || 'Save as draft'}
             </Button>
             <Button
               className="admin-create-cancel"
@@ -1517,14 +1519,20 @@ const EventCreateActions = ({ controller }) => {
                 setActiveTabKey('dashboard');
               }}
             >
-              Cancel edit
+              {t.cancelEdit || 'Cancel edit'}
             </Button>
           </>
         ) : (
           <>
-            <Button type="primary" onClick={handleCreate} loading={creating} disabled={!isAdminFull}>Publish</Button>
-            <Button onClick={handleCreateDraft} loading={creating} disabled={!isAdminFull}>Save as draft</Button>
-            <Button className="admin-create-cancel" onClick={resetCreateFormToDefaults}>Cancel edit</Button>
+            <Button type="primary" onClick={handleCreate} loading={creating} disabled={!isAdminFull}>
+              {t.publish || 'Publish'}
+            </Button>
+            <Button onClick={handleCreateDraft} loading={creating} disabled={!isAdminFull}>
+              {t.saveDraft || 'Save as draft'}
+            </Button>
+            <Button className="admin-create-cancel" onClick={resetCreateFormToDefaults}>
+              {t.cancelEdit || 'Cancel edit'}
+            </Button>
           </>
         )}
       </div>
@@ -1609,7 +1617,7 @@ const DraftsTab = ({ controller }) => {
                   disabled={!isAdminFull || editLoading || deletingDraftId === record.id}
                   onClick={() => handlePublishDraft(record)}
                 >
-                  {t.publishDraft}
+                  {t.publishDraftTable}
                 </Button>
                 <Button
                   danger
@@ -1686,7 +1694,7 @@ const DashboardTab = ({ controller }) => {
               <Text className="admin-dashboard-section-label">{t.eventManagement}</Text>
               <Space wrap className="admin-dashboard-actions">
                 <Button type="primary" onClick={handlePublish} loading={publishing} disabled={!isAdminFull || !selectedEvent || selectedEvent.status !== 'DRAFT'}>
-                  {t.publishDraft}
+                  {t.publishDraftDash}
                 </Button>
                 <Button onClick={() => enterEditMode(selectedEventId)} loading={editLoading} disabled={!isAdminFull || !selectedEvent}>
                   {t.editEvent}
@@ -1739,6 +1747,7 @@ const DashboardTab = ({ controller }) => {
           registrationTimeline={registrationTimeline}
           siteDistribution={siteDistribution}
           ticketTypeProgress={ticketTypeProgress}
+          t={t}
         />
       </Suspense>
 
